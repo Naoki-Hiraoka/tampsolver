@@ -1,22 +1,13 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(symbol_geometry_planner)
 
-## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED)
-
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
-
-## Uncomment this if the package has a setup.py. This macro ensures
-## modules and global scripts declared therein get installed
-## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+find_package(catkin REQUIRED COMPONENTS
+  choreonoid
+  roscpp
+  roslib)
+find_package(Boost REQUIRED COMPONENTS system)
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -111,10 +102,16 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
-# include
+# include_directories(
+# # include
 # ${catkin_INCLUDE_DIRS}
-)
+# ${CHOREONOID_INCLUDE_DIRS}
+# )
+
+# link_directories(
+#   ${CHOREONOID_LIBRARY_DIRS}
+#   ${BOOST_LIBRARY_DIRS}
+# )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -145,6 +142,8 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_subdirectory(work)
 
 #############
 ## Install ##

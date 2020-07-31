@@ -110,4 +110,15 @@ index 7771c26..ac5fcdc 100644
  if(NOT BUILD_OPENRTM_PLUGIN)
    return()
  elseif(NOT (ENABLE_CORBA AND BUILD_CORBA_PLUGIN))
+diff --git a/src/OpenHRPPlugin/CMakeLists.txt b/src/OpenHRPPlugin/CMakeLists.txt
+index 2bf8194..17d3e36 100644
+--- a/src/OpenHRPPlugin/CMakeLists.txt
++++ b/src/OpenHRPPlugin/CMakeLists.txt
+@@ -1,1 +1,1 @@
+ # @author Shin'ichiro Nakaoka
 
+-option(BUILD_OPENHRP_PLUGIN "Building OpenHRPPlugin" OFF)
++option(BUILD_OPENHRP_PLUGIN "Building OpenHRPPlugin" ON)
+ option(BUILD_OPENHRP_PLUGIN_FOR_3_0 "Building OpenHRPPlugin for OpenHRP 3.0.x" OFF)
+
+ if(NOT BUILD_OPENHRP_PLUGIN)
