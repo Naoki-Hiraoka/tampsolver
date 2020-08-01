@@ -1,1 +1,1 @@
-choreonoid `rospack find symbol_geometry_planner`/word/onlineviewer/viewer.cnoid
+choreonoid `rospack find symbol_geometry_planner`/work/onlineviewer/viewer.cnoid

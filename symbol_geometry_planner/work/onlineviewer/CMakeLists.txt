@@ -1,3 +1,10 @@
+find_package(catkin REQUIRED COMPONENTS
+  choreonoid
+  roscpp
+  roslib)
+
+find_package(Boost REQUIRED COMPONENTS system)
+
 include(FindPkgConfig) 
 pkg_check_modules(OMNIDYNAMIC omniDynamic4)
 
