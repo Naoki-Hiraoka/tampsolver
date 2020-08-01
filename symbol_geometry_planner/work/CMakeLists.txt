@@ -1,1 +1,2 @@
 add_subdirectory(onlineviewer)
+add_subdirectory(ViewerSamplePlugin)
