@@ -20,7 +20,7 @@ namespace cnoid {
       mv(MessageView::instance())
   {
 
-    _worker.sigTimeout().connect([&](){ main(); });
+    _worker.sigTimeout().connect([&](){ main_common(); });
     _worker.start(1000);
 
   }
@@ -31,7 +31,7 @@ namespace cnoid {
       os(MessageView::instance()->cout()),
       mv(MessageView::instance())
   {
-    _worker.sigTimeout().connect([&](){ main(); });
+    _worker.sigTimeout().connect([&](){ main_common(); });
     _worker.start(1000);
 
   }
@@ -151,9 +151,15 @@ namespace cnoid {
   }
 
 
-  void PlannerBaseItem::main()
+  void PlannerBaseItem::main_common()
   {
     this->_worker.stop();
+    this->main();
   }
+
+  void PlannerBaseItem::main()
+  {
+  }
+
 }
 

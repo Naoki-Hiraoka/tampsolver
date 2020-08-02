@@ -33,8 +33,6 @@ namespace cnoid {
 
   void IrtViewerSampleItem::main()
   {
-    PlannerBaseItem::main();
-
     std::string filepath;
 
     filepath = ros::package::getPath("hrp2_models") + "/HRP2JSKNTS_WITH_3HAND_for_OpenHRP3/HRP2JSKNTSmain.wrl";

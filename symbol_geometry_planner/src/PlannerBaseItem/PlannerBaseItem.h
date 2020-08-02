@@ -43,6 +43,7 @@ namespace cnoid {
     virtual void main();
 
   private:
+    void main_common();
 
     // 長時間かかる処理で，内部でsignalを出す場合
     // std::threadやQThreadで別スレッドで処理するとエラーになる(QBasicTimer::start: Timers cannot be started from another thread)
