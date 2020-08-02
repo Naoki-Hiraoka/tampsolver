@@ -76,7 +76,7 @@ namespace cnoid {
     mv->putln(std::string("OnlineViewer: Loading ") + name + " at " + url+ ".");
     mv->flush();
     if(!bodyItem->load(url)){
-      mv->putln(std::string("OnlineViewer: Loading ") + name + " failed.");
+      mv->putln(MessageView::WARNING, std::string("OnlineViewer: Loading ") + name + " failed.");
       return nullptr;
     } else {
       bodyItem->setName(name);
