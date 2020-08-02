@@ -1,7 +1,9 @@
 find_package(catkin REQUIRED COMPONENTS
   choreonoid
   roscpp
-  roslib)
+  roslib
+  actionlib
+  pddl_msgs)
 
 set(target CnoidSymbolGeometryPlannerPlugin)
 set(sources
@@ -9,6 +11,7 @@ set(sources
   PlannerBaseItem/PlannerBaseItem.cpp
 
   IrtViewerSampleItem/IrtViewerSampleItem.cpp
+  PddlSampleItem/PddlSampleItem.cpp
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})

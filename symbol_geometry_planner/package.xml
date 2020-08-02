@@ -53,7 +53,9 @@
   <depend>choreonoid</depend>
   <depend>roscpp</depend>
   <depend>roslib</depend>
-
+  <depend>actionlib</depend>
+  <depend>pddl_msgs</depend>
+  <exec_depend>pddl_planner</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

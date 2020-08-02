@@ -5,6 +5,7 @@
 #include "PlannerBaseItem/PlannerBaseItem.h"
 
 #include "IrtViewerSampleItem/IrtViewerSampleItem.h"
+#include "PddlSampleItem/PddlSampleItem.h"
 
 using namespace cnoid;
 
@@ -22,6 +23,7 @@ public:
       PlannerBaseItem::initializeClass(this);
 
       IrtViewerSampleItem::initializeClass(this);
+      PddlSampleItem::initializeClass(this);
       return true;
     }
 
