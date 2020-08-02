@@ -6,6 +6,7 @@
 
 #include "IrtViewerSampleItem/IrtViewerSampleItem.h"
 #include "PddlSampleItem/PddlSampleItem.h"
+#include "RoboptimSampleItem/RoboptimSampleItem.h"
 
 using namespace cnoid;
 
@@ -24,6 +25,7 @@ public:
 
       IrtViewerSampleItem::initializeClass(this);
       PddlSampleItem::initializeClass(this);
+      RoboptimSampleItem::initializeClass(this);
       return true;
     }
 
