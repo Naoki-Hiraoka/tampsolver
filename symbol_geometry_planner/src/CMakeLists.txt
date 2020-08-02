@@ -16,6 +16,7 @@ set(sources
   IrtViewerSampleItem/IrtViewerSampleItem.cpp #roscpp roslib
   PddlSampleItem/PddlSampleItem.cpp #roscpp roslib actionlib pddl_msgs
   RoboptimSampleItem/RoboptimSampleItem.cpp #roboptim-core
+  RoboptimSparseSampleItem/RoboptimSparseSampleItem.cpp #roboptim-core
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS} ${roboptim-core_INCLUDE_DIRS})

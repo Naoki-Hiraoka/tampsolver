@@ -1,4 +1,4 @@
-#include "RoboptimSampleItem.h"
+#include "RoboptimSparseSampleItem.h"
 #include <roboptim/core.hh>
 
 using namespace std::placeholders;
@@ -7,35 +7,36 @@ using namespace roboptim;
 
 namespace cnoid {
 
-  void RoboptimSampleItem::initializeClass(ExtensionManager* ext)
+  void RoboptimSparseSampleItem::initializeClass(ExtensionManager* ext)
   {
     ext->itemManager()
-      .registerClass<RoboptimSampleItem>("RoboptimSampleItem");
+      .registerClass<RoboptimSparseSampleItem>("RoboptimSparseSampleItem");
   }
 
 
-  RoboptimSampleItem::RoboptimSampleItem()
+  RoboptimSparseSampleItem::RoboptimSparseSampleItem()
     : PlannerBaseItem()
   {
   }
 
 
-  RoboptimSampleItem::RoboptimSampleItem(const RoboptimSampleItem& org)
+  RoboptimSparseSampleItem::RoboptimSparseSampleItem(const RoboptimSparseSampleItem& org)
     : PlannerBaseItem(org)
   {
   }
 
 
 
-  RoboptimSampleItem::~RoboptimSampleItem()
+  RoboptimSparseSampleItem::~RoboptimSparseSampleItem()
   {
   }
 
 
-  namespace RoboptimSample{
-    struct F : public TwiceDifferentiableFunction
+  namespace RoboptimSparseSample {
+
+    struct F : public TwiceDifferentiableSparseFunction
     {
-      F () : TwiceDifferentiableFunction (4, 1, "x₀ * x₃ * (x₀ + x₁ + x₂) + x₂")
+      F () : TwiceDifferentiableSparseFunction (4, 1, "x₀ * x₃ * (x₀ + x₁ + x₂) + x₂")
       {
       }
 
@@ -48,28 +49,26 @@ namespace cnoid {
       void
       impl_gradient (gradient_ref grad, const_argument_ref x, size_type) const
       {
-        MessageView::instance()->cout() << "grad" << std::endl;
-        grad << x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]),
-          x[0] * x[3],
-          x[0] * x[3] + 1,
-          x[0] * (x[0] + x[1] + x[2]);
+        grad.coeffRef(0,0) = x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]);
+        grad.coeffRef(0,1) = x[0] * x[3];
+        grad.coeffRef(0,2) = x[0] * x[3] + 1;
+        grad.coeffRef(0,3) = x[0] * (x[0] + x[1] + x[2]);
       }
 
       void
       impl_hessian (hessian_ref h, const_argument_ref x, size_type) const
       {
-        MessageView::instance()->cout() << "hessian" << std::endl;
-        h << 2 * x[3],               x[3], x[3], 2 * x[0] + x[1] + x[2],
-          x[3],                   0.,   0.,   x[0],
-          x[3],                   0.,   0.,   x[1],
-          2 * x[0] + x[1] + x[2], x[0], x[0], 0.;
+        h.coeffRef(0,0)=2 * x[3]; h.coeffRef(0,1)=x[3]; h.coeffRef(0,2)=x[3]; h.coeffRef(0,3)=2 * x[0] + x[1] + x[2];
+        h.coeffRef(1,0)=x[3]; h.coeffRef(1,3)=x[0];
+        h.coeffRef(2,0)=x[3]; h.coeffRef(2,3)=x[1];//bug?
+        h.coeffRef(3,0)=2 * x[0] + x[1] + x[2]; h.coeffRef(3,1)=x[0]; h.coeffRef(3,2)=x[0];
       }
     };
 
 
-    struct G0 : public TwiceDifferentiableFunction
+    struct G0 : public TwiceDifferentiableSparseFunction
     {
-      G0 () : TwiceDifferentiableFunction (4, 1, "x₀ * x₁ * x₂ * x₃")
+      G0 () : TwiceDifferentiableSparseFunction (4, 1, "x₀ * x₁ * x₂ * x₃")
       {
       }
 
@@ -82,25 +81,25 @@ namespace cnoid {
       void
       impl_gradient (gradient_ref grad, const_argument_ref x, size_type) const
       {
-        grad << x[1] * x[2] * x[3],
-          x[0] * x[2] * x[3],
-          x[0] * x[1] * x[3],
-          x[0] * x[1] * x[2];
+        grad.coeffRef(0,0) = x[1] * x[2] * x[3];
+        grad.coeffRef(0,1) = x[0] * x[2] * x[3];
+        grad.coeffRef(0,2) = x[0] * x[1] * x[3];
+        grad.coeffRef(0,3) = x[0] * x[1] * x[2];
       }
 
       void
       impl_hessian (hessian_ref h, const_argument_ref x, size_type) const
       {
-        h << 0.,          x[2] * x[3], x[1] * x[3], x[1] * x[2],
-          x[2] * x[3], 0.,          x[0] * x[3], x[0] * x[2],
-          x[1] * x[3], x[0] * x[3], 0.,          x[0] * x[1],
-          x[1] * x[2], x[0] * x[2], x[0] * x[1], 0.;
+        h.coeffRef(0,1)=x[2] * x[3]; h.coeffRef(0,2)=x[1] * x[3]; h.coeffRef(0,3)=x[1] * x[2];
+        h.coeffRef(1,0)=x[2] * x[3]; h.coeffRef(1,2)=x[0] * x[3]; h.coeffRef(1,3)=x[0] * x[2];
+        h.coeffRef(2,0)=x[1] * x[3]; h.coeffRef(2,1)=x[0] * x[3]; h.coeffRef(2,3)=x[0] * x[1];
+        h.coeffRef(3,0)=x[1] * x[2]; h.coeffRef(3,1)=x[0] * x[2]; h.coeffRef(3,2)=x[0] * x[1];
       }
     };
 
-    struct G1 : public TwiceDifferentiableFunction
+    struct G1 : public TwiceDifferentiableSparseFunction
     {
-      G1 () : TwiceDifferentiableFunction (4, 1, "x₀² + x₁² + x₂² + x₃²")
+      G1 () : TwiceDifferentiableSparseFunction (4, 1, "x₀² + x₁² + x₂² + x₃²")
       {
       }
 
@@ -113,26 +112,28 @@ namespace cnoid {
       void
       impl_gradient (gradient_ref grad, const_argument_ref x, size_type) const
       {
-        grad = 2 * x;
+        grad.coeffRef(0,0) = 2 * x[0];
+        grad.coeffRef(0,1) = 2 * x[1];
+        grad.coeffRef(0,2) = 2 * x[2];
+        grad.coeffRef(0,3) = 2 * x[3];
       }
 
       void
       impl_hessian (hessian_ref h, const_argument_ref x, size_type) const
       {
-        h << 2., 0., 0., 0.,
-          0., 2., 0., 0.,
-          0., 0., 2., 0.,
-          0., 0., 0., 2.;
+        h.coeffRef(0,0)=2;
+        h.coeffRef(1,1)=2;
+        h.coeffRef(2,2)=2;
+        h.coeffRef(3,3)=2;
       }
     };
   }
 
-
-  void RoboptimSampleItem::main()
+  void RoboptimSparseSampleItem::main()
   {
-    using namespace RoboptimSample;
+    using namespace RoboptimSparseSample;
 
-    typedef Solver<EigenMatrixDense> solver_t;
+    typedef Solver<EigenMatrixSparse> solver_t;
 
     // Create cost function.
     boost::shared_ptr<F> f (new F ());
@@ -142,11 +143,11 @@ namespace cnoid {
 
     // Set bounds for all optimization parameters.
     // 1. < x_i < 5. (x_i in [1.;5.])
-    for (Function::size_type i = 0; i < pb.function ().inputSize (); ++i)
-      pb.argumentBounds ()[i] = Function::makeInterval (1., 5.);
+    for (SparseFunction::size_type i = 0; i < pb.function ().inputSize (); ++i)
+      pb.argumentBounds ()[i] = SparseFunction::makeInterval (1., 5.);
 
     // Set the starting point.
-    Function::vector_t start (pb.function ().inputSize ());
+    SparseFunction::vector_t start (pb.function ().inputSize ());
     start[0] = 1., start[1] = 5., start[2] = 5., start[3] = 1.;
 
     // Create constraints.
@@ -157,19 +158,19 @@ namespace cnoid {
     solver_t::problem_t::scaling_t scaling;
 
     // Add constraints
-    bounds.push_back(Function::makeLowerInterval (25.));
+    bounds.push_back(SparseFunction::makeLowerInterval (25.));
     scaling.push_back (1.);
       pb.addConstraint
-        (boost::static_pointer_cast<TwiceDifferentiableFunction> (g0),
+        (boost::static_pointer_cast<TwiceDifferentiableSparseFunction> (g0),
          bounds, scaling);
 
       bounds.clear ();
       scaling.clear ();
 
-      bounds.push_back(Function::makeInterval (40., 40.));
+      bounds.push_back(SparseFunction::makeInterval (40., 40.));
       scaling.push_back (1.);
         pb.addConstraint
-          (boost::static_pointer_cast<TwiceDifferentiableFunction> (g1),
+          (boost::static_pointer_cast<TwiceDifferentiableSparseFunction> (g1),
            bounds, scaling);
 
         // Initialize solver.
@@ -180,7 +181,7 @@ namespace cnoid {
         //  - Eigen: "eigen-levenberg-marquardt"
         //  etc.
         // The plugin is built for a given solver type, so choose it adequately.
-        SolverFactory<solver_t> factory ("ipopt", pb);
+        SolverFactory<solver_t> factory ("ipopt-sparse", pb);
         solver_t& solver = factory ();
 
         // Compute the minimum and retrieve the result.
