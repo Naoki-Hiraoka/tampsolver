@@ -142,6 +142,7 @@ catkin_package(
 #   ${catkin_LIBRARIES}
 # )
 
+add_subdirectory(src)
 add_subdirectory(work)
 
 #############
