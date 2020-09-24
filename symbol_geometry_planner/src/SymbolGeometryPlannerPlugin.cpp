@@ -8,6 +8,7 @@
 #include "PddlSampleItem/PddlSampleItem.h"
 #include "RoboptimSampleItem/RoboptimSampleItem.h"
 #include "RoboptimSparseSampleItem/RoboptimSparseSampleItem.h"
+#include "IKSampleItem/IKSampleItem.h"
 
 using namespace cnoid;
 
@@ -28,6 +29,7 @@ public:
       PddlSampleItem::initializeClass(this);
       RoboptimSampleItem::initializeClass(this);
       RoboptimSparseSampleItem::initializeClass(this);
+      IKSampleItem::initializeClass(this);
       return true;
     }
 

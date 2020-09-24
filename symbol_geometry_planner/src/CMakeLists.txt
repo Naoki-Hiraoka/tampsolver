@@ -1,3 +1,5 @@
+add_subdirectory(IK)
+
 find_package(catkin REQUIRED COMPONENTS
   choreonoid
   roscpp
@@ -17,6 +19,7 @@ set(sources
   PddlSampleItem/PddlSampleItem.cpp #roscpp roslib actionlib pddl_msgs
   RoboptimSampleItem/RoboptimSampleItem.cpp #roboptim-core
   RoboptimSparseSampleItem/RoboptimSparseSampleItem.cpp #roboptim-core
+  IKSampleItem/IKSampleItem.cpp #roscpp roslib
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS} ${roboptim-core_INCLUDE_DIRS})
