@@ -3,6 +3,8 @@ project(roboptim-core)
 
 find_package(catkin REQUIRED)
 
+catkin_package()
+
 include(ExternalProject)
 
 externalproject_add(roboptim-core
