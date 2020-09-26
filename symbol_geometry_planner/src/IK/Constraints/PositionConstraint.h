@@ -3,7 +3,6 @@
 
 #include "IKConstraint.h"
 #include <cnoid/EigenUtil>
-
 class PositionConstraint : public IKConstraint
 {
 public:
