@@ -1,18 +1,20 @@
 #ifndef MINMAXJOINTCONSTRAINT_H
 #define MINMAXJOINTCONSTRAINT_H
 
-#include "MinMaxConstraint.h"
+#include "IKConstraint.h"
 
-class MinMaxJointConstraint : public MinMaxConstraint
-{
-public:
-  MinMaxJointConstraint(const cnoid::Link* joint);
+namespace IK{
+  class MinMaxJointConstraint : public IKConstraint
+  {
+  public:
+    MinMaxJointConstraint(const cnoid::Link* joint);
 
-  double min_angle () override;
-  double max_angle () override;
+    Eigen::VectorXd calc_minineq () override;
+    Eigen::VectorXd calc_maxineq () override;
 
-private:
-  const cnoid::Link* joint;
-};
+  private:
+    const cnoid::Link* joint;
+  };
+}
 
 #endif

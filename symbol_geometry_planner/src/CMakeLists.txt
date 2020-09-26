@@ -17,11 +17,11 @@ set(sources
   PddlSampleItem/PddlSampleItem.cpp #roscpp roslib actionlib pddl_msgs
   RoboptimSampleItem/RoboptimSampleItem.cpp #roboptim-core
   RoboptimSparseSampleItem/RoboptimSparseSampleItem.cpp #roboptim-core
-  IKSampleItem/IKSampleItem.cpp #roscpp roslib
+  IKSampleItem/IKSampleItem.cpp #roscpp roslib IKsolver
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})
-target_link_libraries(${target} ${CHOREONOID_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${target} ${CHOREONOID_LIBRARIES} ${catkin_LIBRARIES} IKsolver)
 target_link_directories(${target} PUBLIC ${CHOREONOID_LIBRARY_DIRS} ${catkin_LIBRARY_DIRS})
 target_compile_definitions(${target} PUBLIC ${CHOREONOID_DEFINITIONS})
 set_target_properties(${target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})

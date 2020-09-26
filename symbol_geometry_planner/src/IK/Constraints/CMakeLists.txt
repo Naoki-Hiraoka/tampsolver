@@ -1,5 +1,6 @@
 set(target IKConstraints)
 set(sources
+  IKConstraint.cpp
   PositionConstraint.cpp
   MinMaxJointConstraint.cpp
   )
