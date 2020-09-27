@@ -1,6 +1,7 @@
 #include "IKSampleItem.h"
 #include "../IK/IKsolver.h"
 #include "../IK/Constraints/PositionConstraint.h"
+#include "../IK/Util.h"
 #include <ros/package.h>
 
 using namespace std::placeholders;
@@ -109,18 +110,22 @@ namespace cnoid {
       tasks.push_back(std::make_shared<IK::PositionConstraint>(eef_links[2],eef_localposs[2],
                                                          nullptr,pos));
     }
+    // constraint: joint mim-max
+    {
+    std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot);
+    constraints.insert(constraints.end(),minmaxconstraints.begin(),minmaxconstraints.end());
+    }
     // constraint: rleg & lleg not move
     constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[0],eef_localposs[0],
                                                          nullptr,eef_links[0]->T()*eef_localposs[0]));
     constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[1],eef_localposs[1],
                                                          nullptr,eef_links[1]->T()*eef_localposs[1]));
-
     // solve ik
     IK::IKsolver solver(variables,tasks,constraints);
 
-    solver.set_debug_level(0);
-    for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(0);
-    for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(0);
+    solver.set_debug_level(2);
+    for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(2);
+    for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(2);
 
     for(size_t i=0; i<10;i++){
       solver.solve_one_loop();

@@ -11,6 +11,7 @@ set(target IKsolver)
 set(sources
   IKsolver.cpp
   OsqpEigenSolver.cpp
+  Util.cpp
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})

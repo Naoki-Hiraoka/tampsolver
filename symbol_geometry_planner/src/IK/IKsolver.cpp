@@ -97,13 +97,19 @@ namespace IK{
 
 
     //A upperBound lowerBound
+    int num_constraints = 0;
     std::vector<Eigen::VectorXd> errors(this->constraints.size());
     std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > jacobians(this->constraints.size());
-    int num_constraints = 0;
+    std::vector<Eigen::VectorXd> minineqs(this->constraints.size());
+    std::vector<Eigen::VectorXd> maxineqs(this->constraints.size());
+    std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > jacobianineqs(this->constraints.size());
     for(size_t i=0;i<this->constraints.size();i++){
       errors[i] = this->constraints[i]->calc_error();
       jacobians[i] = this->constraints[i]->calc_jacobian(this->variables);
-      num_constraints += errors[i].rows();
+      minineqs[i] = this->constraints[i]->calc_minineq();
+      maxineqs[i] = this->constraints[i]->calc_maxineq();
+      jacobianineqs[i] = this->constraints[i]->calc_jacobianineq(this->variables);
+      num_constraints += errors[i].rows()+minineqs[i].rows();
     }
     A = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_constraints,num_variables);
     lowerBound = Eigen::VectorXd(num_constraints);
@@ -114,6 +120,11 @@ namespace IK{
       lowerBound.segment(idx,errors[i].rows()) = - errors[i];
       upperBound.segment(idx,errors[i].rows()) = - errors[i];
       idx += errors[i].rows();
+
+      A.middleRows(idx,minineqs[i].rows()) = jacobianineqs[i];
+      lowerBound.segment(idx,minineqs[i].rows()) = minineqs[i];
+      upperBound.segment(idx,minineqs[i].rows()) = maxineqs[i];
+      idx += minineqs[i].rows();
     }
 
     return;

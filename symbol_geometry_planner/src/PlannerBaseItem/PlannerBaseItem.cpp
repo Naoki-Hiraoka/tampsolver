@@ -21,7 +21,7 @@ namespace cnoid {
   {
 
     _worker.sigTimeout().connect([&](){ main_common(); });
-    _worker.start(1000);
+    _worker.start(100);
 
   }
 
@@ -32,7 +32,7 @@ namespace cnoid {
       mv(MessageView::instance())
   {
     _worker.sigTimeout().connect([&](){ main_common(); });
-    _worker.start(1000);
+    _worker.start(100);
 
   }
 
