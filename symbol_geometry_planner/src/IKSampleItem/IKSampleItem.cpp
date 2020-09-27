@@ -1,4 +1,5 @@
 #include "IKSampleItem.h"
+#include "../RobotConfig/RobotConfig.h"
 #include "../IK/IKsolver.h"
 #include "../IK/Constraints/PositionConstraint.h"
 #include "../IK/Util.h"
@@ -41,6 +42,10 @@ namespace cnoid {
     filepath = ros::package::getPath("hrp2_models") + "/HRP2JSKNTS_WITH_3HAND_for_OpenHRP3/HRP2JSKNTSmain.wrl";
     BodyItemPtr robot = instantiate("HRP2JSKNTS", filepath);
     this->objects(std::set<BodyItemPtr>{robot});
+
+    // load config
+    filepath = ros::package::getPath("symbol_geometry_planner") + "/sample/HRP2JSKNTSconfig.yaml";
+    RobotConfig::RobotConfig config(robot,filepath);
 
     // set EEF link()関数はjoint名を入れること
     std::vector<const cnoid::Link*> eef_links;
@@ -100,6 +105,7 @@ namespace cnoid {
     std::vector<cnoid::BodyItemPtr> variables{robot};
     std::vector<std::shared_ptr<IK::IKConstraint> > tasks;
     std::vector<std::shared_ptr<IK::IKConstraint> > constraints;
+
     // task: rarm to target
     {
       cnoid::Position pos;
@@ -110,11 +116,13 @@ namespace cnoid {
       tasks.push_back(std::make_shared<IK::PositionConstraint>(eef_links[2],eef_localposs[2],
                                                          nullptr,pos));
     }
+
     // constraint: joint mim-max
     {
-    std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot);
+      std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot,config);
     constraints.insert(constraints.end(),minmaxconstraints.begin(),minmaxconstraints.end());
     }
+
     // constraint: rleg & lleg not move
     constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[0],eef_localposs[0],
                                                          nullptr,eef_links[0]->T()*eef_localposs[0]));
@@ -123,9 +131,10 @@ namespace cnoid {
     // solve ik
     IK::IKsolver solver(variables,tasks,constraints);
 
-    solver.set_debug_level(2);
-    for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(2);
-    for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(2);
+    int debuglevel = 0;
+    solver.set_debug_level(debuglevel);
+    for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
+    for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
 
     for(size_t i=0; i<10;i++){
       solver.solve_one_loop();

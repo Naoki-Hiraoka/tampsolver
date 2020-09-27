@@ -1,21 +1,26 @@
 #include "MinMaxJointConstraint.h"
 
 namespace IK{
-  MinMaxJointConstraint::MinMaxJointConstraint(const cnoid::Link* _joint):
-    joint(_joint) {
+  MinMaxJointConstraint::MinMaxJointConstraint(const cnoid::Link* _joint, std::shared_ptr<RobotConfig::JointLimitTable> _minmaxtable):
+    joint(_joint),
+    minmaxtable(_minmaxtable)
+  {
     return;
   }
 
-  // TODO min-max table
   Eigen::VectorXd MinMaxJointConstraint::calc_minineq () {
     Eigen::VectorXd min(1);
-    min << this->joint->q_lower() - this->joint->q();
+    double llimit = this->joint->q_lower();
+    if (this->minmaxtable) llimit = std::max(llimit,this->minmaxtable->getLlimit());
+    min << llimit - this->joint->q();
     return min;
   }
 
   Eigen::VectorXd MinMaxJointConstraint::calc_maxineq () {
     Eigen::VectorXd max(1);
-    max << this->joint->q_upper() - this->joint->q();
+    double ulimit = this->joint->q_upper();
+    if (this->minmaxtable) ulimit = std::min(ulimit,this->minmaxtable->getUlimit());
+    max << ulimit - this->joint->q();
     return max;
   }
 
