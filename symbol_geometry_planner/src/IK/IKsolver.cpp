@@ -67,6 +67,19 @@ namespace IK{
     return true;
   }
 
+  std::vector<cnoid::SgNodePtr> IKsolver::getDrawOneObjects(){
+    std::vector<cnoid::SgNodePtr> objects;
+    for(size_t i=0; i<tasks.size();i++){
+      std::vector<cnoid::SgNodePtr> tmp_objects = tasks[i]->getDrawOneObjects();
+      objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
+    }
+    for(size_t i=0; i<constraints.size();i++){
+      std::vector<cnoid::SgNodePtr> tmp_objects = constraints[i]->getDrawOneObjects();
+      objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
+    }
+    return objects;
+  }
+
   void IKsolver::calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
                                 Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
                                 Eigen::VectorXd& gradient,
@@ -106,9 +119,11 @@ namespace IK{
     for(size_t i=0;i<this->constraints.size();i++){
       errors[i] = this->constraints[i]->calc_error();
       jacobians[i] = this->constraints[i]->calc_jacobian(this->variables);
+
+      jacobianineqs[i] = this->constraints[i]->calc_jacobianineq(this->variables);
       minineqs[i] = this->constraints[i]->calc_minineq();
       maxineqs[i] = this->constraints[i]->calc_maxineq();
-      jacobianineqs[i] = this->constraints[i]->calc_jacobianineq(this->variables);
+ 
       num_constraints += errors[i].rows()+minineqs[i].rows();
     }
     A = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_constraints,num_variables);

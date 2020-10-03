@@ -23,11 +23,15 @@ namespace IK{
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
+    std::vector<cnoid::SgNodePtr> getDrawOneObjects() override;
+
   private:
     const cnoid::Link* A_link;
     const cnoid::Position A_localpos;
     const cnoid::Link* B_link;
     const cnoid::Position B_localpos;
+
+    cnoid::SgLineSetPtr lines;
   };
 }
 

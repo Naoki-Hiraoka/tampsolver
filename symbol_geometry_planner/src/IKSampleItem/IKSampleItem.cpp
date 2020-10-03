@@ -138,7 +138,14 @@ namespace cnoid {
 
     for(size_t i=0; i<10;i++){
       solver.solve_one_loop();
-      this->drawObjects();
+
+      this->drawObjects(false);
+      std::vector<cnoid::SgNodePtr> drawoneobjects = solver.getDrawOneObjects();
+      for(size_t j=0;j<drawoneobjects.size();j++){
+        this->drawOn(drawoneobjects[j]);
+      }
+      this->flush();
+
       this->os << i << std::endl;
       cnoid::msleep(500);
     }

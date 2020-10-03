@@ -2,6 +2,7 @@
 #define IKSOLVER_H
 
 #include <cnoid/BodyItem>
+#include <cnoid/SceneDrawables>
 #include "Constraints/IKConstraint.h"
 #include "OsqpEigenSolver.h"
 
@@ -17,6 +18,8 @@ namespace IK{
     virtual bool solve_one_loop();
 
     virtual bool solve_optimization();
+
+    virtual std::vector<cnoid::SgNodePtr> getDrawOneObjects();
 
     void set_regular(double _regular){ regular = _regular;}
     void set_regular_rel(double _regular_rel){ regular_rel = _regular_rel;}

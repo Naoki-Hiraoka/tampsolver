@@ -99,4 +99,40 @@ namespace IK{
 
     return jacobian;
   }
+
+  std::vector<cnoid::SgNodePtr> PositionConstraint::getDrawOneObjects(){
+    if(!this->lines){
+      lines = new cnoid::SgLineSet;
+      lines->setLineWidth(1.0);
+      lines->getOrCreateColors()->resize(4);
+      lines->getOrCreateColors()->at(0) = cnoid::Vector3f(1.0,1.0,1.0);
+      lines->getOrCreateColors()->at(1) = cnoid::Vector3f(1.0,0.0,0.0);
+      lines->getOrCreateColors()->at(2) = cnoid::Vector3f(0.0,1.0,0.0);
+      lines->getOrCreateColors()->at(3) = cnoid::Vector3f(0.0,0.0,1.0);
+      // A, A_x, A_y, A_z, B, B_x, B_y, B_z
+      lines->getOrCreateVertices()->resize(8);
+      lines->colorIndices().resize(0);
+      lines->addLine(0,1); lines->colorIndices().push_back(1); lines->colorIndices().push_back(1);
+      lines->addLine(0,2); lines->colorIndices().push_back(2); lines->colorIndices().push_back(2);
+      lines->addLine(0,3); lines->colorIndices().push_back(3); lines->colorIndices().push_back(3);
+      lines->addLine(4,5); lines->colorIndices().push_back(1); lines->colorIndices().push_back(1);
+      lines->addLine(4,6); lines->colorIndices().push_back(2); lines->colorIndices().push_back(2);
+      lines->addLine(4,7); lines->colorIndices().push_back(3); lines->colorIndices().push_back(3);
+      lines->addLine(0,4); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+    }
+
+    const cnoid::Position& A_pos = (this->A_link) ? this->A_link->T() * this->A_localpos : this->A_localpos;
+    const cnoid::Position& B_pos = (this->B_link) ? this->B_link->T() * this->B_localpos : this->B_localpos;
+
+    lines->getOrCreateVertices()->at(0) = A_pos.translation().cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(1) = (A_pos * (0.05 * cnoid::Vector3::UnitX())).cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(2) = (A_pos * (0.05 * cnoid::Vector3::UnitY())).cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(3) = (A_pos * (0.05 * cnoid::Vector3::UnitZ())).cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(4) = B_pos.translation().cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(5) = (B_pos * (0.05 * cnoid::Vector3::UnitX())).cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(6) = (B_pos * (0.05 * cnoid::Vector3::UnitY())).cast<cnoid::Vector3f::Scalar>();
+    lines->getOrCreateVertices()->at(7) = (B_pos * (0.05 * cnoid::Vector3::UnitZ())).cast<cnoid::Vector3f::Scalar>();
+
+    return std::vector<cnoid::SgNodePtr>{lines};
+  }
 }

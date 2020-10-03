@@ -6,7 +6,6 @@
 #include <cnoid/ItemManager>
 #include <cnoid/MessageView>
 #include <cnoid/SceneView>
-#include <cnoid/SceneGraph>
 #include <cnoid/BodyItem>
 #include <cnoid/ItemTreeView>
 #include <cnoid/RootItem>

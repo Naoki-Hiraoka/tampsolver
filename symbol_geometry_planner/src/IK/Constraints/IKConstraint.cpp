@@ -38,4 +38,8 @@ namespace IK{
   // コスト(エラーの二乗和)を返す. 非線形最適化で用いる
 
   // gradient(-ヤコビアン^T*エラー)を返す
+
+  std::vector<cnoid::SgNodePtr> IKConstraint::getDrawOneObjects(){
+    return std::vector<cnoid::SgNodePtr>();
+  }
 }
