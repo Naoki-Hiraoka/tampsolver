@@ -39,7 +39,7 @@ namespace IK{
 
   // gradient(-ヤコビアン^T*エラー)を返す
 
-  std::vector<cnoid::SgNodePtr> IKConstraint::getDrawOneObjects(){
+  std::vector<cnoid::SgNodePtr> IKConstraint::getDrawOnObjects(){
     return std::vector<cnoid::SgNodePtr>();
   }
 }

@@ -19,7 +19,7 @@ namespace IK{
 
     virtual bool solve_optimization();
 
-    virtual std::vector<cnoid::SgNodePtr> getDrawOneObjects();
+    virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
     void set_regular(double _regular){ regular = _regular;}
     void set_regular_rel(double _regular_rel){ regular_rel = _regular_rel;}

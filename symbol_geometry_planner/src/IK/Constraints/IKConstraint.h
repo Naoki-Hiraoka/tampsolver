@@ -26,7 +26,7 @@ namespace IK{
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
-    virtual std::vector<cnoid::SgNodePtr> getDrawOneObjects();
+    virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
     void set_debug_level(int _debuglevel){debuglevel = _debuglevel;}
   protected:

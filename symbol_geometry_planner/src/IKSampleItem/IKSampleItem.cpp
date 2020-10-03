@@ -140,9 +140,9 @@ namespace cnoid {
       solver.solve_one_loop();
 
       this->drawObjects(false);
-      std::vector<cnoid::SgNodePtr> drawoneobjects = solver.getDrawOneObjects();
-      for(size_t j=0;j<drawoneobjects.size();j++){
-        this->drawOn(drawoneobjects[j]);
+      std::vector<cnoid::SgNodePtr> drawonobjects = solver.getDrawOnObjects();
+      for(size_t j=0;j<drawonobjects.size();j++){
+        this->drawOn(drawonobjects[j]);
       }
       this->flush();
 

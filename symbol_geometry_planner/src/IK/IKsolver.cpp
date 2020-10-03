@@ -67,14 +67,14 @@ namespace IK{
     return true;
   }
 
-  std::vector<cnoid::SgNodePtr> IKsolver::getDrawOneObjects(){
+  std::vector<cnoid::SgNodePtr> IKsolver::getDrawOnObjects(){
     std::vector<cnoid::SgNodePtr> objects;
     for(size_t i=0; i<tasks.size();i++){
-      std::vector<cnoid::SgNodePtr> tmp_objects = tasks[i]->getDrawOneObjects();
+      std::vector<cnoid::SgNodePtr> tmp_objects = tasks[i]->getDrawOnObjects();
       objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
     }
     for(size_t i=0; i<constraints.size();i++){
-      std::vector<cnoid::SgNodePtr> tmp_objects = constraints[i]->getDrawOneObjects();
+      std::vector<cnoid::SgNodePtr> tmp_objects = constraints[i]->getDrawOnObjects();
       objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
     }
     return objects;

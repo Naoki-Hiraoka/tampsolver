@@ -23,7 +23,7 @@ namespace IK{
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
-    std::vector<cnoid::SgNodePtr> getDrawOneObjects() override;
+    std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
 
   private:
     const cnoid::Link* A_link;

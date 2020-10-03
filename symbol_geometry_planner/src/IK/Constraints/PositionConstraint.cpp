@@ -100,7 +100,7 @@ namespace IK{
     return jacobian;
   }
 
-  std::vector<cnoid::SgNodePtr> PositionConstraint::getDrawOneObjects(){
+  std::vector<cnoid::SgNodePtr> PositionConstraint::getDrawOnObjects(){
     if(!this->lines){
       lines = new cnoid::SgLineSet;
       lines->setLineWidth(1.0);
