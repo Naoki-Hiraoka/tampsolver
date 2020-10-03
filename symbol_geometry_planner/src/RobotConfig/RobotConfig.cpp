@@ -2,7 +2,7 @@
 #include <yaml-cpp/yaml.h>
 
 namespace RobotConfig {
-  RobotConfig::RobotConfig (const cnoid::BodyItemPtr _robot, const std::string& url):
+  RobotConfig::RobotConfig (const cnoid::Body* _robot, const std::string& url):
     robot(_robot)
   {
     YAML::Node config = YAML::LoadFile(url);

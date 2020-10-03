@@ -45,7 +45,7 @@ namespace cnoid {
 
     // load config
     filepath = ros::package::getPath("symbol_geometry_planner") + "/sample/HRP2JSKNTSconfig.yaml";
-    RobotConfig::RobotConfig config(robot,filepath);
+    RobotConfig::RobotConfig config(robot->body(),filepath);
 
     // set EEF link()関数はjoint名を入れること
     std::vector<const cnoid::Link*> eef_links;
@@ -102,7 +102,7 @@ namespace cnoid {
     std::cerr << "reset-manip-pose" << std::endl;
 
     // set goal
-    std::vector<cnoid::BodyItemPtr> variables{robot};
+    std::vector<cnoid::Body*> variables{robot->body()};
     std::vector<std::shared_ptr<IK::IKConstraint> > tasks;
     std::vector<std::shared_ptr<IK::IKConstraint> > constraints;
 
@@ -119,7 +119,7 @@ namespace cnoid {
 
     // constraint: joint mim-max
     {
-      std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot,config);
+      std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot->body(),config);
     constraints.insert(constraints.end(),minmaxconstraints.begin(),minmaxconstraints.end());
     }
 

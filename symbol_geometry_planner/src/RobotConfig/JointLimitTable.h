@@ -1,9 +1,10 @@
 #ifndef JOINT_LIMIT_TABLE_H
 #define JOINT_LIMIT_TABLE_H
 
-#include <cnoid/BodyItem>
+#include <cnoid/Body>
 #include <map>
 #include <iostream>
+#include <memory>
 
 namespace RobotConfig {
     // JointLimitTable for one joint
@@ -35,7 +36,7 @@ namespace RobotConfig {
     };
 
   void readJointLimitTableFromProperties (std::map<const cnoid::Link*, std::shared_ptr<RobotConfig::JointLimitTable> >& joint_mm_tables,
-                                            cnoid::BodyItemPtr robot,
+                                            const cnoid::Body* robot,
                                             const std::string& prop_string);
 };
 

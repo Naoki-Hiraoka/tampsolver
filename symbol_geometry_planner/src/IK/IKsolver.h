@@ -1,7 +1,7 @@
 #ifndef IKSOLVER_H
 #define IKSOLVER_H
 
-#include <cnoid/BodyItem>
+#include <cnoid/Body>
 #include <cnoid/SceneDrawables>
 #include "Constraints/IKConstraint.h"
 #include "OsqpEigenSolver.h"
@@ -10,7 +10,7 @@ namespace IK{
   class IKsolver
   {
   public:
-    IKsolver(const std::vector<cnoid::BodyItemPtr>& variables,
+    IKsolver(const std::vector<cnoid::Body*>& variables,
              const std::vector<std::shared_ptr<IKConstraint> >& tasks,
              const std::vector<std::shared_ptr<IKConstraint> >& constraints);
 
@@ -35,7 +35,7 @@ namespace IK{
 
     int debuglevel;
 
-    const std::vector<cnoid::BodyItemPtr> variables;
+    const std::vector<cnoid::Body*> variables;
     const std::vector<std::shared_ptr<IKConstraint> > tasks;
     const std::vector<std::shared_ptr<IKConstraint> > constraints;
 

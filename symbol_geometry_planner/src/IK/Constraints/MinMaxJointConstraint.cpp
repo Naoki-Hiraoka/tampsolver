@@ -24,20 +24,20 @@ namespace IK{
     return max;
   }
 
-  Eigen::SparseMatrix<double,Eigen::RowMajor> MinMaxJointConstraint::calc_jacobianineq (const std::vector<cnoid::BodyItemPtr>& bodyitems) {
+  Eigen::SparseMatrix<double,Eigen::RowMajor> MinMaxJointConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
     int dim = 0;
-    for(size_t i=0; i < bodyitems.size(); i++){
-      dim += 6 + bodyitems[i]->body()->numJoints();
+    for(size_t i=0; i < bodies.size(); i++){
+      dim += 6 + bodies[i]->numJoints();
     }
 
     std::vector<Eigen::Triplet<double> > tripletList;
     int idx = 0;
-    for(size_t b=0;b<bodyitems.size();b++){
-      if(bodyitems[b]->body() == this->joint->body()){
+    for(size_t b=0;b<bodies.size();b++){
+      if(bodies[b] == this->joint->body()){
         tripletList.push_back(Eigen::Triplet<double>(0,idx+6+this->joint->jointId(),1));
         break;
       }
-      idx += 6 + bodyitems[b]->body()->numJoints();
+      idx += 6 + bodies[b]->numJoints();
     }
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian(1,dim);

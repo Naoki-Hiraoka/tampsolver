@@ -33,11 +33,11 @@ namespace IK{
     return error;
   }
 
-  // ヤコビアンを返す. bodyitemのroot6dof+全関節が変数
-  Eigen::SparseMatrix<double,Eigen::RowMajor> PositionConstraint::calc_jacobian (const std::vector<cnoid::BodyItemPtr>& bodyitems) {
+  // ヤコビアンを返す. bodyのroot6dof+全関節が変数
+  Eigen::SparseMatrix<double,Eigen::RowMajor> PositionConstraint::calc_jacobian (const std::vector<cnoid::Body*>& bodies) {
     int dim = 0;
-    for(size_t i=0; i < bodyitems.size(); i++){
-      dim += 6 + bodyitems[i]->body()->numJoints();
+    for(size_t i=0; i < bodies.size(); i++){
+      dim += 6 + bodies[i]->numJoints();
     }
 
 
@@ -55,13 +55,13 @@ namespace IK{
       const cnoid::Vector3 target_p = target_position.translation();
 
       int idx = 0;
-      for(size_t b=0;b<bodyitems.size();b++){
-        if(bodyitems[b]->body() == target_link->body()){
+      for(size_t b=0;b<bodies.size();b++){
+        if(bodies[b] == target_link->body()){
           //root 6dof
           for(size_t j=0;j<6;j++){
             tripletList.push_back(Eigen::Triplet<double>(j,idx+j,sign));
           }
-          cnoid::Vector3 dp = target_p - bodyitems[b]->body()->rootLink()->p();
+          cnoid::Vector3 dp = target_p - bodies[b]->rootLink()->p();
           //  0     p[2] -p[1]
           // -p[2]  0     p[0]
           //  p[1] -p[0]  0
@@ -89,7 +89,7 @@ namespace IK{
           }
           break;
         }
-        idx += 6 + bodyitems[b]->body()->numJoints();
+        idx += 6 + bodies[b]->numJoints();
       }
     }
 

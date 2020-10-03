@@ -7,11 +7,11 @@ namespace IK{
     return Eigen::VectorXd();
   }
 
-  // 等式制約のヤコビアンを返す. bodyitemのroot6dof+全関節が変数
-  Eigen::SparseMatrix<double,Eigen::RowMajor> IKConstraint::calc_jacobian (const std::vector<cnoid::BodyItemPtr>& bodyitems){
+  // 等式制約のヤコビアンを返す. bodyのroot6dof+全関節が変数
+  Eigen::SparseMatrix<double,Eigen::RowMajor> IKConstraint::calc_jacobian (const std::vector<cnoid::Body*>& bodies){
     int num_variables = 0;
-    for(size_t i=0;i<bodyitems.size();i++){
-      num_variables += 6 + bodyitems[i]->body()->numJoints();
+    for(size_t i=0;i<bodies.size();i++){
+      num_variables += 6 + bodies[i]->numJoints();
     }
     return Eigen::SparseMatrix<double,Eigen::RowMajor>(0,num_variables);
   }
@@ -27,10 +27,10 @@ namespace IK{
   }
 
   // 不等式制約のヤコビアンを返す
-  Eigen::SparseMatrix<double,Eigen::RowMajor> IKConstraint::calc_jacobianineq (const std::vector<cnoid::BodyItemPtr>& bodyitems){
+  Eigen::SparseMatrix<double,Eigen::RowMajor> IKConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies){
     int num_variables = 0;
-    for(size_t i=0;i<bodyitems.size();i++){
-      num_variables += 6 + bodyitems[i]->body()->numJoints();
+    for(size_t i=0;i<bodies.size();i++){
+      num_variables += 6 + bodies[i]->numJoints();
     }
     return Eigen::SparseMatrix<double,Eigen::RowMajor>(0,num_variables);
   }

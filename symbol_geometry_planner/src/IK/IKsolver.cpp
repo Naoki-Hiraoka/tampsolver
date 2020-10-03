@@ -1,7 +1,7 @@
 #include "IKsolver.h"
 
 namespace IK{
-  IKsolver::IKsolver(const std::vector<cnoid::BodyItemPtr>& _variables,
+  IKsolver::IKsolver(const std::vector<cnoid::Body*>& _variables,
                      const std::vector<std::shared_ptr<IKConstraint> >& _tasks,
                      const std::vector<std::shared_ptr<IKConstraint> >& _constraints):
     debuglevel(0),
@@ -87,7 +87,7 @@ namespace IK{
                                 Eigen::VectorXd& lowerBound){
     int num_variables = 0;
     for(size_t i=0;i<this->variables.size();i++){
-      num_variables += 6 + this->variables[i]->body()->numJoints();
+      num_variables += 6 + this->variables[i]->numJoints();
     }
 
     // H gradient
@@ -148,18 +148,18 @@ namespace IK{
   void IKsolver::update_qp_variables(const Eigen::VectorXd& solution){
     int idx = 0;
     for(size_t i=0;i<this->variables.size();i++){
-      variables[i]->body()->rootLink()->p() += solution.segment<3>(idx);
+      variables[i]->rootLink()->p() += solution.segment<3>(idx);
 
       cnoid::Matrix3 dR = cnoid::Matrix3(cnoid::AngleAxis(solution.segment<3>(idx+3).norm(), solution.segment<3>(idx+3).normalized()));
-      variables[i]->body()->rootLink()->R() = dR * variables[i]->body()->rootLink()->R();
+      variables[i]->rootLink()->R() = dR * variables[i]->rootLink()->R();
 
-      for(size_t j=0;j<variables[i]->body()->numJoints();j++){
-        variables[i]->body()->joint(j)->q() += solution[idx+6+j];
+      for(size_t j=0;j<variables[i]->numJoints();j++){
+        variables[i]->joint(j)->q() += solution[idx+6+j];
       }
 
-      this->variables[i]->body()->calcForwardKinematics();
+      this->variables[i]->calcForwardKinematics();
 
-      idx += 6 + this->variables[i]->body()->numJoints();
+      idx += 6 + this->variables[i]->numJoints();
     }
 
     return;

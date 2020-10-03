@@ -15,7 +15,7 @@ double RobotConfig::JointLimitTable::getInterpolatedLimitAngle (const double tar
 };
 
 void RobotConfig::readJointLimitTableFromProperties (std::map<const cnoid::Link*, std::shared_ptr<RobotConfig::JointLimitTable> >& joint_limit_tables,
-                                                     cnoid::BodyItemPtr robot,
+                                                     const cnoid::Body* robot,
                                                      const std::string& prop_string)
 {
   size_t limit_table_size = 6; // self_joint_name:target_joint_name:target_min_angle:target_max_angle:min:max
@@ -28,8 +28,8 @@ void RobotConfig::readJointLimitTableFromProperties (std::map<const cnoid::Link*
       std::getline(ss, item[i], ':');
     }
 
-    const cnoid::Link* self_joint = robot->body()->link(item[0]);
-    const cnoid::Link* target_joint = robot->body()->link(item[1]);
+    const cnoid::Link* self_joint = robot->link(item[0]);
+    const cnoid::Link* target_joint = robot->link(item[1]);
 
     int target_llimit_angle = std::stoi(item[2]);
     int target_ulimit_angle = std::stoi(item[3]);

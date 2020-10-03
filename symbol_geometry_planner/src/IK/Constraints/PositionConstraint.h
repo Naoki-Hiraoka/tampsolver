@@ -18,8 +18,8 @@ namespace IK{
 
     // コスト(エラーの二乗和)を返す. 非線形最適化で用いる
 
-    // ヤコビアンを返す. bodyitemのroot6dof+全関節が変数
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobian (const std::vector<cnoid::BodyItemPtr>& bodyitems) override;
+    // ヤコビアンを返す. bodyのroot6dof+全関節が変数
+    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobian (const std::vector<cnoid::Body*>& bodies) override;
 
     // gradient(-ヤコビアン^T*エラー)を返す
 

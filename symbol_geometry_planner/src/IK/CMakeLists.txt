@@ -15,5 +15,5 @@ set(sources
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})
-target_link_libraries(${target} PUBLIC ${CHOREONOID_LIBRARIES} ${catkin_LIBRARIES} IKConstraints OsqpEigen)
-target_link_directories(${target} PUBLIC ${CHOREONOID_LIBRARY_DIRS} ${catkin_LIBRARY_DIRS})
+target_link_libraries(${target} PUBLIC ${catkin_LIBRARIES} CnoidBody CnoidUtil IKConstraints OsqpEigen)
+target_link_directories(${target} PUBLIC ${catkin_LIBRARY_DIRS})

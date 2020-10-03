@@ -6,6 +6,6 @@
 
 namespace IK{
   //全jointの関節角度上下限を作る
-  std::vector<std::shared_ptr<IKConstraint> > generateMinMaxConstraints(const cnoid::BodyItemPtr robot, RobotConfig::RobotConfig& config);
+  std::vector<std::shared_ptr<IKConstraint> > generateMinMaxConstraints(const cnoid::Body* robot, RobotConfig::RobotConfig& config);
 }
 #endif

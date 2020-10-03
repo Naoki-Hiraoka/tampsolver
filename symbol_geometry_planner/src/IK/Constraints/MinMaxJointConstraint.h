@@ -12,7 +12,7 @@ namespace IK{
 
     Eigen::VectorXd calc_minineq () override;
     Eigen::VectorXd calc_maxineq () override;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::BodyItemPtr>& bodyitems) override;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
 
   private:
     const cnoid::Link* joint;
