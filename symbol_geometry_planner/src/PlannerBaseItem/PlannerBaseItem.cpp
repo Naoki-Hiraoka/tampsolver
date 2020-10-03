@@ -19,9 +19,12 @@ namespace cnoid {
     : os(MessageView::instance()->cout()),
       mv(MessageView::instance())
   {
+    this->_markerGroup = new SgGroup;
+    this->_markerGroup->setName("Marker");
+    SceneView::instance()->sceneWidget()->sceneRoot()->addChild(this->_markerGroup);
 
-    _worker.sigTimeout().connect([&](){ main_common(); });
-    _worker.start(100);
+    this->_worker.sigTimeout().connect([&](){ this->main_common(); });
+    this->_worker.start(100);
 
   }
 
@@ -31,8 +34,8 @@ namespace cnoid {
       os(MessageView::instance()->cout()),
       mv(MessageView::instance())
   {
-    _worker.sigTimeout().connect([&](){ main_common(); });
-    _worker.start(100);
+    this->_worker.sigTimeout().connect([&](){ this->main_common(); });
+    this->_worker.start(100);
 
   }
 
@@ -141,15 +144,32 @@ namespace cnoid {
     this->_objects.insert(obj);
   }
 
-
-  void PlannerBaseItem::drawObjects()
+  void PlannerBaseItem::drawOn(cnoid::SgNodePtr obj, bool flush)
   {
+    if(this->_markerGroup->addChildOnce(obj)){
+      obj->notifyUpdate();
+    }
+    if(flush){
+      this->flush();
+    }
+  }
+
+  void PlannerBaseItem::drawObjects(bool flush)
+  {
+    this->_markerGroup->clearChildren();
+
     for(std::set<BodyItemPtr>::iterator iter = this->_objects.begin(); iter != this->_objects.end(); iter++){
       (*iter)->notifyKinematicStateChange();
     }
-    QCoreApplication::processEvents(QEventLoop::AllEvents);
+    if(flush){
+      this->flush();
+    }
   }
 
+  void PlannerBaseItem::flush()
+  {
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+  }
 
   void PlannerBaseItem::main_common()
   {

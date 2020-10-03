@@ -5,6 +5,8 @@
 #include <cnoid/SceneProvider>
 #include <cnoid/ItemManager>
 #include <cnoid/MessageView>
+#include <cnoid/SceneView>
+#include <cnoid/SceneGraph>
 #include <cnoid/BodyItem>
 #include <cnoid/ItemTreeView>
 #include <cnoid/RootItem>
@@ -32,10 +34,14 @@ namespace cnoid {
 
     BodyItemPtr instantiate(const std::string& name, const std::string& url);
     BodyItemPtr copyObject(const std::string& name, const BodyItemPtr obj);
+
     void objects(const std::set<BodyItemPtr>& objs);
     void objects(const std::vector<BodyItemPtr>& objs);
     void objects(const BodyItemPtr& obj);
-    void drawObjects();
+
+    void drawOn(cnoid::SgNodePtr obj, bool flush=false);
+    void drawObjects(bool flush=true);
+    void flush();
 
     std::ostream& os;
     MessageView* mv;
@@ -51,6 +57,7 @@ namespace cnoid {
     // 通常は一つのsignaleventの処理が完了してから次のeventの処理が始まるが，event中にQCoreApplication::processEvents()を呼ぶとその瞬間にevent処理が割り込まれる．
     Timer _worker;
     std::set<BodyItemPtr> _objects;
+    cnoid::SgGroupPtr _markerGroup;
   };
 
   typedef ref_ptr<PlannerBaseItem> PlannerBaseItemPtr;

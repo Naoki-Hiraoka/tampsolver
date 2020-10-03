@@ -40,6 +40,18 @@ namespace cnoid {
     BodyItemPtr robot = instantiate("HRP2JSKNTS", filepath);
     this->objects(std::set<BodyItemPtr>{robot});
 
+    SgLineSetPtr lines = new SgLineSet;
+    lines->setLineWidth(1.0);
+    lines->getOrCreateVertices()->resize(2);
+    lines->getOrCreateVertices()->at(0) = cnoid::Vector3f(0.0,0.0,0.0);
+    lines->getOrCreateVertices()->at(1) = cnoid::Vector3f(1.0,0.0,0.0);
+    lines->addLine(0,1);
+    lines->getOrCreateColors()->resize(1);
+    lines->getOrCreateColors()->at(0) = cnoid::Vector3f(1.0,0.0,0.0);
+    lines->colorIndices().resize(2);
+    lines->colorIndices().at(0) = 0;
+    lines->colorIndices().at(1) = 0;
+
     double q = 0.0;
     double dq = 0.01;
 
@@ -49,7 +61,11 @@ namespace cnoid {
       }
       robot->body()->calcForwardKinematics();
 
-      this->drawObjects();
+      lines->getOrCreateVertices()->at(1) = cnoid::Vector3f(cos(q),sin(q),0.0);
+
+      this->drawObjects(false);
+      this->drawOn(lines);
+      this->flush();
 
       cnoid::msleep(10);
       q += dq;
