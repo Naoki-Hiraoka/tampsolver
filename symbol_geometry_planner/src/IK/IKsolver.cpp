@@ -11,7 +11,7 @@ namespace IK{
     regular(1e-6),
     regular_rel(5),
     regular_max(0.1),
-    maxvel(0.1)//0.5mのモーメントアームが0.02rad動くと，先端は0.01m動く．collisionのtoleranceを0.01mにする．
+    maxvel(0.1)
   {
 
   }

@@ -44,8 +44,9 @@ namespace RobotConfig {
     }
 
     if(config["end_effectors"].IsDefined()) {
-      //TODO
-      //std::cerr << config["end_effectors"].as<std::string>() << std::endl;
+      readEndEffectorFromProperties(this->endeffectors,
+                                        this->robot,
+                                        config["end_effectors"]);
     }
 
     if(config["collision_pair"].IsDefined()) {

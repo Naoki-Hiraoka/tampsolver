@@ -11,6 +11,7 @@ set(sources
   RobotConfig.cpp
   JointLimitTable.cpp
   EditCollisionModel.cpp
+  EndEffector.cpp
   )
 add_library(${target} SHARED ${sources})
 target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})

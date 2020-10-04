@@ -44,43 +44,6 @@ namespace cnoid {
     BodyItemPtr robot = this->instantiate(config->get_robot());
     this->objects(std::set<BodyItemPtr>{robot});
 
-    // set EEF link()関数はjoint名を入れること
-    std::vector<cnoid::Link*> eef_links;
-    std::vector<cnoid::Position> eef_localposs;
-    //rleg
-    {
-      eef_links.push_back(robot->body()->link("RLEG_JOINT6"));
-      cnoid::Position pos;
-      pos.translation() = cnoid::Vector3(-0.079411,-0.01,-0.034);
-      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0,cnoid::Vector3(0,0,1)));
-      eef_localposs.push_back(pos);
-    }
-    //lleg
-    {
-      eef_links.push_back(robot->body()->link("LLEG_JOINT6"));
-      cnoid::Position pos;
-      pos.translation() = cnoid::Vector3(-0.079411,0.01,-0.034);
-      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0,cnoid::Vector3(0,0,1)));
-      eef_localposs.push_back(pos);
-    }
-    //rarm
-    {
-      eef_links.push_back(robot->body()->link("RARM_JOINT6"));
-      cnoid::Position pos;
-      pos.translation() = cnoid::Vector3(-0.0042,0.0392,-0.1245);
-      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(1.5708,cnoid::Vector3(0,1,0)));
-      eef_localposs.push_back(pos);
-    }
-    //larm
-    {
-      eef_links.push_back(robot->body()->link("LARM_JOINT6"));
-      cnoid::Position pos;
-      pos.translation() = cnoid::Vector3(-0.0042,-0.0392,-0.1245);
-      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(1.5708,cnoid::Vector3(0,1,0)));
-      eef_localposs.push_back(pos);
-    }
-
-
     // reset manip pose
     std::vector<double> reset_manip_pose{
       0.0, 0.0, -0.453786, 0.872665, -0.418879, 0.0, 0.0,
@@ -110,8 +73,8 @@ namespace cnoid {
       //pos.translation() = (eef_links[2]->T()*eef_localposs[2]).translation() + cnoid::Vector3(0.1, 0, 0);
       pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0.0,cnoid::Vector3(0,1,0)));
       //pos.linear() = (eef_links[2]->T()*eef_localposs[2]).linear();
-      tasks.push_back(std::make_shared<IK::PositionConstraint>(eef_links[2],eef_localposs[2],
-                                                         nullptr,pos));
+      tasks.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["rhand"],
+                                                               pos));
     }
 
     // constraint: joint mim-max
@@ -128,10 +91,10 @@ namespace cnoid {
 
 
     // constraint: rleg & lleg not move
-    constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[0],eef_localposs[0],
-                                                         nullptr,eef_links[0]->T()*eef_localposs[0]));
-    constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[1],eef_localposs[1],
-                                                         nullptr,eef_links[1]->T()*eef_localposs[1]));
+    constraints.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["rleg"],
+                                                                   config->get_endeffectors()["rleg"]->getlink()->T()*config->get_endeffectors()["rleg"]->getlocalpos()));
+    constraints.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["lleg"],
+                                                                   config->get_endeffectors()["lleg"]->getlink()->T()*config->get_endeffectors()["lleg"]->getlocalpos()));
     // solve ik
     IK::IKsolver solver(variables,tasks,constraints);
     int debuglevel = 0;

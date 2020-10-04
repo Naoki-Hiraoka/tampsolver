@@ -2,6 +2,7 @@
 #define POSITIONCONSTRAINT_H
 
 #include "IKConstraint.h"
+#include "../../RobotConfig/EndEffector.h"
 #include <cnoid/EigenUtil>
 #include <iostream>
 
@@ -12,6 +13,26 @@ namespace IK{
     //リンクAの部位とリンクBの部位を一致させる.リンクがnullならworld固定を意味する
     PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
                        cnoid::Link* B_link, const cnoid::Position& B_localpos);
+
+    PositionConstraint(const cnoid::Position& A_pos,
+                       const cnoid::Position& B_pos);
+    PositionConstraint(const cnoid::Position& A_pos,
+                       cnoid::Link* B_link, const cnoid::Position& B_localpos);
+    PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
+                       const cnoid::Position& B_pos);
+
+    PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                       cnoid::Link* B_link, const cnoid::Position& B_localpos);
+    PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
+                       std::shared_ptr<RobotConfig::EndEffector> B);
+    PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                       std::shared_ptr<RobotConfig::EndEffector> B);
+
+    PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                       const cnoid::Position& B_pos);
+    PositionConstraint(const cnoid::Position& A_pos,
+                       std::shared_ptr<RobotConfig::EndEffector> B);
+
 
     // エラーを返す. A-B. world系. QPで用いる
     Eigen::VectorXd calc_error () override;

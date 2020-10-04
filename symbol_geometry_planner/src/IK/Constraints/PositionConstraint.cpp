@@ -13,6 +13,51 @@ namespace IK{
     return;
   }
 
+  PositionConstraint::PositionConstraint(const cnoid::Position& A_pos,
+                                         const cnoid::Position& B_pos):
+    PositionConstraint(nullptr,A_pos,nullptr,B_pos)
+  {
+  }
+  PositionConstraint::PositionConstraint(const cnoid::Position& A_pos,
+                                         cnoid::Link* B_link, const cnoid::Position& B_localpos):
+    PositionConstraint(nullptr,A_pos,B_link,B_localpos)
+  {
+  }
+  PositionConstraint::PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
+                                         const cnoid::Position& B_pos):
+    PositionConstraint(B_link,B_localpos,nullptr,B_pos)
+  {
+  }
+
+  PositionConstraint::PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                                         cnoid::Link* B_link, const cnoid::Position& B_localpos):
+    PositionConstraint(A->getlink(),A->getlocalpos(),B_link,B_localpos)
+  {
+  }
+
+  PositionConstraint::PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
+                                         std::shared_ptr<RobotConfig::EndEffector> B):
+    PositionConstraint(A_link,A_localpos,B->getlink(),B->getlocalpos())
+  {
+  }
+
+  PositionConstraint::PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                                         std::shared_ptr<RobotConfig::EndEffector> B):
+    PositionConstraint(A->getlink(),A->getlocalpos(),B->getlink(),B->getlocalpos())
+  {
+  }
+
+  PositionConstraint::PositionConstraint(std::shared_ptr<RobotConfig::EndEffector> A,
+                                         const cnoid::Position& B_pos):
+    PositionConstraint(A->getlink(),A->getlocalpos(),nullptr,B_pos)
+  {
+  }
+  PositionConstraint::PositionConstraint(const cnoid::Position& A_pos,
+                                         std::shared_ptr<RobotConfig::EndEffector> B):
+    PositionConstraint(nullptr,A_pos,B->getlink(),B->getlocalpos())
+  {
+  }
+
   // エラーを返す. A-B. world系. QPで用いる
   Eigen::VectorXd PositionConstraint::calc_error () {
     const cnoid::Position& A_pos = (this->A_link) ? this->A_link->T() * this->A_localpos : this->A_localpos;
