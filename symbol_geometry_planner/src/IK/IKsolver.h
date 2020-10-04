@@ -25,6 +25,7 @@ namespace IK{
     void set_regular_rel(double _regular_rel){ regular_rel = _regular_rel;}
     void set_regular_max(double _regular_max){ regular_max = _regular_max;}
     void set_debug_level(int _debuglevel){ debuglevel = _debuglevel;}
+    void set_maxvel(double _maxvel){ maxvel = maxvel;}
   protected:
     virtual void calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
                                 Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
@@ -43,6 +44,7 @@ namespace IK{
     double regular;
     double regular_rel;
     double regular_max;
+    double maxvel;
   };
 }
 

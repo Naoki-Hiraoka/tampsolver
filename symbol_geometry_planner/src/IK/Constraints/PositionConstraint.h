@@ -10,8 +10,8 @@ namespace IK{
   {
   public:
     //リンクAの部位とリンクBの部位を一致させる.リンクがnullならworld固定を意味する
-    PositionConstraint(const cnoid::Link* A_link, const cnoid::Position& A_localpos,
-                       const cnoid::Link* B_link, const cnoid::Position& B_localpos);
+    PositionConstraint(cnoid::Link* A_link, const cnoid::Position& A_localpos,
+                       cnoid::Link* B_link, const cnoid::Position& B_localpos);
 
     // エラーを返す. A-B. world系. QPで用いる
     Eigen::VectorXd calc_error () override;
@@ -25,11 +25,14 @@ namespace IK{
 
     std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
 
+    void setmaxvel(double _maxvel) {maxvel=_maxvel;}
+
   private:
-    const cnoid::Link* A_link;
+    cnoid::Link* A_link;
     const cnoid::Position A_localpos;
-    const cnoid::Link* B_link;
+    cnoid::Link* B_link;
     const cnoid::Position B_localpos;
+    double maxvel;
 
     cnoid::SgLineSetPtr lines;
   };

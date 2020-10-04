@@ -32,6 +32,7 @@ namespace cnoid {
     virtual SgNode* getScene() override;
 
     BodyItemPtr instantiate(const std::string& name, const std::string& url);
+    BodyItemPtr instantiate(cnoid::Body* robot);
     BodyItemPtr copyObject(const std::string& name, const BodyItemPtr obj);
 
     void objects(const std::set<BodyItemPtr>& objs);

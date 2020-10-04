@@ -3,16 +3,26 @@
 
 #include <cnoid/Body>
 #include <memory>
+#include <vclip.h>
 #include "JointLimitTable.h"
 
 namespace RobotConfig {
   class RobotConfig {
   public:
-    RobotConfig (const cnoid::Body* robot, const std::string& url);
+    RobotConfig (const std::string& name, const std::string& url, std::ostream& os=std::cerr);
+    cnoid::Body* get_robot() {return robot;}
+    std::vector<std::pair<cnoid::Link*, cnoid::Link*> >& get_collision_pairs() {return collision_pairs;}
     std::map<const cnoid::Link*,std::shared_ptr<JointLimitTable> >& get_joint_mm_tables() {return joint_mm_tables;}
+    std::map<const cnoid::Link*, std::shared_ptr<Vclip::Polyhedron> >& get_vcliplinks() {return vcliplinks;}
   private:
-    const cnoid::Body* robot;
+    bool loadConfFile(const std::string& name, const std::string& url, std::ostream& os=std::cerr);
+    bool setupModel();
+
+    cnoid::Body* robot;
+    std::vector<std::pair<cnoid::Link*, cnoid::Link*> > collision_pairs;
     std::map<const cnoid::Link*,std::shared_ptr<JointLimitTable> > joint_mm_tables;
+
+    std::map<const cnoid::Link*, std::shared_ptr<Vclip::Polyhedron> > vcliplinks;
   };
 };
 

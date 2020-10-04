@@ -10,7 +10,8 @@ namespace IK{
     constraints(_constraints),
     regular(1e-6),
     regular_rel(5),
-    regular_max(0.1)
+    regular_max(0.1),
+    maxvel(0.1)//0.5mのモーメントアームが0.02rad動くと，先端は0.01m動く．collisionのtoleranceを0.01mにする．
   {
 
   }
@@ -43,19 +44,22 @@ namespace IK{
       osqpeigensolver.update(H,A,gradient,upperBound,lowerBound);
     }
 
-    osqpeigensolver.solve();
+    if(osqpeigensolver.solve()){
 
-    Eigen::VectorXd solution = osqpeigensolver.getSolution();
+      Eigen::VectorXd solution = osqpeigensolver.getSolution();
 
-    update_qp_variables(solution);
+      update_qp_variables(solution);
 
-    if(debuglevel>1){
-      std::cerr << "solution" << std::endl;
-      std::cerr << solution << std::endl;
-      std::cerr << "objective" << std::endl;
-      std::cerr << 0.5 * solution.transpose() * H * solution + gradient.transpose() * solution << std::endl;
-      std::cerr << "Ax" << std::endl;
-      std::cerr << A * solution << std::endl;
+      if(debuglevel>1){
+        std::cerr << "solution" << std::endl;
+        std::cerr << solution << std::endl;
+        std::cerr << "objective" << std::endl;
+        std::cerr << 0.5 * solution.transpose() * H * solution + gradient.transpose() * solution << std::endl;
+        std::cerr << "Ax" << std::endl;
+        std::cerr << A * solution << std::endl;
+      }
+    }else{
+      std::cerr << "[IKsolver] qpfail" << std::endl;
     }
 
 
@@ -71,11 +75,11 @@ namespace IK{
     std::vector<cnoid::SgNodePtr> objects;
     for(size_t i=0; i<tasks.size();i++){
       std::vector<cnoid::SgNodePtr> tmp_objects = tasks[i]->getDrawOnObjects();
-      objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
+      std::copy(tmp_objects.begin(), tmp_objects.end(), std::back_inserter(objects));
     }
     for(size_t i=0; i<constraints.size();i++){
       std::vector<cnoid::SgNodePtr> tmp_objects = constraints[i]->getDrawOnObjects();
-      objects.insert(objects.end(), tmp_objects.begin(), tmp_objects.end());
+      std::copy(tmp_objects.begin(), tmp_objects.end(), std::back_inserter(objects));
     }
     return objects;
   }
@@ -123,8 +127,9 @@ namespace IK{
       jacobianineqs[i] = this->constraints[i]->calc_jacobianineq(this->variables);
       minineqs[i] = this->constraints[i]->calc_minineq();
       maxineqs[i] = this->constraints[i]->calc_maxineq();
- 
+
       num_constraints += errors[i].rows()+minineqs[i].rows();
+
     }
     A = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_constraints,num_variables);
     lowerBound = Eigen::VectorXd(num_constraints);
@@ -146,18 +151,24 @@ namespace IK{
   }
 
   void IKsolver::update_qp_variables(const Eigen::VectorXd& solution){
+    Eigen::VectorXd solution_filtered = solution;
+    for(size_t i=0;i<solution_filtered.rows();i++){
+      solution_filtered[i] = std::min(std::max(solution_filtered[i],-maxvel),maxvel);
+    }
+
     int idx = 0;
     for(size_t i=0;i<this->variables.size();i++){
-      variables[i]->rootLink()->p() += solution.segment<3>(idx);
+      variables[i]->rootLink()->p() += solution_filtered.segment<3>(idx);
 
-      cnoid::Matrix3 dR = cnoid::Matrix3(cnoid::AngleAxis(solution.segment<3>(idx+3).norm(), solution.segment<3>(idx+3).normalized()));
+      cnoid::Matrix3 dR = cnoid::Matrix3(cnoid::AngleAxis(solution_filtered.segment<3>(idx+3).norm(), solution_filtered.segment<3>(idx+3).normalized()));
       variables[i]->rootLink()->R() = dR * variables[i]->rootLink()->R();
 
       for(size_t j=0;j<variables[i]->numJoints();j++){
-        variables[i]->joint(j)->q() += solution[idx+6+j];
+        variables[i]->joint(j)->q() += solution_filtered[idx+6+j];
       }
 
       this->variables[i]->calcForwardKinematics();
+      this->variables[i]->calcCenterOfMass();
 
       idx += 6 + this->variables[i]->numJoints();
     }

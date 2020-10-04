@@ -3,7 +3,8 @@
 namespace IK{
   MinMaxJointConstraint::MinMaxJointConstraint(const cnoid::Link* _joint, std::shared_ptr<RobotConfig::JointLimitTable> _minmaxtable):
     joint(_joint),
-    minmaxtable(_minmaxtable)
+    minmaxtable(_minmaxtable),
+    maxvel(0.1)
   {
     return;
   }
@@ -12,7 +13,7 @@ namespace IK{
     Eigen::VectorXd min(1);
     double llimit = this->joint->q_lower();
     if (this->minmaxtable) llimit = std::max(llimit,this->minmaxtable->getLlimit());
-    min << llimit - this->joint->q();
+    min << std::max(llimit - this->joint->q(), -maxvel);
     return min;
   }
 
@@ -20,7 +21,7 @@ namespace IK{
     Eigen::VectorXd max(1);
     double ulimit = this->joint->q_upper();
     if (this->minmaxtable) ulimit = std::min(ulimit,this->minmaxtable->getUlimit());
-    max << ulimit - this->joint->q();
+    max << std::min(ulimit - this->joint->q(), maxvel);
     return max;
   }
 

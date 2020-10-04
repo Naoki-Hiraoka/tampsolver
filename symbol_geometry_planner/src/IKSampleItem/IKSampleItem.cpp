@@ -4,6 +4,7 @@
 #include "../IK/Constraints/PositionConstraint.h"
 #include "../IK/Util.h"
 #include <ros/package.h>
+#include <sys/time.h>
 
 using namespace std::placeholders;
 using namespace cnoid;
@@ -37,18 +38,14 @@ namespace cnoid {
 
   void IKSampleItem::main()
   {
-    // load robot
-    std::string filepath;
-    filepath = ros::package::getPath("hrp2_models") + "/HRP2JSKNTS_WITH_3HAND_for_OpenHRP3/HRP2JSKNTSmain.wrl";
-    BodyItemPtr robot = instantiate("HRP2JSKNTS", filepath);
+    // load config
+    std::string filepath = ros::package::getPath("symbol_geometry_planner") + "/sample/HRP2JSKNTSconfig.yaml";
+    std::shared_ptr<RobotConfig::RobotConfig> config = std::make_shared<RobotConfig::RobotConfig>("HRP2JSKNTS",filepath);
+    BodyItemPtr robot = this->instantiate(config->get_robot());
     this->objects(std::set<BodyItemPtr>{robot});
 
-    // load config
-    filepath = ros::package::getPath("symbol_geometry_planner") + "/sample/HRP2JSKNTSconfig.yaml";
-    RobotConfig::RobotConfig config(robot->body(),filepath);
-
     // set EEF link()関数はjoint名を入れること
-    std::vector<const cnoid::Link*> eef_links;
+    std::vector<cnoid::Link*> eef_links;
     std::vector<cnoid::Position> eef_localposs;
     //rleg
     {
@@ -109,7 +106,7 @@ namespace cnoid {
     // task: rarm to target
     {
       cnoid::Position pos;
-      pos.translation() = cnoid::Vector3(0.7,0.0,0.5);
+      pos.translation() = cnoid::Vector3(0.2,0.3,0.3);
       //pos.translation() = (eef_links[2]->T()*eef_localposs[2]).translation() + cnoid::Vector3(0.1, 0, 0);
       pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0.0,cnoid::Vector3(0,1,0)));
       //pos.linear() = (eef_links[2]->T()*eef_localposs[2]).linear();
@@ -120,8 +117,15 @@ namespace cnoid {
     // constraint: joint mim-max
     {
       std::vector<std::shared_ptr<IK::IKConstraint> > minmaxconstraints = IK::generateMinMaxConstraints(robot->body(),config);
-    constraints.insert(constraints.end(),minmaxconstraints.begin(),minmaxconstraints.end());
+      std::copy(minmaxconstraints.begin(),minmaxconstraints.end(),std::back_inserter(constraints));
     }
+
+    // constraint: self-collision
+    {
+      std::vector<std::shared_ptr<IK::IKConstraint> > collisionconstraints = IK::generateCollisionConstraints(robot->body(),config,"VClip");
+      std::copy(collisionconstraints.begin(),collisionconstraints.end(),std::back_inserter(constraints));
+    }
+
 
     // constraint: rleg & lleg not move
     constraints.push_back(std::make_shared<IK::PositionConstraint>(eef_links[0],eef_localposs[0],
@@ -130,14 +134,18 @@ namespace cnoid {
                                                          nullptr,eef_links[1]->T()*eef_localposs[1]));
     // solve ik
     IK::IKsolver solver(variables,tasks,constraints);
-
     int debuglevel = 0;
     solver.set_debug_level(debuglevel);
     for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
     for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
 
-    for(size_t i=0; i<10;i++){
+    for(size_t i=0; i<100;i++){
+      struct timeval s, e1, e2;
+      gettimeofday(&s, NULL);
+
       solver.solve_one_loop();
+
+      gettimeofday(&e1, NULL);
 
       this->drawObjects(false);
       std::vector<cnoid::SgNodePtr> drawonobjects = solver.getDrawOnObjects();
@@ -146,8 +154,14 @@ namespace cnoid {
       }
       this->flush();
 
-      this->os << i << std::endl;
-      cnoid::msleep(500);
+      gettimeofday(&e2, NULL);
+
+      this->os << i
+               << " solve time: " << (e1.tv_sec - s.tv_sec) + (e1.tv_usec - s.tv_usec)*1.0E-6
+               << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
+               << std::endl;
+
+      cnoid::msleep(50);
     }
 
   }

@@ -14,9 +14,12 @@ namespace IK{
     Eigen::VectorXd calc_maxineq () override;
     Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
 
+    void set_maxvel (double _maxvel) {maxvel = _maxvel;}
+
   private:
     const cnoid::Link* joint;
     std::shared_ptr<RobotConfig::JointLimitTable> minmaxtable;
+    double maxvel;
   };
 }
 

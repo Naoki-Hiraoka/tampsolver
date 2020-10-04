@@ -8,7 +8,7 @@ namespace IK{
                              const Eigen::VectorXd& _lowerBound){
     solver.settings()->resetDefaultSettings();
 
-    solver.settings()->setVerbosity(true);
+    solver.settings()->setVerbosity(false);
     solver.settings()->setWarmStart(true);
 
     //solver.settings()->setRho(1e-6);
@@ -55,7 +55,12 @@ namespace IK{
 
 
   bool OsqpEigenSolver::solve() {
-    return solver.solve();
+    if(solver.solve()){
+      return true;
+    }else{
+      solver.clearSolverVariables();
+      return solver.solve();
+    }
   }
 
   Eigen::VectorXd  OsqpEigenSolver::getSolution(){

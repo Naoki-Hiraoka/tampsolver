@@ -60,6 +60,7 @@
   <depend>roboptim-core</depend>
   <depend>roboptim-core-plugin-ipopt</depend>
   <depend>OsqpEigen</depend>
+  <depend>vclip</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

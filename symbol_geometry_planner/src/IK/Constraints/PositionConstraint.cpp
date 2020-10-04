@@ -1,12 +1,14 @@
 #include "PositionConstraint.h"
+#include <cnoid/JointPath>
 
 namespace IK{
-  PositionConstraint::PositionConstraint(const cnoid::Link* _A_link, const cnoid::Position& _A_localpos,
-                                         const cnoid::Link* _B_link, const cnoid::Position& _B_localpos):
+  PositionConstraint::PositionConstraint(cnoid::Link* _A_link, const cnoid::Position& _A_localpos,
+                                         cnoid::Link* _B_link, const cnoid::Position& _B_localpos):
     A_link(_A_link),
     A_localpos(_A_localpos),
     B_link(_B_link),
-    B_localpos(_B_localpos)
+    B_localpos(_B_localpos),
+    maxvel(0.1)
   {
     return;
   }
@@ -19,6 +21,11 @@ namespace IK{
     Eigen::VectorXd error(6);
     error.segment<3>(0) = A_pos.translation() - B_pos.translation();
     error.segment<3>(3) = cnoid::omegaFromRot(A_pos.linear() * B_pos.linear().transpose());
+
+    for(size_t i=0;i<3;i++){
+      error[i] = std::min(std::max(error[i],-maxvel),maxvel);
+      error[i+3] = std::min(std::max(error[i+3],-maxvel),maxvel);
+    }
 
     if(debuglevel>1){
       std::cerr << "A_pos" << std::endl;
@@ -44,55 +51,83 @@ namespace IK{
     std::vector<Eigen::Triplet<double> > tripletList;
     tripletList.reserve(100);//適当
 
-    for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
-      int sign = i ? -1 : 1;
-      const cnoid::Link* target_link = i ? B_link : A_link;
-      const cnoid::Position& target_localpos = i ? B_localpos : A_localpos;
+    if(!A_link || !B_link || !(A_link->body() == B_link->body())){
+      for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
+        int sign = i ? -1 : 1;
+        cnoid::Link* target_link = i ? B_link : A_link;
+        const cnoid::Position& target_localpos = i ? B_localpos : A_localpos;
 
-      if(!target_link) continue;//world固定なので飛ばす
+        if(!target_link) continue;//world固定なので飛ばす
 
-      const cnoid::Position target_position = target_link->T() * target_localpos;
-      const cnoid::Vector3 target_p = target_position.translation();
+        const cnoid::Position target_position = target_link->T() * target_localpos;
+        const cnoid::Vector3 target_p = target_position.translation();
 
+        int idx = 0;
+        for(size_t b=0;b<bodies.size();b++){
+          if(bodies[b] == target_link->body()){
+            //root 6dof
+            for(size_t j=0;j<6;j++){
+              tripletList.push_back(Eigen::Triplet<double>(j,idx+j,sign));
+            }
+            cnoid::Vector3 dp = target_p - bodies[b]->rootLink()->p();
+            //  0     p[2] -p[1]
+            // -p[2]  0     p[0]
+            //  p[1] -p[0]  0
+            tripletList.push_back(Eigen::Triplet<double>(0,idx+4,sign*dp[2]));
+            tripletList.push_back(Eigen::Triplet<double>(0,idx+5,-sign*dp[1]));
+            tripletList.push_back(Eigen::Triplet<double>(1,idx+3,-sign*dp[2]));
+            tripletList.push_back(Eigen::Triplet<double>(1,idx+5,sign*dp[0]));
+            tripletList.push_back(Eigen::Triplet<double>(2,idx+3,sign*dp[1]));
+            tripletList.push_back(Eigen::Triplet<double>(2,idx+4,-sign*dp[0]));
+
+            //joints
+            cnoid::JointPath path;
+            path.setPath(target_link);
+            for(size_t j=0;j<path.numJoints();j++){
+              int col = idx+6+path.joint(j)->jointId();
+              cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
+              if(!path.isJointDownward(j)) omega = -omega;
+              cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
+              tripletList.push_back(Eigen::Triplet<double>(0,col,sign*dp[0]));
+              tripletList.push_back(Eigen::Triplet<double>(1,col,sign*dp[1]));
+              tripletList.push_back(Eigen::Triplet<double>(2,col,sign*dp[2]));
+              tripletList.push_back(Eigen::Triplet<double>(3,col,sign*omega[0]));
+              tripletList.push_back(Eigen::Triplet<double>(4,col,sign*omega[1]));
+              tripletList.push_back(Eigen::Triplet<double>(5,col,sign*omega[2]));
+            }
+
+            break;
+          }
+          idx += 6 + bodies[b]->numJoints();
+        }
+      }
+    } else { //if(!A_link || !B_link || !(A_link->body() == B_link->body()))
       int idx = 0;
       for(size_t b=0;b<bodies.size();b++){
-        if(bodies[b] == target_link->body()){
-          //root 6dof
-          for(size_t j=0;j<6;j++){
-            tripletList.push_back(Eigen::Triplet<double>(j,idx+j,sign));
-          }
-          cnoid::Vector3 dp = target_p - bodies[b]->rootLink()->p();
-          //  0     p[2] -p[1]
-          // -p[2]  0     p[0]
-          //  p[1] -p[0]  0
-          tripletList.push_back(Eigen::Triplet<double>(0,idx+4,sign*dp[2]));
-          tripletList.push_back(Eigen::Triplet<double>(0,idx+5,-sign*dp[1]));
-          tripletList.push_back(Eigen::Triplet<double>(1,idx+3,-sign*dp[2]));
-          tripletList.push_back(Eigen::Triplet<double>(1,idx+5,sign*dp[0]));
-          tripletList.push_back(Eigen::Triplet<double>(2,idx+3,sign*dp[1]));
-          tripletList.push_back(Eigen::Triplet<double>(2,idx+4,-sign*dp[0]));
-
+        if(bodies[b] == A_link->body()){
           //joints
-          const cnoid::Link* jointlink = target_link;
-          while(!jointlink->isRoot()){
-            int col = idx+6+jointlink->jointId();
-            cnoid::Vector3 omega = jointlink->R() * jointlink->a();
-            cnoid::Vector3 dp = omega.cross(target_p - jointlink->p());
-            tripletList.push_back(Eigen::Triplet<double>(0,col,sign*dp[0]));
-            tripletList.push_back(Eigen::Triplet<double>(1,col,sign*dp[1]));
-            tripletList.push_back(Eigen::Triplet<double>(2,col,sign*dp[2]));
-            tripletList.push_back(Eigen::Triplet<double>(3,col,sign*omega[0]));
-            tripletList.push_back(Eigen::Triplet<double>(4,col,sign*omega[1]));
-            tripletList.push_back(Eigen::Triplet<double>(5,col,sign*omega[2]));
+          cnoid::JointPath path;
+          path.setPath(B_link,A_link);
 
-            jointlink = jointlink->parent();
+          const cnoid::Vector3& target_p = A_link->T() * A_localpos.translation();
+
+          for(size_t j=0;j<path.numJoints();j++){
+            int col = idx+6+path.joint(j)->jointId();
+            cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
+            if(!path.isJointDownward(j)) omega = -omega;
+            cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
+            tripletList.push_back(Eigen::Triplet<double>(0,col,dp[0]));
+            tripletList.push_back(Eigen::Triplet<double>(1,col,dp[1]));
+            tripletList.push_back(Eigen::Triplet<double>(2,col,dp[2]));
+            tripletList.push_back(Eigen::Triplet<double>(3,col,omega[0]));
+            tripletList.push_back(Eigen::Triplet<double>(4,col,omega[1]));
+            tripletList.push_back(Eigen::Triplet<double>(5,col,omega[2]));
           }
           break;
         }
         idx += 6 + bodies[b]->numJoints();
       }
     }
-
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian(6,dim);
     jacobian.setFromTriplets(tripletList.begin(), tripletList.end());

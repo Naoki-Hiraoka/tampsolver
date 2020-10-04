@@ -24,7 +24,7 @@ namespace cnoid {
     SceneView::instance()->sceneWidget()->sceneRoot()->addChild(this->_markerGroup);
 
     this->_worker.sigTimeout().connect([&](){ this->main_common(); });
-    this->_worker.start(100);
+    this->_worker.start(200);
 
   }
 
@@ -35,7 +35,7 @@ namespace cnoid {
       mv(MessageView::instance())
   {
     this->_worker.sigTimeout().connect([&](){ this->main_common(); });
-    this->_worker.start(100);
+    this->_worker.start(200);
 
   }
 
@@ -86,6 +86,26 @@ namespace cnoid {
       this->addChildItem(bodyItem);
       return bodyItem;
     }
+  }
+
+  BodyItemPtr PlannerBaseItem::instantiate(cnoid::Body* robot)
+  {
+    // search for existing body items
+    ItemList<BodyItem> bodyItems;
+    bodyItems.extractChildItems(this);
+    for(size_t i=0; i < bodyItems.size(); ++i){
+      BodyItemPtr bodyItem = bodyItems[i];
+      if(bodyItem->name() == robot->name() && bodyItem->body() == robot){
+        return bodyItem;
+      }
+    }
+
+    // load a new body item
+    BodyItemPtr bodyItem = new BodyItem();
+    bodyItem->setBody(robot);
+    bodyItem->setName(robot->name());
+    this->addChildItem(bodyItem);
+    return bodyItem;
   }
 
 
