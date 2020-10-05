@@ -2,6 +2,8 @@
 #include "../RobotConfig/RobotConfig.h"
 #include "../IK/IKsolver.h"
 #include "../IK/Constraints/PositionConstraint.h"
+#include "../IK/Constraints/CollisionConstraint.h"
+#include "../IK/Constraints/CddSCFRConstraint.h"
 #include "../IK/Util.h"
 #include <ros/package.h>
 #include <sys/time.h>
@@ -89,12 +91,18 @@ namespace cnoid {
       std::copy(collisionconstraints.begin(),collisionconstraints.end(),std::back_inserter(constraints));
     }
 
-
     // constraint: rleg & lleg not move
     constraints.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["rleg"],
                                                                    config->get_endeffectors()["rleg"]->getlink()->T()*config->get_endeffectors()["rleg"]->getlocalpos()));
     constraints.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["lleg"],
                                                                    config->get_endeffectors()["lleg"]->getlink()->T()*config->get_endeffectors()["lleg"]->getlocalpos()));
+
+    // constraint: rleg & lleg not move
+    {
+      constraints.push_back(std::make_shared<IK::CddSCFRConstraint>(robot->body(),
+                                                                    std::vector<std::shared_ptr<RobotConfig::EndEffector> >{config->get_endeffectors()["rleg"],config->get_endeffectors()["lleg"]}));
+    }
+
     // solve ik
     IK::IKsolver solver(variables,tasks,constraints);
     int debuglevel = 0;

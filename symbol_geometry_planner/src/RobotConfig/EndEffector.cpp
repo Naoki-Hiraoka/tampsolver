@@ -2,6 +2,23 @@
 #include <iostream>
 
 namespace RobotConfig{
+  void Contact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& lb, Eigen::VectorXd& ub){
+    C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+    lb = Eigen::VectorXd(0);
+    ub = Eigen::VectorXd(0);
+  }
+
+  void Contact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d){
+    A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+    b = Eigen::VectorXd(0);
+    C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+    d = Eigen::VectorXd(0);
+  }
+
+  std::vector<cnoid::SgNodePtr> Contact::getDrawOnObjects(const cnoid::Position& T){
+    return std::vector<cnoid::SgNodePtr>();
+  }
+
   SurfaceContact::SurfaceContact(cnoid::SgPolygonMeshPtr _surface, double _mu_trans, double _mu_rot, double _max_fz, double _min_fz):
     surface(_surface),
     mu_trans(_mu_trans),
@@ -10,6 +27,167 @@ namespace RobotConfig{
     min_fz(_min_fz)
   {
   }
+
+  void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& lb, Eigen::VectorXd& ub){
+    int dim = 7 + this->surface->polygonVertices().size();
+    C = Eigen::SparseMatrix<double,Eigen::RowMajor>(dim,6);
+    lb = Eigen::VectorXd::Zero(dim);
+    ub = Eigen::VectorXd::Zero(dim);
+
+    std::vector<Eigen::Triplet<double> > tripletList;
+    tripletList.reserve(dim*2);
+    int idx=0;
+
+    //垂直抗力
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,1));
+    lb[idx] = std::max(this->min_fz,0.0);
+    ub[idx] = this->max_fz;
+    idx++;
+
+    //x摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,0,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,0,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+
+    //y摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,1,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,1,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+
+    //回転摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,5,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,5,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot));
+    lb[idx] = 0;
+    ub[idx] = 1e30;
+    idx++;
+
+    //COP
+    for(size_t i=0;i<this->surface->polygonVertices().size();i++){
+      cnoid::Vector3f v1 = this->surface->vertices()->at(this->surface->polygonVertices()[i]);
+      int v2_idx = (i+1 == this->surface->polygonVertices().size())? 0 : i+1;
+      cnoid::Vector3f v2 = this->surface->vertices()->at(this->surface->polygonVertices()[v2_idx]);
+      tripletList.push_back(Eigen::Triplet<double>(idx,2,v1[0]*v2[1]-v1[1]*v2[0]));
+      tripletList.push_back(Eigen::Triplet<double>(idx,3,v1[1]-v2[1]));
+      tripletList.push_back(Eigen::Triplet<double>(idx,4,-v1[0]+v2[0]));
+      lb[idx] = 0;
+      ub[idx] = 1e30;
+      idx++;
+    }
+
+    C.setFromTriplets(tripletList.begin(), tripletList.end());
+  }
+
+  //Ax = b, Cx >= d
+  void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d){
+    // A,bはゼロ．垂直抗力のfz成分のmaxが，行を分けるだけで後はSurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& lb, Eigen::VectorXd& ub)と同じ
+    A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+    b = Eigen::VectorXd(0);
+
+    int dim = 8 + this->surface->polygonVertices().size();
+    C = Eigen::SparseMatrix<double,Eigen::RowMajor>(dim,6);
+    d = Eigen::VectorXd::Zero(dim);
+
+    std::vector<Eigen::Triplet<double> > tripletList;
+    tripletList.reserve(dim*2);
+    int idx=0;
+
+    //垂直抗力
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,1));
+    d[idx] = std::max(this->min_fz,0.0);
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,-1));
+    d[idx] = -this->max_fz;
+    idx++;
+
+    //x摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,0,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    d[idx] = 0;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,0,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    d[idx] = 0;
+    idx++;
+
+    //y摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,1,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    d[idx] = 0;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,1,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans));
+    d[idx] = 0;
+    idx++;
+
+    //回転摩擦
+    tripletList.push_back(Eigen::Triplet<double>(idx,5,-1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot));
+    d[idx] = 0;
+    idx++;
+    tripletList.push_back(Eigen::Triplet<double>(idx,5,1));
+    tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot));
+    d[idx] = 0;
+    idx++;
+
+    //COP
+    for(size_t i=0;i<this->surface->polygonVertices().size();i++){
+      cnoid::Vector3f v1 = this->surface->vertices()->at(this->surface->polygonVertices()[i]);
+      int v2_idx = (i+1 == this->surface->polygonVertices().size())? 0 : i+1;
+      cnoid::Vector3f v2 = this->surface->vertices()->at(this->surface->polygonVertices()[v2_idx]);
+      tripletList.push_back(Eigen::Triplet<double>(idx,2,v1[0]*v2[1]-v1[1]*v2[0]));
+      tripletList.push_back(Eigen::Triplet<double>(idx,3,v1[1]-v2[1]));
+      tripletList.push_back(Eigen::Triplet<double>(idx,4,-v1[0]+v2[0]));
+      d[idx] = 0;
+      idx++;
+    }
+
+    C.setFromTriplets(tripletList.begin(), tripletList.end());
+  }
+
+  std::vector<cnoid::SgNodePtr> SurfaceContact::getDrawOnObjects(const cnoid::Position& T){
+    if(!this->lines){
+      lines = new cnoid::SgLineSet;
+      lines->setLineWidth(3.0);
+      lines->getOrCreateColors()->resize(1);
+      lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.0,0.5,0.0);
+      lines->getOrCreateVertices()->resize(this->surface->vertices()->size());
+      lines->colorIndices().resize(0);
+      for(size_t j=0;j<this->surface->polygonVertices().size();j++){
+        int v1_idx = this->surface->polygonVertices()[j];
+        int v2_idx = this->surface->polygonVertices()[(j+1 == this->surface->polygonVertices().size())? 0 : j+1];
+        lines->addLine(v1_idx,v2_idx); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+      }
+    }
+
+    // update position
+    const cnoid::SgVertexArray& vertices = *this->surface->vertices();
+    for(int j=0; j < vertices.size(); j++){
+      const cnoid::Vector3 v = T * vertices[j].cast<cnoid::Vector3::Scalar>();
+      lines->vertices()->at(j) = v.cast<cnoid::Vector3f::Scalar>();
+    }
+
+    return std::vector<cnoid::SgNodePtr>{lines};
+  }
+
 
   EndEffector::EndEffector(const std::string& _name, cnoid::Link* _link, const cnoid::Position& _localpos, std::shared_ptr<Contact> _contact):
     name(_name),

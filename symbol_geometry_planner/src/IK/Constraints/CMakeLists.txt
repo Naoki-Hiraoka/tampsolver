@@ -12,6 +12,8 @@ set(sources
   AISTCollisionConstraint.cpp
   VclipLinkPair.cpp
   VClipCollisionConstraint.cpp
+  SCFRConstraint.cpp
+  CddSCFRConstraint.cpp
   )
 
 add_library(${target} SHARED ${sources})
