@@ -12,15 +12,11 @@ namespace IK{
 
   Eigen::VectorXd SCFRConstraint::calc_minineq (){
     Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
-    std::cerr << "min" << std::endl;
-    std::cerr << this->SCFR_l - this->SCFR_M * cm << std::endl;
     return this->SCFR_l - this->SCFR_M * cm;
   }
 
   Eigen::VectorXd SCFRConstraint::calc_maxineq (){
     Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
-    std::cerr << "max" << std::endl;
-    std::cerr << this->SCFR_u - this->SCFR_M * cm << std::endl;
     return this->SCFR_u - this->SCFR_M * cm;
   }
 
@@ -56,13 +52,6 @@ namespace IK{
       }
       idx += 6 + bodies[b]->numJoints();
     }
-
-    std::cerr << "SCFR" << std::endl;
-    std::cerr << SCFR_M << std::endl;
-    std::cerr << SCFR_u << std::endl;
-    std::cerr << SCFR_l << std::endl;
-    std::cerr << "M" << std::endl;
-    std::cerr << Eigen::SparseMatrix<double,Eigen::RowMajor>(this->SCFR_M * CMJ_sparse) << std::endl;
 
     return this->SCFR_M * CMJ_sparse;
   }
