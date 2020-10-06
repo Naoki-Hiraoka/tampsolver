@@ -24,10 +24,18 @@ namespace IK{
   std::vector<std::shared_ptr<IKConstraint> > generateMinMaxConstraints(cnoid::Body* robot, std::shared_ptr<RobotConfig::RobotConfig> config){
     std::vector<std::shared_ptr<IKConstraint> > constraints;
     for(size_t j=0;j<robot->numJoints();j++){
-      if(config->get_joint_mm_tables().find(robot->joint(j)) != config->get_joint_mm_tables().end())
-        constraints.push_back(std::make_shared<MinMaxJointConstraint>(robot->joint(j), config->get_joint_mm_tables()[robot->joint(j)]));
-      else
-        constraints.push_back(std::make_shared<MinMaxJointConstraint>(robot->joint(j), nullptr));
+      std::shared_ptr<MinMaxJointConstraint> ptr;
+      if(config->get_joint_mm_tables().find(robot->joint(j)) != config->get_joint_mm_tables().end()) {
+         ptr = std::make_shared<MinMaxJointConstraint>(robot->joint(j), config->get_joint_mm_tables()[robot->joint(j)]);
+      } else {
+        ptr = std::make_shared<MinMaxJointConstraint>(robot->joint(j), nullptr);
+      }
+
+      if(config->get_joint_limits().find(robot->joint(j)) != config->get_joint_limits().end()){
+        ptr->set_llimit(config->get_joint_limits()[robot->joint(j)].first);
+        ptr->set_ulimit(config->get_joint_limits()[robot->joint(j)].second);
+      }
+      constraints.push_back(ptr);
     }
     return constraints;
   }

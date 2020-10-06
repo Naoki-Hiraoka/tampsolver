@@ -67,6 +67,27 @@ namespace RobotConfig {
       }
     }
 
+    if(config["joint_limit"].IsDefined()) {
+      const YAML::Node& property = config["joint_limit"];
+      for(size_t i=0;i<property.size();i++){
+        if(!property[i]["joint"].IsDefined()){
+          std::cerr << "[loadConfFile] joint_limit name is not defined for " << i << std::endl;
+          continue;
+        }
+        std::string name = property[i]["joint"].as<std::string>();
+        cnoid::Link* link=robot->link(name);
+        if(!link){
+          std::cerr << "[loadConfFile] joint_limit link " << name <<  " is not found" << std::endl;
+          continue;
+        }
+        double llimit = -1e30;
+        double ulimit = 1e30;
+        if(property[i]["llimit"].IsDefined()) llimit = property[i]["llimit"].as<double>();
+        if(property[i]["ulimit"].IsDefined()) ulimit = property[i]["ulimit"].as<double>();
+        this->joint_limits[link] = std::pair<double,double>(llimit,ulimit);
+      }
+    }
+
     if(config["joint_limit_table"].IsDefined()) {
       readJointLimitTableFromProperties(this->joint_mm_tables,
                                         this->robot,

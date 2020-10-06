@@ -1,6 +1,7 @@
 find_package(catkin REQUIRED COMPONENTS
   vclip
   cddeigen
+  qhulleigen
   )
 
 #main

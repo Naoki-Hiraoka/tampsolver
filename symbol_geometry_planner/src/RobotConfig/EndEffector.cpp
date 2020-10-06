@@ -236,7 +236,7 @@ namespace RobotConfig{
         std::getline(ss, item, ',');
         double angle = std::stod(item);
         localpos.translation() = pos;
-        localpos.linear() = cnoid::Matrix3(cnoid::AngleAxis(angle,axis));
+        localpos.linear() = cnoid::Matrix3(cnoid::AngleAxis(angle,axis.normalized()));
       }
 
       std::shared_ptr<Contact> contact;

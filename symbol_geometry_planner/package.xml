@@ -57,12 +57,13 @@
   <depend>pddl_msgs</depend>
   <exec_depend>pddl_planner</exec_depend>
   <depend>coinor-libclp-dev</depend>
-  <depend>cddeigen</depend>
 
   <depend>roboptim-core</depend>
   <depend>roboptim-core-plugin-ipopt</depend>
   <depend>OsqpEigen</depend>
   <depend>vclip</depend>
+  <depend>cddeigen</depend>
+  <depend>qhulleigen</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

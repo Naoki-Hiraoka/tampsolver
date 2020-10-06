@@ -14,7 +14,7 @@ namespace IK{
              const std::vector<std::shared_ptr<IKConstraint> >& tasks,
              const std::vector<std::shared_ptr<IKConstraint> >& constraints);
 
-    // コストが増加したり，constraintsのエラーが閾値以上だとfalse
+    // 解けたらtrue
     virtual bool solve_one_loop();
 
     virtual bool solve_optimization();
@@ -26,12 +26,14 @@ namespace IK{
     void set_regular_max(double _regular_max){ regular_max = _regular_max;}
     void set_debug_level(int _debuglevel){ debuglevel = _debuglevel;}
     void set_maxvel(double _maxvel){ maxvel = maxvel;}
+    void set_eps(double _maxvel){ maxvel = eps;}
   protected:
-    virtual void calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
-                                Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
-                                Eigen::VectorXd& gradient,
-                                Eigen::VectorXd& upperBound,
-                                Eigen::VectorXd& lowerBound);
+    // errorの和を返す
+    virtual double calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
+                                  Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
+                                  Eigen::VectorXd& gradient,
+                                  Eigen::VectorXd& upperBound,
+                                  Eigen::VectorXd& lowerBound);
     virtual void update_qp_variables(const Eigen::VectorXd& solution);
 
     int debuglevel;
@@ -45,6 +47,7 @@ namespace IK{
     double regular_rel;
     double regular_max;
     double maxvel;
+    double eps;
   };
 }
 

@@ -9,6 +9,7 @@
 #include "RoboptimSampleItem/RoboptimSampleItem.h"
 #include "RoboptimSparseSampleItem/RoboptimSparseSampleItem.h"
 #include "IKSampleItem/IKSampleItem.h"
+#include "MultiContactIKSampleItem/MultiContactIKSampleItem.h"
 
 using namespace cnoid;
 
@@ -30,6 +31,7 @@ public:
       RoboptimSampleItem::initializeClass(this);
       RoboptimSparseSampleItem::initializeClass(this);
       IKSampleItem::initializeClass(this);
+      MultiContactIKSampleItem::initializeClass(this);
       return true;
     }
 

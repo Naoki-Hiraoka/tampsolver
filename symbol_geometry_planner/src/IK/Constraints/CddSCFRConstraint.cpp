@@ -1,9 +1,6 @@
 #include "CddSCFRConstraint.h"
 #include <cddeigen/cddeigen.h>
-
-extern "C" {
-#include <qhull/qhull_a.h>
-}
+#include <qhulleigen/qhulleigen.h>
 
 namespace IK{
   CddSCFRConstraint::CddSCFRConstraint(cnoid::Body* robot, const std::vector<std::shared_ptr<RobotConfig::EndEffector> >& endeffectors):
@@ -28,6 +25,42 @@ namespace IK{
     this->V2 = V.topRows<2>();
     this->R_nonneg2 = R_nonneg.topRows<2>();
     this->R_free2 = R_free.topRows<2>();
+
+    // std::vector<Eigen::Vector2d> V2_filterd;
+    // for(size_t i=0;i<this->V2.cols();i++){
+    //   Eigen::Vector2d v = V2.col(i);
+    //   if(std::find_if(V2_filterd.begin(), V2_filterd.end(), [&](Eigen::Vector2d x) { return (x-v).norm() <= 1e-3; }) == V2_filterd.end()){
+    //     V2_filterd.push_back(v);
+    //   }
+    // }
+    // this->V2.resize(2,V2_filterd.size());
+    // for(size_t i=0;i<V2_filterd.size();i++){
+    //   V2.col(i) = V2_filterd[i];
+    // }
+    std::vector<std::vector<int> > tmp;
+    qhulleigen::convexhull(this->V2,this->V2,tmp);
+    std::vector<Eigen::Vector2d> R_nonneg2_filterd;
+    for(size_t i=0;i<this->R_nonneg2.cols();i++){
+      Eigen::Vector2d v = R_nonneg2.col(i);
+      if(std::find_if(R_nonneg2_filterd.begin(), R_nonneg2_filterd.end(), [&](Eigen::Vector2d x) { return (x-v).norm() <= 1e-3; }) == R_nonneg2_filterd.end()){
+        R_nonneg2_filterd.push_back(v);
+      }
+    }
+    this->R_nonneg2.resize(2,R_nonneg2_filterd.size());
+    for(size_t i=0;i<R_nonneg2_filterd.size();i++){
+      R_nonneg2.col(i) = R_nonneg2_filterd[i];
+    }
+    std::vector<Eigen::Vector2d> R_free2_filterd;
+    for(size_t i=0;i<this->R_free2.cols();i++){
+      Eigen::Vector2d v = R_free2.col(i);
+      if(std::find_if(R_free2_filterd.begin(), R_free2_filterd.end(), [&](Eigen::Vector2d x) { return (x-v).norm() <= 1e-3; }) == R_free2_filterd.end()){
+        R_free2_filterd.push_back(v);
+      }
+    }
+    this->R_free2.resize(2,R_free2_filterd.size());
+    for(size_t i=0;i<R_free2_filterd.size();i++){
+      R_free2.col(i) = R_free2_filterd[i];
+    }
 
     /*
       INPUT:
@@ -92,54 +125,11 @@ namespace IK{
         }
       }else{
         // convex hull by qhull.
-        int numVertices = this->V2.cols();
-        double points[numVertices*2];
-        for (int i=0; i<numVertices; i++){
-          points[i*2+0] = V2(0,i);
-          points[i*2+1] = V2(1,i);
+        Eigen::MatrixXd _V_hull;
+        qhulleigen::convexhull(this->V2,_V_hull,hull_index);
+        for(size_t i=0;i<_V_hull.cols();i++){
+          V_hull.push_back(_V_hull.col(i));
         }
-        char flags[250];
-        boolT ismalloc = False;
-        sprintf(flags,"qhull Fx");
-        if (qh_new_qhull (2,numVertices,points,ismalloc,flags,NULL,stderr)) return;
-
-        qh_triangulate();
-        qh_vertexneighbors();
-
-        int index[numVertices];
-        int vertexIndex = 0;
-        vertexT *vertex;
-        FORALLvertices {
-          int p = qh_pointid(vertex->point);
-          index[p] = vertexIndex;//なぜか分からないがpの値が数百あるので，多分ここでメモリ確保違反をしている
-          V_hull.push_back(cnoid::Vector2(V2(0,p),V2(1,p)));
-          vertexIndex++;
-        }
-
-        facetT *facet;
-        int num = qh num_facets;
-        int triangleIndex = 0;
-        FORALLfacets {
-          int j = 0, p[2];
-          setT *vertices = facet->vertices;
-          //setT *vertices = qh_facet3vertex (facet);
-          vertexT **vertexp;
-          FOREACHvertexreverse12_ (vertices) {
-            if (j<2) {
-              p[j] = index[qh_pointid(vertex->point)];
-            } else {
-              fprintf(stderr, "extra vertex %d\n",j);
-            }
-            j++;
-          }
-          hull_index.push_back(std::vector<int>{p[0],p[1]});
-
-        }
-
-        qh_freeqhull(!qh_ALL);
-        int curlong, totlong;
-        qh_memfreeshort (&curlong, &totlong);
-
       }
 
       this->SCFRlines->getOrCreateVertices()->resize(V_hull.size());

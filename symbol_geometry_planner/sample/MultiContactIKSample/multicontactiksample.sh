@@ -1,0 +1,1 @@
+choreonoid `rospack find symbol_geometry_planner`/sample/MultiContactIKSample/multicontactiksample.cnoid

@@ -41,8 +41,9 @@ namespace cddeigen{
     A->representation=dd_Inequality;
 
     if (verbose){
-      printf("\ninput H-representation:\n");
-      dd_WriteMatrix(stderr,A);  printf("\n");
+      std::cerr << "input H-representation:" << std::endl;
+      dd_WriteMatrix(stderr,A);
+      std::cerr << std::endl;
     }
 
     dd_rowindex newpos;
@@ -51,8 +52,9 @@ namespace cddeigen{
     dd_MatrixCanonicalize(&A, &impl_linset, &redset, &newpos, &errf);
 
     if (verbose){
-      printf("\nafter canonicalize:\n");
-      dd_WriteMatrix(stderr,A);  printf("\n");
+      std::cerr << "after canonicalize:" << std::endl;
+      dd_WriteMatrix(stderr,A);
+      std::cerr << std::endl;
     }
 
     // compute the second (generator) representation
@@ -65,6 +67,7 @@ namespace cddeigen{
       if (verbose){
         printf("\noutput V-representation:\n");
         dd_WriteMatrix(stdout,G);
+        std::cerr << std::endl;
       }
 
       // get matrix size
@@ -113,7 +116,7 @@ namespace cddeigen{
       return true;
     }else{
       if (verbose){
-        dd_WriteErrorMessages(stdout,err);
+        dd_WriteErrorMessages(stderr,err);
       }
 
       dd_FreeMatrix(A);
@@ -164,6 +167,7 @@ namespace cddeigen{
     if (verbose){
       printf("\ninput V-representation:\n");
       dd_WriteMatrix(stderr,G);  printf("\n");
+      std::cerr << std::endl;
     }
 
     dd_rowindex newpos;
@@ -174,6 +178,7 @@ namespace cddeigen{
     if (verbose){
       printf("\nafter canonicalize:\n");
       dd_WriteMatrix(stderr,G);  printf("\n");
+      std::cerr << std::endl;
     }
 
     // compute the second (generator) representation
@@ -186,6 +191,7 @@ namespace cddeigen{
       if (verbose){
         printf("\noutput H-representation:\n");
         dd_WriteMatrix(stdout,A);
+        std::cerr << std::endl;
       }
 
       // get matrix size
@@ -227,7 +233,7 @@ namespace cddeigen{
       return true;
     }else{
       if (verbose){
-        dd_WriteErrorMessages(stdout,err);
+        dd_WriteErrorMessages(stderr,err);
       }
 
       dd_FreeMatrix(G);

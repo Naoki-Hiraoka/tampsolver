@@ -51,8 +51,8 @@ namespace cnoid {
       0.0, 0.0, -0.453786, 0.872665, -0.418879, 0.0, 0.0,
         0.0, 0.0, -0.453786, 0.872665, -0.418879, 0.0, 0.0,
         0.0, 0.0, 0.0, 0.698132,
-        0.872665, -0.523599, -0.174533, -2.0944, -0.436332, -0.087266, -0.349066, 1.0472,
-        0.872665, 0.523599, 0.174533, -2.0944, 0.436332, 0.087266, -0.349066, -1.0472};
+        0.872665, -0.523599, -0.174533, -2.0944, -0.436332, -0.087266, -0.349066, 0.0,
+        0.872665, 0.523599, 0.174533, -2.0944, 0.436332, 0.087266, -0.349066, 0.0};
 
     for(int j=0; j < robot->body()->numJoints(); ++j){
       robot->body()->joint(j)->q() = reset_manip_pose[j];
@@ -97,7 +97,7 @@ namespace cnoid {
     constraints.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["lleg"],
                                                                    config->get_endeffectors()["lleg"]->getlink()->T()*config->get_endeffectors()["lleg"]->getlocalpos()));
 
-    // constraint: rleg & lleg not move
+    // constraint: support body by rleg & lleg
     {
       constraints.push_back(std::make_shared<IK::CddSCFRConstraint>(robot->body(),
                                                                     std::vector<std::shared_ptr<RobotConfig::EndEffector> >{config->get_endeffectors()["rleg"],config->get_endeffectors()["lleg"]}));
@@ -114,7 +114,7 @@ namespace cnoid {
       struct timeval s, e1, e2;
       gettimeofday(&s, NULL);
 
-      solver.solve_one_loop();
+      bool solved = solver.solve_one_loop();
 
       gettimeofday(&e1, NULL);
 
@@ -131,6 +131,8 @@ namespace cnoid {
                << " solve time: " << (e1.tv_sec - s.tv_sec) + (e1.tv_usec - s.tv_usec)*1.0E-6
                << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
                << std::endl;
+
+      if(solved)break;
 
       cnoid::msleep(50);
     }

@@ -11,12 +11,13 @@ namespace IK{
     regular(1e-6),
     regular_rel(5),
     regular_max(0.1),
-    maxvel(0.1)
+    maxvel(0.1),
+    eps(1e-3)
   {
 
   }
 
-  // コストが増加したり，constraintsのエラーが閾値以上だとfalse TODO
+  // 解けたらtrue
   bool IKsolver::solve_one_loop(){
     Eigen::SparseMatrix<double,Eigen::RowMajor> H;
     Eigen::SparseMatrix<double,Eigen::RowMajor> A;
@@ -24,7 +25,19 @@ namespace IK{
     Eigen::VectorXd upperBound;
     Eigen::VectorXd lowerBound;
 
-    this->calc_qp_matrix(H,A,gradient,upperBound,lowerBound);
+    double sum_error = this->calc_qp_matrix(H,A,gradient,upperBound,lowerBound);
+
+    if(sum_error<this->eps*this->eps){
+      bool satisfied = true;
+      for(size_t i=0;i<upperBound.rows();i++){
+        if(upperBound[i]<-this->eps||lowerBound[i]>this->eps){
+          satisfied = false;
+          break;
+        }
+      }
+      if(satisfied) return true;
+    }
+
     if(debuglevel>1){
       std::cerr << "H" << std::endl;
       std::cerr << H << std::endl;
@@ -63,7 +76,7 @@ namespace IK{
     }
 
 
-    return true;
+    return false;
   }
 
   bool IKsolver::solve_optimization() {
@@ -84,7 +97,7 @@ namespace IK{
     return objects;
   }
 
-  void IKsolver::calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
+  double IKsolver::calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
                                 Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
                                 Eigen::VectorXd& gradient,
                                 Eigen::VectorXd& upperBound,
@@ -147,7 +160,7 @@ namespace IK{
       idx += minineqs[i].rows();
     }
 
-    return;
+    return sum_error;
   }
 
   void IKsolver::update_qp_variables(const Eigen::VectorXd& solution){
