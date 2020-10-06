@@ -4,6 +4,7 @@
 #include "IKConstraint.h"
 #include "../../RobotConfig/EndEffector.h"
 #include <cnoid/EigenUtil>
+#include <cnoid/SceneMarkers>
 #include <iostream>
 
 namespace IK{
@@ -22,7 +23,11 @@ namespace IK{
 
   protected:
     //SCFR_M, SCFR_u, SCFR_lをセットする
-    virtual void calcSCFR(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d)=0;
+    virtual void calcSCFR();
+    //SCFR_M, SCFR_u, SCFR_lをセットする
+    virtual void calcProjection(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d)=0;
+    //SCFRlinesをセットする
+    virtual void updateSCFRlines()=0;
 
     cnoid::Body* robot;
     std::vector<std::shared_ptr<RobotConfig::EndEffector> > endeffectors;
@@ -36,6 +41,7 @@ namespace IK{
     Eigen::VectorXd SCFR_l;
 
     cnoid::SgLineSetPtr SCFRlines;
+    cnoid::CrossMarkerPtr COMmarker;
   };
 }
 

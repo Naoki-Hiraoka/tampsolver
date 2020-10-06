@@ -1,5 +1,6 @@
 find_package(catkin REQUIRED COMPONENTS
   vclip
+  cddeigen
   )
 
 #main
@@ -24,5 +25,6 @@ target_link_libraries(${target} PUBLIC
   RobotConfig
   CnoidAISTCollisionDetector #ASITCollisionConstraint.cpp
   vclip #VclipLinkPair.cpp, VclipCollisionConstraint.cpp
+  qhull #CddSCFRConstraint.cpp
   )
 target_link_directories(${target} PUBLIC ${catkin_LIBRARY_DIRS} ${CHOREONOID_LIBRARY_DIRS})
