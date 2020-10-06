@@ -4,6 +4,8 @@
 #include "SCFRConstraint.h"
 
 namespace IK{
+  // GMPを使用しないと高頻度で計算が失敗する
+  // GMPを使用すると非常に遅い
   class CddSCFRConstraint : public SCFRConstraint
   {
   public:

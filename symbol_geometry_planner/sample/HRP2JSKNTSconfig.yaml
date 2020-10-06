@@ -63,9 +63,15 @@ joint_limit:
   - joint: LARM_JOINT3
     ulimit: -0.087266 #5deg
   - joint: RARM_JOINT1
-    ulimit: -0.087266 #-5deg
+    llimit: -1.48353 #-85deg
   - joint: LARM_JOINT1
-    llimit: 0.087266 #5deg
+    ulimit: 1.48353 #85deg
+  - joint: RARM_JOINT2
+    llimit: -1.48353 #-85deg
+    ulimit: 1.48353 #85deg
+  - joint: LARM_JOINT2
+    llimit: -1.48353 #-85deg
+    ulimit: 1.48353 #85deg
   # deactivate
   - joint: RLEG_JOINT6
     llimit: 0.0

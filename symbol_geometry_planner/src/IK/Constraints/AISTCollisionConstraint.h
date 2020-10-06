@@ -5,6 +5,7 @@
 #include <cnoid/AISTCollisionDetector>
 
 namespace IK{
+  // VClipの方が速い
   class AISTCollisionConstraint : public CollisionConstraint
   {
   public:

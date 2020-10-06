@@ -74,7 +74,7 @@ namespace cnoid {
       // task: rarm to target
       {
         cnoid::Position pos;
-        pos.translation() = cnoid::Vector3(0.8,-0.3,1.5);
+        pos.translation() = cnoid::Vector3(0.8,-0.2,1.0);
         pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(-1.5,cnoid::Vector3(0,1,0)));
         //pos.linear() = (eef_links[2]->T()*eef_localposs[2]).linear();
         tasks.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["rarm"],
@@ -85,7 +85,7 @@ namespace cnoid {
       {
         cnoid::Position pos;
         pos.translation() = cnoid::Vector3(0.4,0.4,0.3);
-        pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0.7,cnoid::Vector3(0.77,-0.77,0).normalized()));
+        pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0.3,cnoid::Vector3(0.77,-0.77,0).normalized()));
         //pos.linear() = (eef_links[2]->T()*eef_localposs[2]).linear();
         tasks.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["lleg"],
                                                                  pos));
@@ -138,7 +138,7 @@ namespace cnoid {
                  << std::endl;
 
         if(solved)break;
-        cnoid::msleep(50);
+        //cnoid::msleep(50);
       }
     }
 
@@ -189,7 +189,7 @@ namespace cnoid {
 
       // solve ik
       IK::IKsolver solver(variables,tasks,constraints);
-      int debuglevel = 2;
+      int debuglevel = 0;
       solver.set_debug_level(debuglevel);
       for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
       for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
@@ -216,7 +216,7 @@ namespace cnoid {
                  << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
                  << std::endl;
 
-        cnoid::msleep(50);
+        //cnoid::msleep(50);
       }
     }
 

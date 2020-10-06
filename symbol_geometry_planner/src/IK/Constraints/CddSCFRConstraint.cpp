@@ -26,19 +26,22 @@ namespace IK{
     this->R_nonneg2 = R_nonneg.topRows<2>();
     this->R_free2 = R_free.topRows<2>();
 
-    // std::vector<Eigen::Vector2d> V2_filterd;
-    // for(size_t i=0;i<this->V2.cols();i++){
-    //   Eigen::Vector2d v = V2.col(i);
-    //   if(std::find_if(V2_filterd.begin(), V2_filterd.end(), [&](Eigen::Vector2d x) { return (x-v).norm() <= 1e-3; }) == V2_filterd.end()){
-    //     V2_filterd.push_back(v);
-    //   }
-    // }
-    // this->V2.resize(2,V2_filterd.size());
-    // for(size_t i=0;i<V2_filterd.size();i++){
-    //   V2.col(i) = V2_filterd[i];
-    // }
+    // hullをとることで点を減らす
     std::vector<std::vector<int> > tmp;
     qhulleigen::convexhull(this->V2,this->V2,tmp);
+
+    // 近い点を除去することで点を減らす
+    std::vector<Eigen::Vector2d> V2_filterd;
+    for(size_t i=0;i<this->V2.cols();i++){
+      Eigen::Vector2d v = V2.col(i);
+      if(std::find_if(V2_filterd.begin(), V2_filterd.end(), [&](Eigen::Vector2d x) { return (x-v).norm() <= 1e-3; }) == V2_filterd.end()){
+        V2_filterd.push_back(v);
+      }
+    }
+    this->V2.resize(2,V2_filterd.size());
+    for(size_t i=0;i<V2_filterd.size();i++){
+      V2.col(i) = V2_filterd[i];
+    }
     std::vector<Eigen::Vector2d> R_nonneg2_filterd;
     for(size_t i=0;i<this->R_nonneg2.cols();i++){
       Eigen::Vector2d v = R_nonneg2.col(i);

@@ -24,7 +24,8 @@ add_library(cddeigen SHARED src/cddeigen.cpp)
 target_link_libraries(cddeigen
   cdd
   #cddgmp #cddとcddgmpのどちらかをリンクする．gmpの方が機能が多い．
-  #gmpxx # c++の場合はcddgmpに加えてgmpxxもリンクする必要
+  #mpfr
+  #gmpxx # c++の場合はcddgmpに加えてgmpxxもリンクする必要?
   ${EIGEN_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME}
