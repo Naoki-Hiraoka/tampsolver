@@ -1,7 +1,5 @@
 #include "EditCollisionModel.h"
-extern "C" {
-#include <qhull/qhull_a.h>
-}
+#include <qhulleigen/qhulleigen.h>
 #include <cnoid/MeshExtractor>
 #include <iostream>
 
@@ -54,61 +52,27 @@ namespace RobotConfig {
 
     if (model->vertices()->size()==0) return nullptr;
 
-
     // qhull
-    int numVertices = model->vertices()->size();
-    double points[numVertices*3];
-    for (int i=0; i<numVertices; i++){
-      const cnoid::Vector3f& v = model->vertices()->at(i);
-      points[i*3+0] = v[0];
-      points[i*3+1] = v[1];
-      points[i*3+2] = v[2];
+    Eigen::MatrixXd vertices(3,model->vertices()->size());
+    for(size_t i=0;i<model->vertices()->size();i++){
+      vertices.col(i) = model->vertices()->at(i).cast<Eigen::Vector3d::Scalar>();
     }
-    char flags[250];
-    boolT ismalloc = False;
-    sprintf(flags,"qhull Qt Tc");
-    if (qh_new_qhull (3,numVertices,points,ismalloc,flags,NULL,stderr)) return nullptr;
-
-    qh_triangulate();
-    qh_vertexneighbors();
-
+    Eigen::MatrixXd hull;
+    std::vector<std::vector<int> > faces;
+    if(!qhulleigen::convexhull(vertices,hull,faces)) return nullptr;
 
     cnoid::SgMesh* coldetModel(new cnoid::SgMesh);
     coldetModel->setName(collisionshape->name());
 
-    coldetModel->getOrCreateVertices()->resize(qh num_vertices);
-    coldetModel->setNumTriangles(qh num_facets);
-    int index[numVertices];
-    int vertexIndex = 0;
-    vertexT *vertex;
-    FORALLvertices {
-        int p = qh_pointid(vertex->point);
-        index[p] = vertexIndex;
-        coldetModel->vertices()->at(vertexIndex++) = cnoid::Vector3f(points[p*3+0], points[p*3+1], points[p*3+2]);
-    }
-    facetT *facet;
-    int num = qh num_facets;
-    int triangleIndex = 0;
-    FORALLfacets {
-        int j = 0, p[3];
-        setT *vertices = qh_facet3vertex (facet);
-        vertexT **vertexp;
-        FOREACHvertexreverse12_ (vertices) {
-            if (j<3) {
-                p[j] = index[qh_pointid(vertex->point)];
-            } else {
-                fprintf(stderr, "extra vertex %d\n",j);
-            }
-            j++;
-        }
-        coldetModel->setTriangle(triangleIndex++, p[0], p[1], p[2]);
+    coldetModel->getOrCreateVertices()->resize(hull.cols());
+    coldetModel->setNumTriangles(faces.size());
+
+    for(size_t i=0;i<hull.cols();i++){
+      coldetModel->vertices()->at(i) = hull.col(i).cast<cnoid::Vector3f::Scalar>();
     }
 
-    qh_freeqhull(!qh_ALL);
-    int curlong, totlong;
-    qh_memfreeshort (&curlong, &totlong);
-    if (curlong || totlong) {
-        fprintf(stderr, "convhulln: did not free %d bytes of long memory (%d pieces)\n", totlong, curlong);
+    for(size_t i=0;i<faces.size();i++){
+      coldetModel->setTriangle(i, faces[i][0], faces[i][1], faces[i][2]);
     }
 
     cnoid::SgShape* ret(new cnoid::SgShape);

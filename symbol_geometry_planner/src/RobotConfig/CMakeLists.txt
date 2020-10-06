@@ -1,6 +1,7 @@
 find_package(catkin REQUIRED COMPONENTS
   choreonoid
   vclip #EditCollisionModel.cpp
+  qhulleigen #EditCollisionModel.cpp
   )
 
 find_package(yaml-cpp REQUIRED)

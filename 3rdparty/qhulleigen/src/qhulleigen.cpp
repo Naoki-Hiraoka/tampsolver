@@ -13,7 +13,7 @@ namespace qhulleigen{
     }
     char flags[250];
     boolT ismalloc = False;
-    sprintf(flags,"qhull Fx");
+    sprintf(flags,"qhull Qt Tc Fx");
     if (qh_new_qhull (dim,numVertices,points,ismalloc,flags,NULL,stderr)) return false;
 
     qh_triangulate();
@@ -43,8 +43,9 @@ namespace qhulleigen{
       int j = 0;
       std::vector<int> p;
       p.reserve(dim);
-      setT *vertices = facet->vertices;
-      //setT *vertices = qh_facet3vertex (facet);
+      setT *vertices;
+      if (dim==3) vertices = qh_facet3vertex (facet); //時計回りになる
+      else vertices = facet->vertices;
       vertexT **vertexp;
       FOREACHvertexreverse12_ (vertices) {
         if (j<dim) {
