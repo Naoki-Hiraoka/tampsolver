@@ -154,7 +154,7 @@ namespace IK{
     }
 
     // z座標は毎回更新する
-    double z = this->robot->calcCenterOfMass()[2];
+    double z = this->robot->centerOfMass()[2];
     for(size_t i=0;i<this->SCFRlines->vertices()->size();i++){
       this->SCFRlines->vertices()->at(i)[2] = z;
     }

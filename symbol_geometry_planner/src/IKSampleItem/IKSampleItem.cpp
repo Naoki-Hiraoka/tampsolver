@@ -58,6 +58,7 @@ namespace cnoid {
       robot->body()->joint(j)->q() = reset_manip_pose[j];
     }
     robot->body()->calcForwardKinematics();
+    robot->body()->calcCenterOfMass();
     this->drawObjects();
     cnoid::msleep(500);
 
@@ -72,8 +73,7 @@ namespace cnoid {
     {
       cnoid::Position pos;
       pos.translation() = cnoid::Vector3(0.2,0.3,0.3);
-      //pos.translation() = (eef_links[2]->T()*eef_localposs[2]).translation() + cnoid::Vector3(0.1, 0, 0);
-      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(0.0,cnoid::Vector3(0,1,0)));
+      pos.linear() = cnoid::Matrix3(cnoid::AngleAxis(1.5,cnoid::Vector3(0,1,0)));
       //pos.linear() = (eef_links[2]->T()*eef_localposs[2]).linear();
       tasks.push_back(std::make_shared<IK::PositionConstraint>(config->get_endeffectors()["rhand"],
                                                                pos));

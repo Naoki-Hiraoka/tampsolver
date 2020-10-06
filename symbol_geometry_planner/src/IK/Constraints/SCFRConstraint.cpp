@@ -1,4 +1,5 @@
 #include "SCFRConstraint.h"
+#include <cnoid/Jacobian>
 
 namespace IK{
   SCFRConstraint::SCFRConstraint(cnoid::Body* _robot, const std::vector<std::shared_ptr<RobotConfig::EndEffector> >& _endeffectors):
@@ -10,11 +11,17 @@ namespace IK{
   }
 
   Eigen::VectorXd SCFRConstraint::calc_minineq (){
-    return Eigen::VectorXd();
+    Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
+    std::cerr << "min" << std::endl;
+    std::cerr << this->SCFR_l - this->SCFR_M * cm << std::endl;
+    return this->SCFR_l - this->SCFR_M * cm;
   }
 
   Eigen::VectorXd SCFRConstraint::calc_maxineq (){
-    return Eigen::VectorXd();
+    Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
+    std::cerr << "max" << std::endl;
+    std::cerr << this->SCFR_u - this->SCFR_M * cm << std::endl;
+    return this->SCFR_u - this->SCFR_M * cm;
   }
 
   Eigen::SparseMatrix<double,Eigen::RowMajor> SCFRConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
@@ -28,18 +35,47 @@ namespace IK{
       this->initial_p = false;
     }
 
-    return Eigen::SparseMatrix<double,Eigen::RowMajor>(0,dim);
+    // calc CM jacobian
+    Eigen::MatrixXd _CMJ;
+    cnoid::calcCMJacobian(this->robot,nullptr,_CMJ); // [joint root]の順
+    Eigen::MatrixXd CMJ(_CMJ.rows(),_CMJ.cols()); // [root joint]の順
+    CMJ.leftCols(6) = _CMJ.rightCols(6);
+    CMJ.rightCols(CMJ.cols()-6) = _CMJ.leftCols(_CMJ.cols()-6);
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> CMJ_sparse(2,dim);
+    int idx = 0;
+    for(size_t b=0;b<bodies.size();b++){
+      if(bodies[b] == this->robot){
+        for(size_t i=0;i<2;i++){
+          for(size_t j=0;j<CMJ.cols();j++){
+            CMJ_sparse.insert(i,idx+j) = CMJ(i,j);
+          }
+        }
+
+        break;
+      }
+      idx += 6 + bodies[b]->numJoints();
+    }
+
+    std::cerr << "SCFR" << std::endl;
+    std::cerr << SCFR_M << std::endl;
+    std::cerr << SCFR_u << std::endl;
+    std::cerr << SCFR_l << std::endl;
+    std::cerr << "M" << std::endl;
+    std::cerr << Eigen::SparseMatrix<double,Eigen::RowMajor>(this->SCFR_M * CMJ_sparse) << std::endl;
+
+    return this->SCFR_M * CMJ_sparse;
   }
 
   std::vector<cnoid::SgNodePtr> SCFRConstraint::getDrawOnObjects() {
 
     if(!this->COMmarker){
-      this->COMmarker = new cnoid::CrossMarker(0.1/*size*/,cnoid::Vector3f(0.5,1.0,0.0)/*color*/,5/*width*/);
+      this->COMmarker = new cnoid::CrossMarker(0.2/*size*/,cnoid::Vector3f(0.5,1.0,0.0)/*color*/,10/*width*/);
     }
 
     // update position
     this->updateSCFRlines();
-    this->COMmarker->setTranslation(this->robot->calcCenterOfMass().cast<Eigen::Vector3f::Scalar>());
+    this->COMmarker->setTranslation(this->robot->centerOfMass().cast<Eigen::Vector3f::Scalar>());
 
     std::vector<cnoid::SgNodePtr> ret{COMmarker,SCFRlines};
 
@@ -141,6 +177,15 @@ namespace IK{
 
     // SCFRを計算
     this->calcProjection(A,b,C,d);
+
+    // 各要素を正規化
+    for(size_t i=0;i<this->SCFR_M.rows();i++){
+      double norm = this->SCFR_M.row(i).norm();
+      this->SCFR_M.coeffRef(i,0) /= norm;
+      this->SCFR_M.coeffRef(i,1) /= norm;
+      this->SCFR_l[i] /= norm;
+      this->SCFR_u[i] /= norm;
+    }
 
   }
 }
