@@ -19,11 +19,11 @@ include_directories(
   )
 
 add_library(cddeigen SHARED src/cddeigen.cpp)
-#target_compile_definitions(cddeigen PUBLIC -DGMPRATIONAL) #これをつけるとdd_set_dが使えなくなる
+target_compile_definitions(cddeigen PUBLIC -DGMPRATIONAL) #これをつけるとdd_set_dが使えなくなる
 #target_compile_definitions(cddeigen PUBLIC -DGMPFLOAT) #これを付けないとddd_set_dが無いエラーになる
 target_link_libraries(cddeigen
-  cdd
-  #cddgmp #cddとcddgmpのどちらかをリンクする．gmpの方が機能が多い．
+  #cdd
+  cddgmp #cddとcddgmpのどちらかをリンクする．両方リンクしてはいけない．gmpの方が機能が多い．
   #mpfr
   #gmpxx # c++の場合はcddgmpに加えてgmpxxもリンクする必要?
   ${EIGEN_LIBRARIES})

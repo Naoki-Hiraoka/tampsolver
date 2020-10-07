@@ -9,8 +9,7 @@ namespace IK{
   }
 
   // Ax = b, Cx >= d
-  void CddSCFRConstraint::calcProjection(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d){
-
+  void CddSCFRConstraint::calcProjection(const Eigen::SparseMatrix<double,Eigen::RowMajor>& A, const Eigen::VectorXd& b, const Eigen::SparseMatrix<double,Eigen::RowMajor>& C, const Eigen::VectorXd& d){
     /*
       INPUT:
         A_eq   x + b_eq    = 0
@@ -27,8 +26,9 @@ namespace IK{
     this->R_free2 = R_free.topRows<2>();
 
     // hullをとることで点を減らす
-    std::vector<std::vector<int> > tmp;
-    qhulleigen::convexhull(this->V2,this->V2,tmp);
+    if (this->V2.cols() > 3) qhulleigen::convexhull(this->V2,this->V2);
+    if (this->R_nonneg2.cols() > 3) qhulleigen::convexhull(this->R_nonneg2,this->R_nonneg2);
+    if (this->R_free2.cols() > 3) qhulleigen::convexhull(this->R_free2,this->R_free2);
 
     // 近い点を除去することで点を減らす
     std::vector<Eigen::Vector2d> V2_filterd;

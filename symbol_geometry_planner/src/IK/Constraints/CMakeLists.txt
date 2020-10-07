@@ -1,7 +1,7 @@
 find_package(catkin REQUIRED COMPONENTS
   vclip
-  cddeigen
-  qhulleigen
+  cddeigen #CddSCFRConstraint.cpp #CddSCFRConstraint2.cpp
+  qhulleigen #CddSCFRConstraint.cpp #CddSCFRConstraint2.cpp
   )
 
 #main
@@ -16,6 +16,7 @@ set(sources
   VClipCollisionConstraint.cpp
   SCFRConstraint.cpp
   CddSCFRConstraint.cpp
+  CddSCFRConstraint2.cpp
   )
 
 add_library(${target} SHARED ${sources})
@@ -26,6 +27,5 @@ target_link_libraries(${target} PUBLIC
   RobotConfig
   CnoidAISTCollisionDetector #ASITCollisionConstraint.cpp
   vclip #VclipLinkPair.cpp, VclipCollisionConstraint.cpp
-  qhull #CddSCFRConstraint.cpp
   )
 target_link_directories(${target} PUBLIC ${catkin_LIBRARY_DIRS} ${CHOREONOID_LIBRARY_DIRS})

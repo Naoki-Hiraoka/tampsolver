@@ -6,6 +6,8 @@
 #include <Eigen/Eigen>
 
 namespace cddeigen{
+  // gmpなしの方が速いが，計算が失敗しやすい
+
   /*
     INPUT:
       A_eq   x + b_eq    = 0
@@ -14,7 +16,6 @@ namespace cddeigen{
       x = V y + R_nonneg z + R_free w (sum y = 1, y >= 0, z >= 0)
   */
 
-  // GMPRATIONALオプションをつけること
   bool HtoV (const Eigen::MatrixXd& A_eq,
              const Eigen::VectorXd& b_eq,
              const Eigen::MatrixXd& A_ineq,
@@ -31,7 +32,8 @@ namespace cddeigen{
                 Eigen::MatrixXd& V,
                 Eigen::MatrixXd& R_nonneg,
                 Eigen::MatrixXd& R_free,
-                bool verbose=false);
+                bool verbose=false,
+                unsigned long int denom = 1000000);
 
   /*
     INPUT:
@@ -41,7 +43,6 @@ namespace cddeigen{
       A_ineq x + b_ineq >= 0
   */
 
-  // GMPRATIONALオプションをつけること
   bool VtoH (const Eigen::MatrixXd& V,
              const Eigen::MatrixXd& R_nonneg,
              const Eigen::MatrixXd& R_free,
@@ -58,7 +59,8 @@ namespace cddeigen{
                 Eigen::VectorXd& b_eq,
                 Eigen::MatrixXd& A_ineq,
                 Eigen::VectorXd& b_ineq,
-                bool verbose=false);
+                bool verbose=false,
+                unsigned long int denom = 1000000);
 
 };
 

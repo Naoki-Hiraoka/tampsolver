@@ -77,7 +77,29 @@ namespace IK{
   }
 
   void SCFRConstraint::calcSCFR(){
-    // SCFRを計算
+    Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+    Eigen::VectorXd b;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+    Eigen::VectorXd d;
+
+    // 制約多面体を計算
+    this->calcPolyhedra(A,b,C,d);
+
+    // 制約多面体を射影しSCFRを計算
+    this->calcProjection(A,b,C,d);
+
+    // 各要素を正規化
+    for(size_t i=0;i<this->SCFR_M.rows();i++){
+      double norm = this->SCFR_M.row(i).norm();
+      this->SCFR_M.coeffRef(i,0) /= norm;
+      this->SCFR_M.coeffRef(i,1) /= norm;
+      this->SCFR_l[i] /= norm;
+      this->SCFR_u[i] /= norm;
+    }
+
+  }
+
+  void SCFRConstraint::calcPolyhedra(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d){
     // x = [px py w1 w2 ...]^T
     // wはエンドエフェクタ座標系．エンドエフェクタまわり
 
@@ -155,26 +177,14 @@ namespace IK{
     C_appended.setFromTriplets(C_tripletList.begin(), C_tripletList.end());
 
     // all. Ax = b, Cx >= d
-    Eigen::SparseMatrix<double,Eigen::RowMajor> A(G.rows()+A_appended.rows(),2+6*this->endeffectors.size());
+    A = Eigen::SparseMatrix<double,Eigen::RowMajor>(G.rows()+A_appended.rows(),2+6*this->endeffectors.size());
     A.middleRows(0,G.rows()) = G;
     A.middleRows(G.rows(),A_appended.rows()) = A_appended;
-    Eigen::VectorXd b(h.rows()+b_appended.rows());
+    b = Eigen::VectorXd(h.rows()+b_appended.rows());
     b.segment(0,h.rows()) = h;
     b.segment(h.rows(),b_appended.rows()) = b_appended;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> C = C_appended;
-    Eigen::VectorXd d = d_appended;
-
-    // SCFRを計算
-    this->calcProjection(A,b,C,d);
-
-    // 各要素を正規化
-    for(size_t i=0;i<this->SCFR_M.rows();i++){
-      double norm = this->SCFR_M.row(i).norm();
-      this->SCFR_M.coeffRef(i,0) /= norm;
-      this->SCFR_M.coeffRef(i,1) /= norm;
-      this->SCFR_l[i] /= norm;
-      this->SCFR_u[i] /= norm;
-    }
+    C = C_appended;
+    d = d_appended;
 
   }
 }

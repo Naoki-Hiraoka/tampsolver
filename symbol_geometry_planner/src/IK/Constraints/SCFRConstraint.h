@@ -24,8 +24,10 @@ namespace IK{
   protected:
     //SCFR_M, SCFR_u, SCFR_lをセットする
     virtual void calcSCFR();
-    //SCFR_M, SCFR_u, SCFR_lをセットする
-    virtual void calcProjection(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d)=0;
+    // calcSCFRの中で呼ばれる．制約多面体を求める
+    virtual void calcPolyhedra(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& d);
+    // calcSCFRの中で呼ばれる．制約多面体を重心XY平面に射影する．SCFR_M, SCFR_u, SCFR_lをセットする
+    virtual void calcProjection(const Eigen::SparseMatrix<double,Eigen::RowMajor>& A, const Eigen::VectorXd& b, const Eigen::SparseMatrix<double,Eigen::RowMajor>& C, const Eigen::VectorXd& d)=0;
     //SCFRlinesをセットする
     virtual void updateSCFRlines()=0;
 

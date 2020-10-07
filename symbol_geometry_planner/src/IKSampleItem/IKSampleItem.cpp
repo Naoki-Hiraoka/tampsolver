@@ -4,6 +4,7 @@
 #include "../IK/Constraints/PositionConstraint.h"
 #include "../IK/Constraints/CollisionConstraint.h"
 #include "../IK/Constraints/CddSCFRConstraint.h"
+#include "../IK/Constraints/CddSCFRConstraint2.h"
 #include "../IK/Util.h"
 #include <ros/package.h>
 #include <sys/time.h>
@@ -99,8 +100,9 @@ namespace cnoid {
 
     // constraint: support body by rleg & lleg
     {
-      constraints.push_back(std::make_shared<IK::CddSCFRConstraint>(robot->body(),
-                                                                    std::vector<std::shared_ptr<RobotConfig::EndEffector> >{config->get_endeffectors()["rleg"],config->get_endeffectors()["lleg"]}));
+      //constraints.push_back(std::make_shared<IK::CddSCFRConstraint>(robot->body(),
+      constraints.push_back(std::make_shared<IK::CddSCFRConstraint2>(robot->body(),
+                                                                     std::vector<std::shared_ptr<RobotConfig::EndEffector> >{config->get_endeffectors()["rleg"],config->get_endeffectors()["lleg"]}));
     }
 
     // solve ik

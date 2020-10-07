@@ -1,7 +1,7 @@
 #include <qhulleigen/qhulleigen.h>
 
 namespace qhulleigen{
-  bool convexhull(const Eigen::MatrixXd& In, Eigen::MatrixXd& Out, std::vector<std::vector<int> >& Face){
+  bool convexhull(const Eigen::MatrixXd& In, Eigen::MatrixXd& Out, std::vector<std::vector<int> >& Face, bool calc_face){
     // convex hull by qhull.
     int numVertices = In.cols();
     int dim = In.rows();
@@ -34,28 +34,30 @@ namespace qhulleigen{
       Out.col(i) = hull[i];
     }
 
-    Face.clear();
+    if(calc_face){
+      Face.clear();
 
-    facetT *facet;
-    int num = qh num_facets;
-    int triangleIndex = 0;
-    FORALLfacets {
-      int j = 0;
-      std::vector<int> p;
-      p.reserve(dim);
-      setT *vertices;
-      if (dim==3) vertices = qh_facet3vertex (facet); //時計回りになる
-      else vertices = facet->vertices;
-      vertexT **vertexp;
-      FOREACHvertexreverse12_ (vertices) {
-        if (j<dim) {
-          p.push_back(index[qh_pointid(vertex->point)]);
-        } else {
-          fprintf(stderr, "extra vertex %d\n",j);
+      facetT *facet;
+      int num = qh num_facets;
+      int triangleIndex = 0;
+      FORALLfacets {
+        int j = 0;
+        std::vector<int> p;
+        p.reserve(dim);
+        setT *vertices;
+        if (dim==3) vertices = qh_facet3vertex (facet); //時計回りになる
+        else vertices = facet->vertices;
+        vertexT **vertexp;
+        FOREACHvertexreverse12_ (vertices) {
+          if (j<dim) {
+            p.push_back(index[qh_pointid(vertex->point)]);
+          } else {
+            fprintf(stderr, "extra vertex %d\n",j);
+          }
+          j++;
         }
-        j++;
+        Face.push_back(p);
       }
-      Face.push_back(p);
     }
 
     qh_freeqhull(!qh_ALL);
@@ -63,5 +65,10 @@ namespace qhulleigen{
     qh_memfreeshort (&curlong, &totlong);
 
     return true;
+  }
+
+  bool convexhull(const Eigen::MatrixXd& In, Eigen::MatrixXd& Out){
+    std::vector<std::vector<int> > Face;
+    return convexhull(In, Out, Face, false);
   }
 }
