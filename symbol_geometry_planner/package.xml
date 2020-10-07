@@ -56,7 +56,7 @@
   <depend>actionlib</depend>
   <depend>pddl_msgs</depend>
   <exec_depend>pddl_planner</exec_depend>
-  <depend>coinor-libclp-dev</depend>
+  <depend>clpeigen</depend>
 
   <depend>roboptim-core</depend>
   <depend>roboptim-core-plugin-ipopt</depend>

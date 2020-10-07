@@ -2,6 +2,7 @@ find_package(catkin REQUIRED COMPONENTS
   vclip
   cddeigen #CddSCFRConstraint.cpp #CddSCFRConstraint2.cpp
   qhulleigen #CddSCFRConstraint.cpp #CddSCFRConstraint2.cpp
+  clpeigen #LPSCFRConstraint.cpp
   )
 
 #main
@@ -17,6 +18,7 @@ set(sources
   SCFRConstraint.cpp
   CddSCFRConstraint.cpp
   CddSCFRConstraint2.cpp
+  LPSCFRConstraint.cpp
   )
 
 add_library(${target} SHARED ${sources})
