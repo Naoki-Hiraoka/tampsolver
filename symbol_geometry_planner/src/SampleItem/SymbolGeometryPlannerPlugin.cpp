@@ -2,14 +2,14 @@
 #include <cnoid/MenuManager>
 #include <cnoid/MessageView>
 
-#include "PlannerBaseItem/PlannerBaseItem.h"
+#include "PlannerBaseItem.h"
 
-#include "IrtViewerSampleItem/IrtViewerSampleItem.h"
-#include "PddlSampleItem/PddlSampleItem.h"
-#include "RoboptimSampleItem/RoboptimSampleItem.h"
-#include "RoboptimSparseSampleItem/RoboptimSparseSampleItem.h"
-#include "IKSampleItem/IKSampleItem.h"
-#include "MultiContactIKSampleItem/MultiContactIKSampleItem.h"
+#include "IrtViewerSampleItem.h"
+#include "PddlSampleItem.h"
+#include "RoboptimSampleItem.h"
+#include "RoboptimSparseSampleItem.h"
+#include "IKSampleItem.h"
+#include "MultiContactIKSampleItem.h"
 
 using namespace cnoid;
 

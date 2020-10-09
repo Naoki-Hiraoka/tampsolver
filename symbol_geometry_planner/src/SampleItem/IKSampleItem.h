@@ -1,7 +1,7 @@
 #ifndef CNOID_IK_SAMPLE_ITEM_H
 #define CNOID_IK_SAMPLE_ITEM_H
 
-#include "../PlannerBaseItem/PlannerBaseItem.h"
+#include "PlannerBaseItem.h"
 
 namespace cnoid {
 
