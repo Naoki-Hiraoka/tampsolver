@@ -11,7 +11,7 @@ include(ExternalProject)
 externalproject_add(OsqpEigen
   GIT_REPOSITORY https://github.com/robotology/osqp-eigen
   TIMEOUT 120
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
   # add -j8
   BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> -j8
   # install Config.cmake to share/OsqpEigen/cmake (not lib/cmake/OsqpEigen)
