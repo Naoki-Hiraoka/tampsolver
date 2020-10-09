@@ -4,6 +4,7 @@
 #include "IKConstraint.h"
 #include "../../RobotConfig/EndEffector.h"
 #include <cnoid/EigenUtil>
+#include <cnoid/JointPath>
 #include <iostream>
 
 namespace IK{
@@ -35,12 +36,12 @@ namespace IK{
 
 
     // エラーを返す. A-B. world系. QPで用いる
-    Eigen::VectorXd calc_error () override;
+    const Eigen::VectorXd& calc_error () override;
 
     // コスト(エラーの二乗和)を返す. 非線形最適化で用いる
 
     // ヤコビアンを返す. bodyのroot6dof+全関節が変数
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobian (const std::vector<cnoid::Body*>& bodies) override;
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobian (const std::vector<cnoid::Body*>& bodies) override;
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
@@ -56,6 +57,11 @@ namespace IK{
     double maxvel;
 
     cnoid::SgLineSetPtr lines;
+
+    cnoid::JointPath path_A;
+    cnoid::JointPath path_B;
+    cnoid::JointPath path_BA;
+
   };
 }
 

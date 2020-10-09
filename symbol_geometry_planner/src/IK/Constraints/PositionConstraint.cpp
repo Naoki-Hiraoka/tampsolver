@@ -1,5 +1,4 @@
 #include "PositionConstraint.h"
-#include <cnoid/JointPath>
 
 namespace IK{
   PositionConstraint::PositionConstraint(cnoid::Link* _A_link, const cnoid::Position& _A_localpos,
@@ -59,17 +58,18 @@ namespace IK{
   }
 
   // エラーを返す. A-B. world系. QPで用いる
-  Eigen::VectorXd PositionConstraint::calc_error () {
+  const Eigen::VectorXd& PositionConstraint::calc_error () {
+    if(this->error.rows()!=6) this->error = Eigen::VectorXd(6);
+
     const cnoid::Position& A_pos = (this->A_link) ? this->A_link->T() * this->A_localpos : this->A_localpos;
     const cnoid::Position& B_pos = (this->B_link) ? this->B_link->T() * this->B_localpos : this->B_localpos;
 
-    Eigen::VectorXd error(6);
-    error.segment<3>(0) = A_pos.translation() - B_pos.translation();
-    error.segment<3>(3) = cnoid::omegaFromRot(A_pos.linear() * B_pos.linear().transpose());
+    this->error.segment<3>(0) = A_pos.translation() - B_pos.translation();
+    this->error.segment<3>(3) = cnoid::omegaFromRot(A_pos.linear() * B_pos.linear().transpose());
 
     for(size_t i=0;i<3;i++){
-      error[i] = std::min(std::max(error[i],-maxvel),maxvel);
-      error[i+3] = std::min(std::max(error[i+3],-maxvel),maxvel);
+      this->error[i] = std::min(std::max(this->error[i],-maxvel),maxvel);
+      this->error[i+3] = std::min(std::max(this->error[i+3],-maxvel),maxvel);
     }
 
     if(debuglevel>1){
@@ -82,25 +82,96 @@ namespace IK{
 
     }
 
-    return error;
+    return this->error;
   }
 
   // ヤコビアンを返す. bodyのroot6dof+全関節が変数
-  Eigen::SparseMatrix<double,Eigen::RowMajor> PositionConstraint::calc_jacobian (const std::vector<cnoid::Body*>& bodies) {
-    int dim = 0;
-    for(size_t i=0; i < bodies.size(); i++){
-      dim += 6 + bodies[i]->numJoints();
+  const Eigen::SparseMatrix<double,Eigen::RowMajor>& PositionConstraint::calc_jacobian (const std::vector<cnoid::Body*>& bodies) {
+    if(!this->is_bodies_same(bodies,this->jacobian_bodies) || this->jacobian.rows()!=6){
+      this->jacobian_bodies = bodies;
+
+      std::vector<Eigen::Triplet<double> > tripletList;
+      tripletList.reserve(100);//適当
+
+      if(!A_link || !B_link || !(A_link->body() == B_link->body())){
+        for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
+          cnoid::Link* target_link = i ? B_link : A_link;
+          cnoid::JointPath& path = i? this->path_B : this->path_A;
+
+          if(!target_link) continue;//world固定なので飛ばす
+
+          int idx = 0;
+          for(size_t b=0;b<bodies.size();b++){
+            if(bodies[b] == target_link->body()){
+              //root 6dof
+              for(size_t j=0;j<6;j++){
+                tripletList.push_back(Eigen::Triplet<double>(j,idx+j,1));
+              }
+              //  0     p[2] -p[1]
+              // -p[2]  0     p[0]
+              //  p[1] -p[0]  0
+              tripletList.push_back(Eigen::Triplet<double>(0,idx+4,1));
+              tripletList.push_back(Eigen::Triplet<double>(0,idx+5,1));
+              tripletList.push_back(Eigen::Triplet<double>(1,idx+3,1));
+              tripletList.push_back(Eigen::Triplet<double>(1,idx+5,1));
+              tripletList.push_back(Eigen::Triplet<double>(2,idx+3,1));
+              tripletList.push_back(Eigen::Triplet<double>(2,idx+4,1));
+
+              //joints
+              path.setPath(target_link);
+              for(size_t j=0;j<path.numJoints();j++){
+                int col = idx+6+path.joint(j)->jointId();
+                tripletList.push_back(Eigen::Triplet<double>(0,col,1));
+                tripletList.push_back(Eigen::Triplet<double>(1,col,1));
+                tripletList.push_back(Eigen::Triplet<double>(2,col,1));
+                tripletList.push_back(Eigen::Triplet<double>(3,col,1));
+                tripletList.push_back(Eigen::Triplet<double>(4,col,1));
+                tripletList.push_back(Eigen::Triplet<double>(5,col,1));
+              }
+
+              break;
+            }
+            idx += 6 + bodies[b]->numJoints();
+          }
+        }
+      } else { //if(!A_link || !B_link || !(A_link->body() == B_link->body()))
+        int idx = 0;
+        for(size_t b=0;b<bodies.size();b++){
+          if(bodies[b] == A_link->body()){
+            //joints
+            this->path_BA.setPath(B_link,A_link);
+
+            for(size_t j=0;j<this->path_BA.numJoints();j++){
+              int col = idx+6+this->path_BA.joint(j)->jointId();
+              tripletList.push_back(Eigen::Triplet<double>(0,col,1));
+              tripletList.push_back(Eigen::Triplet<double>(1,col,1));
+              tripletList.push_back(Eigen::Triplet<double>(2,col,1));
+              tripletList.push_back(Eigen::Triplet<double>(3,col,1));
+              tripletList.push_back(Eigen::Triplet<double>(4,col,1));
+              tripletList.push_back(Eigen::Triplet<double>(5,col,1));
+            }
+            break;
+          }
+          idx += 6 + bodies[b]->numJoints();
+        }
+      }
+
+      int dim = 0;
+      for(size_t i=0; i < bodies.size(); i++){
+        dim += 6 + bodies[i]->numJoints();
+      }
+
+      this->jacobian = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,dim);
+      this->jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
+
     }
-
-
-    std::vector<Eigen::Triplet<double> > tripletList;
-    tripletList.reserve(100);//適当
 
     if(!A_link || !B_link || !(A_link->body() == B_link->body())){
       for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
         int sign = i ? -1 : 1;
         cnoid::Link* target_link = i ? B_link : A_link;
         const cnoid::Position& target_localpos = i ? B_localpos : A_localpos;
+        cnoid::JointPath& path = i ? this->path_B : this->path_A;
 
         if(!target_link) continue;//world固定なので飛ばす
 
@@ -112,33 +183,31 @@ namespace IK{
           if(bodies[b] == target_link->body()){
             //root 6dof
             for(size_t j=0;j<6;j++){
-              tripletList.push_back(Eigen::Triplet<double>(j,idx+j,sign));
+              this->jacobian.coeffRef(j,idx+j) = sign;
             }
             cnoid::Vector3 dp = target_p - bodies[b]->rootLink()->p();
             //  0     p[2] -p[1]
             // -p[2]  0     p[0]
             //  p[1] -p[0]  0
-            tripletList.push_back(Eigen::Triplet<double>(0,idx+4,sign*dp[2]));
-            tripletList.push_back(Eigen::Triplet<double>(0,idx+5,-sign*dp[1]));
-            tripletList.push_back(Eigen::Triplet<double>(1,idx+3,-sign*dp[2]));
-            tripletList.push_back(Eigen::Triplet<double>(1,idx+5,sign*dp[0]));
-            tripletList.push_back(Eigen::Triplet<double>(2,idx+3,sign*dp[1]));
-            tripletList.push_back(Eigen::Triplet<double>(2,idx+4,-sign*dp[0]));
+            this->jacobian.coeffRef(0,idx+4)=sign*dp[2];
+            this->jacobian.coeffRef(0,idx+5)=-sign*dp[1];
+            this->jacobian.coeffRef(1,idx+3)=-sign*dp[2];
+            this->jacobian.coeffRef(1,idx+5)=sign*dp[0];
+            this->jacobian.coeffRef(2,idx+3)=sign*dp[1];
+            this->jacobian.coeffRef(2,idx+4)=-sign*dp[0];
 
             //joints
-            cnoid::JointPath path;
-            path.setPath(target_link);
             for(size_t j=0;j<path.numJoints();j++){
               int col = idx+6+path.joint(j)->jointId();
               cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
               if(!path.isJointDownward(j)) omega = -omega;
               cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
-              tripletList.push_back(Eigen::Triplet<double>(0,col,sign*dp[0]));
-              tripletList.push_back(Eigen::Triplet<double>(1,col,sign*dp[1]));
-              tripletList.push_back(Eigen::Triplet<double>(2,col,sign*dp[2]));
-              tripletList.push_back(Eigen::Triplet<double>(3,col,sign*omega[0]));
-              tripletList.push_back(Eigen::Triplet<double>(4,col,sign*omega[1]));
-              tripletList.push_back(Eigen::Triplet<double>(5,col,sign*omega[2]));
+              this->jacobian.coeffRef(0,col)=sign*dp[0];
+              this->jacobian.coeffRef(1,col)=sign*dp[1];
+              this->jacobian.coeffRef(2,col)=sign*dp[2];
+              this->jacobian.coeffRef(3,col)=sign*omega[0];
+              this->jacobian.coeffRef(4,col)=sign*omega[1];
+              this->jacobian.coeffRef(5,col)=sign*omega[2];
             }
 
             break;
@@ -151,22 +220,19 @@ namespace IK{
       for(size_t b=0;b<bodies.size();b++){
         if(bodies[b] == A_link->body()){
           //joints
-          cnoid::JointPath path;
-          path.setPath(B_link,A_link);
-
           const cnoid::Vector3& target_p = A_link->T() * A_localpos.translation();
 
-          for(size_t j=0;j<path.numJoints();j++){
-            int col = idx+6+path.joint(j)->jointId();
-            cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
-            if(!path.isJointDownward(j)) omega = -omega;
-            cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
-            tripletList.push_back(Eigen::Triplet<double>(0,col,dp[0]));
-            tripletList.push_back(Eigen::Triplet<double>(1,col,dp[1]));
-            tripletList.push_back(Eigen::Triplet<double>(2,col,dp[2]));
-            tripletList.push_back(Eigen::Triplet<double>(3,col,omega[0]));
-            tripletList.push_back(Eigen::Triplet<double>(4,col,omega[1]));
-            tripletList.push_back(Eigen::Triplet<double>(5,col,omega[2]));
+          for(size_t j=0;j<this->path_BA.numJoints();j++){
+            int col = idx+6+this->path_BA.joint(j)->jointId();
+            cnoid::Vector3 omega = this->path_BA.joint(j)->R() * this->path_BA.joint(j)->a();
+            if(!this->path_BA.isJointDownward(j)) omega = -omega;
+            cnoid::Vector3 dp = omega.cross(target_p - this->path_BA.joint(j)->p());
+            this->jacobian.coeffRef(0,col)=dp[0];
+            this->jacobian.coeffRef(1,col)=dp[1];
+            this->jacobian.coeffRef(2,col)=dp[2];
+            this->jacobian.coeffRef(3,col)=omega[0];
+            this->jacobian.coeffRef(4,col)=omega[1];
+            this->jacobian.coeffRef(5,col)=omega[2];
           }
           break;
         }
@@ -174,10 +240,7 @@ namespace IK{
       }
     }
 
-    Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian(6,dim);
-    jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
-
-    return jacobian;
+    return this->jacobian;
   }
 
   std::vector<cnoid::SgNodePtr> PositionConstraint::getDrawOnObjects(){

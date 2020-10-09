@@ -14,9 +14,9 @@ namespace IK{
     //robotの重心をendeffectorによって定義されるSCFR内に位置させる.SCFRの形状を能動的に変えることはしない．初回にSCFRを一回計算したら後は使い回す．
     SCFRConstraint(cnoid::Body* robot, const std::vector<std::shared_ptr<RobotConfig::EndEffector> >& endeffectors);
 
-    Eigen::VectorXd calc_minineq () override;
-    Eigen::VectorXd calc_maxineq () override;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
+    const Eigen::VectorXd& calc_minineq () override;
+    const Eigen::VectorXd& calc_maxineq () override;
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
     std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
 
     void setmaxvel(double _maxvel) {maxvel=_maxvel;}

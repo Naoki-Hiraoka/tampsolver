@@ -10,17 +10,19 @@ namespace IK{
   {
   }
 
-  Eigen::VectorXd SCFRConstraint::calc_minineq (){
+  const Eigen::VectorXd& SCFRConstraint::calc_minineq (){
     Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
-    return this->SCFR_l - this->SCFR_M * cm;
+    this->minineq = this->SCFR_l - this->SCFR_M * cm;
+    return this->minineq;
   }
 
-  Eigen::VectorXd SCFRConstraint::calc_maxineq (){
+  const Eigen::VectorXd& SCFRConstraint::calc_maxineq (){
     Eigen::Vector2d cm(this->robot->centerOfMass()[0],this->robot->centerOfMass()[1]);
-    return this->SCFR_u - this->SCFR_M * cm;
+    this->maxineq = this->SCFR_u - this->SCFR_M * cm;
+    return this->maxineq;
   }
 
-  Eigen::SparseMatrix<double,Eigen::RowMajor> SCFRConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
+  const Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFRConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
     int dim = 0;
     for(size_t i=0;i<bodies.size();i++){
       dim += 6 + bodies[i]->numJoints();
@@ -53,7 +55,8 @@ namespace IK{
       idx += 6 + bodies[b]->numJoints();
     }
 
-    return this->SCFR_M * CMJ_sparse;
+    this->jacobianineq = this->SCFR_M * CMJ_sparse;
+    return this->jacobianineq;
   }
 
   std::vector<cnoid::SgNodePtr> SCFRConstraint::getDrawOnObjects() {

@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib)
 
+set(CMAKE_BUILD_TYPE Release) #options are: None Debug Release RelWithDebInfo MinSizeRel. ReleaseはNoneの5~50倍くらい速い
+
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################

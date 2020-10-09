@@ -56,7 +56,6 @@
   <depend>actionlib</depend>
   <depend>pddl_msgs</depend>
   <exec_depend>pddl_planner</exec_depend>
-  <depend>clpeigen</depend>
 
   <depend>roboptim-core</depend>
   <depend>roboptim-core-plugin-ipopt</depend>
@@ -64,6 +63,7 @@
   <depend>vclip</depend>
   <depend>cddeigen</depend>
   <depend>qhulleigen</depend>
+  <depend>clpeigen</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

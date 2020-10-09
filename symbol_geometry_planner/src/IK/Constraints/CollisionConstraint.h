@@ -3,6 +3,7 @@
 
 #include "IKConstraint.h"
 #include "../../RobotConfig/RobotConfig.h"
+#include <cnoid/JointPath>
 
 namespace IK{
   class CollisionConstraint : public IKConstraint
@@ -10,9 +11,9 @@ namespace IK{
   public:
     CollisionConstraint(cnoid::Link* A_link, cnoid::Link* B_link);
 
-    Eigen::VectorXd calc_minineq () override;
-    Eigen::VectorXd calc_maxineq () override;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
+    const Eigen::VectorXd& calc_minineq () override;
+    const Eigen::VectorXd& calc_maxineq () override;
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
     std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
 
     void setTolerance(double _tolerance) {tolerance=tolerance;}
@@ -30,6 +31,10 @@ namespace IK{
 
     double current_distance;
     cnoid::Vector3 prev_BA;
+
+    cnoid::JointPath path_A;
+    cnoid::JointPath path_B;
+    cnoid::JointPath path_BA;
   };
 }
 

@@ -1,6 +1,6 @@
 #include "CollisionConstraint.h"
-#include <cnoid/JointPath>
 #include <cnoid/EigenUtil>
+#include <sys/time.h>
 
 namespace IK{
 
@@ -14,28 +14,99 @@ namespace IK{
   }
 
   //先にcalc_jacobianineqが呼ばれている前提
-  Eigen::VectorXd CollisionConstraint::calc_minineq () {
-    Eigen::VectorXd ret(1);
-    ret << std::min(tolerance - this->current_distance, maxvel);
-    return ret;
+  const Eigen::VectorXd& CollisionConstraint::calc_minineq () {
+    if(this->minineq.rows()!=1) this->minineq = Eigen::VectorXd(1);
+    this->minineq[0] = std::min(tolerance - this->current_distance, maxvel);
+    return this->minineq;
   }
 
   //先にcalc_jacobianineqが呼ばれている前提
-  Eigen::VectorXd CollisionConstraint::calc_maxineq () {
-    Eigen::VectorXd ret(1);
-    ret << 1e30;
-    return ret;
+  const Eigen::VectorXd& CollisionConstraint::calc_maxineq () {
+    if(this->maxineq.rows()!=1){
+      this->maxineq = Eigen::VectorXd(1);
+      this->maxineq[0] = 1e30;
+    }
+    return this->maxineq;
   }
 
-  Eigen::SparseMatrix<double,Eigen::RowMajor> CollisionConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
-    cnoid::Vector3 A_v, B_v;
-    this->current_distance = this->detectDistance(A_v,B_v);
+  const Eigen::SparseMatrix<double,Eigen::RowMajor>& CollisionConstraint::calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) {
+    if(!this->is_bodies_same(bodies,this->jacobianineq_bodies) || this->jacobianineq.rows()!=1){
+      this->jacobianineq_bodies = bodies;
 
-    int dim = 0;
-    for(size_t i=0; i < bodies.size(); i++){
-      dim += 6 + bodies[i]->numJoints();
+      struct timeval s, e;
+      if(this->debuglevel>0){
+        gettimeofday(&s, NULL);
+      }
+
+      std::vector<Eigen::Triplet<double> > tripletList;
+      tripletList.reserve(20);//適当
+
+      if(! (A_link->body() == B_link->body())){
+        for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
+          cnoid::Link* target_link = i ? B_link : A_link;
+          cnoid::JointPath& path = i? this->path_B : this->path_A;
+
+          int idx = 0;
+          for(size_t b=0;b<bodies.size();b++){
+            if(bodies[b] == target_link->body()){
+              //root 6dof
+              for(size_t j=0;j<3;j++){
+                tripletList.push_back(Eigen::Triplet<double>(0,idx+j,1));
+              }
+              tripletList.push_back(Eigen::Triplet<double>(0,idx+3,1));
+              tripletList.push_back(Eigen::Triplet<double>(0,idx+4,1));
+              tripletList.push_back(Eigen::Triplet<double>(0,idx+5,1));
+
+              //joints
+              path.setPath(target_link);
+              for(size_t j=0;j<path.numJoints();j++){
+                int col = idx+6+path.joint(j)->jointId();
+                tripletList.push_back(Eigen::Triplet<double>(0,col,1));
+              }
+              break;
+            }
+            idx += 6 + bodies[b]->numJoints();
+          }
+        }
+      }else{// if(! (A_link->body() == B_link->body()))
+        int idx = 0;
+        for(size_t b=0;b<bodies.size();b++){
+          if(bodies[b] == A_link->body()){
+            //joints
+            this->path_BA.setPath(B_link,A_link);
+
+            for(size_t j=0;j<this->path_BA.numJoints();j++){
+              int col = idx+6+this->path_BA.joint(j)->jointId();
+              tripletList.push_back(Eigen::Triplet<double>(0,col,1));
+            }
+            break;
+          }
+          idx += 6 + bodies[b]->numJoints();
+        }
+      }
+
+      int dim = 0;
+      for(size_t i=0; i < bodies.size(); i++){
+        dim += 6 + bodies[i]->numJoints();
+      }
+
+      this->jacobianineq = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,dim);
+      this->jacobianineq.setFromTriplets(tripletList.begin(), tripletList.end());
+
+      if(this->debuglevel>0){
+        gettimeofday(&e, NULL);
+        std::cerr << " CollisionConstraint initialize jacobianineq time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+                  << std::endl;
+      }
     }
 
+    struct timeval s, e;
+    if(this->debuglevel>0){
+      gettimeofday(&s, NULL);
+    }
+
+    cnoid::Vector3 A_v, B_v;
+    this->current_distance = this->detectDistance(A_v,B_v);
 
     //jacobian A-B
     cnoid::Vector3 BA;
@@ -48,37 +119,33 @@ namespace IK{
       //(A_link->wc() - B_link->wc()).normalized()
     }
 
-    std::vector<Eigen::Triplet<double> > tripletList;
-    tripletList.reserve(10);//適当
-
     if(! (A_link->body() == B_link->body())){
       for(size_t i=0;i<2;i++){//0:A_link, 1:B_link
         int sign = i ? -1 : 1;
         cnoid::Link* target_link = i ? B_link : A_link;
         cnoid::Vector3& target_p = i ? B_v : A_v;
+        cnoid::JointPath& path = i? this->path_B : this->path_A;
 
         int idx = 0;
         for(size_t b=0;b<bodies.size();b++){
           if(bodies[b] == target_link->body()){
             //root 6dof
             for(size_t j=0;j<3;j++){
-              tripletList.push_back(Eigen::Triplet<double>(0,idx+j,sign*BA[j]));
+              this->jacobianineq.coeffRef(0,idx+j) = sign*BA[j];
             }
             cnoid::Vector3 dp = target_p - bodies[b]->rootLink()->p();
             Eigen::Matrix<double, 1, 3> BA_minusdphat = BA.transpose() * - cnoid::hat(dp);
-            tripletList.push_back(Eigen::Triplet<double>(0,idx+3,sign*BA_minusdphat[0]));
-            tripletList.push_back(Eigen::Triplet<double>(0,idx+4,sign*BA_minusdphat[1]));
-            tripletList.push_back(Eigen::Triplet<double>(0,idx+5,sign*BA_minusdphat[2]));
+            this->jacobianineq.coeffRef(0,idx+3)=sign*BA_minusdphat[0];
+            this->jacobianineq.coeffRef(0,idx+4)=sign*BA_minusdphat[1];
+            this->jacobianineq.coeffRef(0,idx+5)=sign*BA_minusdphat[2];
 
             //joints
-            cnoid::JointPath path;
-            path.setPath(target_link);
             for(size_t j=0;j<path.numJoints();j++){
               int col = idx+6+path.joint(j)->jointId();
               cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
               if(!path.isJointDownward(j)) omega = -omega;
               cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
-              tripletList.push_back(Eigen::Triplet<double>(0,col,sign*BA.dot(dp)));
+              this->jacobianineq.coeffRef(0,col)=sign*BA.dot(dp);
             }
             break;
           }
@@ -90,17 +157,16 @@ namespace IK{
       for(size_t b=0;b<bodies.size();b++){
         if(bodies[b] == A_link->body()){
           //joints
-          cnoid::JointPath path;
-          path.setPath(B_link,A_link);
+          this->path_BA.setPath(B_link,A_link);
 
           const cnoid::Vector3& target_p = A_v;
 
-          for(size_t j=0;j<path.numJoints();j++){
-            int col = idx+6+path.joint(j)->jointId();
-            cnoid::Vector3 omega = path.joint(j)->R() * path.joint(j)->a();
-            if(!path.isJointDownward(j)) omega = -omega;
-            cnoid::Vector3 dp = omega.cross(target_p - path.joint(j)->p());
-            tripletList.push_back(Eigen::Triplet<double>(0,col,BA.dot(dp)));
+          for(size_t j=0;j<this->path_BA.numJoints();j++){
+            int col = idx+6+this->path_BA.joint(j)->jointId();
+            cnoid::Vector3 omega = this->path_BA.joint(j)->R() * this->path_BA.joint(j)->a();
+            if(!this->path_BA.isJointDownward(j)) omega = -omega;
+            cnoid::Vector3 dp = omega.cross(target_p - this->path_BA.joint(j)->p());
+            this->jacobianineq.coeffRef(0,col)=BA.dot(dp);
           }
           break;
         }
@@ -108,10 +174,13 @@ namespace IK{
       }
     }
 
-    Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian(1,dim);
-    jacobian.setFromTriplets(tripletList.begin(), tripletList.end());
+    if(this->debuglevel>0){
+      gettimeofday(&e, NULL);
+      std::cerr << " CollisionConstraint calc jacobianineq time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+                << std::endl;
+    }
 
-    return jacobian;
+    return this->jacobianineq;
   }
 
   std::vector<cnoid::SgNodePtr> CollisionConstraint::getDrawOnObjects(){

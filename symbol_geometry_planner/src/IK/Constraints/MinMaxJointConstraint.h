@@ -10,9 +10,9 @@ namespace IK{
   public:
     MinMaxJointConstraint(const cnoid::Link* joint, std::shared_ptr<RobotConfig::JointLimitTable> minmaxtable);
 
-    Eigen::VectorXd calc_minineq () override;
-    Eigen::VectorXd calc_maxineq () override;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
+    const Eigen::VectorXd& calc_minineq () override;
+    const Eigen::VectorXd& calc_maxineq () override;
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
 
     void set_maxvel (double _maxvel) {maxvel = _maxvel;}
     void set_llimit (double _llimit) {llimit = _llimit;}
