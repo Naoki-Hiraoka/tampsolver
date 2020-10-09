@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(vclip)
 
+#高速化
+set(CMAKE_BUILD_TYPE Release) #options are: None Debug Release RelWithDebInfo MinSizeRel.
+#set(CMAKE_BUILD_TYPE RelWithDebInfo) #options are: None Debug Release RelWithDebInfo MinSizeRel.
+
 find_package(catkin REQUIRED)
 
 find_package(PkgConfig REQUIRED)

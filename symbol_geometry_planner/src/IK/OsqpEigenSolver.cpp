@@ -25,8 +25,10 @@ namespace IK{
     //solver.settings()->setAlpha(0.1);
     solver.settings()->setMaxIteraction(4000);
     solver.settings()->setRho(1e-6);
-    solver.settings()->setAbsoluteTolerance(1e-5);// improve accuracy
-    solver.settings()->setRelativeTolerance(1e-5);// improve accuracy
+    solver.settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+    solver.settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+    //solver.settings()->setAbsoluteTolerance(1e-5);// improve accuracy
+    //solver.settings()->setRelativeTolerance(1e-5);// improve accuracy
     //settings->eps_abs = 1e-05;
     //settings->eps_rel = 1e-05;
     solver.settings()->setScaledTerimination(true);// avoid too severe termination check
@@ -105,5 +107,10 @@ namespace IK{
 
   bool OsqpEigenSolver::is_initialized(){
     return solver.isInitialized();
+  }
+
+  void OsqpEigenSolver::setTolerance(double tolerance){
+    solver.settings()->setAbsoluteTolerance(tolerance);
+    solver.settings()->setRelativeTolerance(tolerance);
   }
 }

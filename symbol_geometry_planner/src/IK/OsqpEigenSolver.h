@@ -26,6 +26,8 @@ namespace IK{
     bool solve();
     Eigen::VectorXd getSolution();
     bool is_initialized();
+
+    void setTolerance(double tolerance);
   private:
     OsqpEigen::Solver solver;
     Eigen::VectorXd gradient;
@@ -33,6 +35,7 @@ namespace IK{
     Eigen::VectorXd lowerBound;
 
     int debuglevel;
+
   };
 }
 
