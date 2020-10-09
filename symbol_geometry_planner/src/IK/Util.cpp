@@ -20,6 +20,24 @@ namespace IK{
     return constraints;
   }
 
+  // body同士の干渉回避制約を作る
+  std::vector<std::shared_ptr<IKConstraint> > generateCollisionConstraints(std::shared_ptr<RobotConfig::RobotConfig> config1, std::shared_ptr<RobotConfig::RobotConfig> config2, const std::string& mode){
+    std::vector<std::shared_ptr<IKConstraint> > constraints;
+    for(size_t i=0;i<config1->get_robot()->numLinks();i++){
+      cnoid::Link* link1 = config1->get_robot()->link(i);
+      for(size_t j=0;j<config2->get_robot()->numLinks();j++){
+        cnoid::Link* link2 = config2->get_robot()->link(j);
+        if(mode == "AIST"){
+          constraints.push_back(std::make_shared<AISTCollisionConstraint>(link1,link2));
+        }else if(mode == "VClip"){
+          constraints.push_back(std::make_shared<VClipCollisionConstraint>(link1,link2,config1->get_vcliplinks()[link1].get(),config2->get_vcliplinks()[link2].get()));
+        }else{
+          std::cerr << "[generateCollisionConstraints] mode " << mode << " not defined" << std::endl;
+        }
+      }
+    }
+    return constraints;
+  }
 
   std::vector<std::shared_ptr<IKConstraint> > generateMinMaxConstraints(cnoid::Body* robot, std::shared_ptr<RobotConfig::RobotConfig> config){
     std::vector<std::shared_ptr<IKConstraint> > constraints;

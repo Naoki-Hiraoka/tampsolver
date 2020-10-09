@@ -1,0 +1,13 @@
+- git:
+    local-name: choreonoid
+    uri: https://github.com/s-nakaoka/choreonoid
+    version: release-1.7
+
+- git:
+    local-name: rtm-ros-robotics/rtmros_hrp2
+    uri: https://github.com/Naoki-Hiraoka/rtmros_hrp2.git
+    version: add-hrp3handcontroller-choreonoid
+
+- git:
+    local-name: eusurdfwrl
+    uri: https://github.com/Naoki-Hiraoka/eusurdfwrl.git

@@ -36,6 +36,8 @@ namespace IK{
     cnoid::JointPath path_B;
     cnoid::JointPath path_BA;
   };
+
+
 }
 
 #endif

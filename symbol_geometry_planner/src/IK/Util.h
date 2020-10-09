@@ -9,6 +9,9 @@ namespace IK{
   //全linkpairの干渉回避制約を作る
   std::vector<std::shared_ptr<IKConstraint> > generateCollisionConstraints(cnoid::Body* robot, std::shared_ptr<RobotConfig::RobotConfig> config, const std::string& mode="VClip");
 
+  // body同士の干渉回避制約を作る
+  std::vector<std::shared_ptr<IKConstraint> > generateCollisionConstraints(std::shared_ptr<RobotConfig::RobotConfig> config1, std::shared_ptr<RobotConfig::RobotConfig> config2, const std::string& mode="VClip");
+
   //全jointの関節角度上下限を作る
   std::vector<std::shared_ptr<IKConstraint> > generateMinMaxConstraints(cnoid::Body* robot, std::shared_ptr<RobotConfig::RobotConfig> config);
 }

@@ -23,17 +23,11 @@ namespace IK{
     struct timeval s, e;
 
     // calc qp matrix
-    Eigen::SparseMatrix<double,Eigen::RowMajor> H;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> A;
-    Eigen::VectorXd gradient;
-    Eigen::VectorXd upperBound;
-    Eigen::VectorXd lowerBound;
-
     if(this->debuglevel>0){
       gettimeofday(&s, NULL);
     }
 
-    double sum_error = this->calc_qp_matrix(H,A,gradient,upperBound,lowerBound);
+    double sum_error = this->calc_qp_matrix();
 
     if(this->debuglevel>0){
       gettimeofday(&e, NULL);
@@ -44,8 +38,8 @@ namespace IK{
     // return if ik solved
     if(sum_error<this->eps*this->eps){
       bool satisfied = true;
-      for(size_t i=0;i<upperBound.rows();i++){
-        if(upperBound[i]<-this->eps||lowerBound[i]>this->eps){
+      for(size_t i=0;i<this->upperBound.rows();i++){
+        if(this->upperBound[i]<-this->eps||this->lowerBound[i]>this->eps){
           satisfied = false;
           break;
         }
@@ -55,15 +49,15 @@ namespace IK{
 
     if(debuglevel>1){
       std::cerr << "H" << std::endl;
-      std::cerr << H << std::endl;
+      std::cerr << this->H << std::endl;
       std::cerr << "gradient" << std::endl;
-      std::cerr << gradient << std::endl;
+      std::cerr << this->gradient << std::endl;
       std::cerr << "A" << std::endl;
-      std::cerr << A << std::endl;
+      std::cerr << this->A << std::endl;
       std::cerr << "lowerBound" << std::endl;
-      std::cerr << lowerBound << std::endl;
+      std::cerr << this->lowerBound << std::endl;
       std::cerr << "upperBound" << std::endl;
-      std::cerr << upperBound << std::endl;
+      std::cerr << this->upperBound << std::endl;
     }
 
     // update qpsolver
@@ -72,9 +66,9 @@ namespace IK{
     }
 
     if(!osqpeigensolver.is_initialized()){
-      osqpeigensolver.init(H,A,gradient,upperBound,lowerBound,this->debuglevel);
+      osqpeigensolver.init(this->H,this->A,this->gradient,this->upperBound,this->lowerBound,this->debuglevel);
     }else{
-      osqpeigensolver.update(H,A,gradient,upperBound,lowerBound,this->debuglevel);
+      osqpeigensolver.update(this->H,this->A,this->gradient,this->upperBound,this->lowerBound,this->debuglevel);
     }
 
     if(this->debuglevel>0){
@@ -116,9 +110,9 @@ namespace IK{
         std::cerr << "solution" << std::endl;
         std::cerr << solution << std::endl;
         std::cerr << "objective" << std::endl;
-        std::cerr << 0.5 * solution.transpose() * H * solution + gradient.transpose() * solution << std::endl;
-        std::cerr << "Ax" << std::endl;
-        std::cerr << A * solution << std::endl;
+        std::cerr << 0.5 * solution.transpose() * this->H * solution + this->gradient.transpose() * solution << std::endl;
+        std::cerr << "this->Ax" << std::endl;
+        std::cerr << this->A * solution << std::endl;
       }
     }else{
       std::cerr << "[IKsolver] qpfail" << std::endl;
@@ -146,11 +140,7 @@ namespace IK{
     return objects;
   }
 
-  double IKsolver::calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
-                                Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
-                                Eigen::VectorXd& gradient,
-                                Eigen::VectorXd& upperBound,
-                                Eigen::VectorXd& lowerBound){
+  double IKsolver::calc_qp_matrix(){
     struct timeval s, e;
 
     int num_variables = 0;
@@ -162,21 +152,21 @@ namespace IK{
     if(this->debuglevel>0){
       gettimeofday(&s, NULL);
     }
-    H = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_variables,num_variables);
-    gradient = Eigen::VectorXd::Zero(num_variables);
+    this->H = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_variables,num_variables);
+    this->gradient = Eigen::VectorXd::Zero(num_variables);
     double sum_error = 0;
     for(size_t i=0;i<this->tasks.size();i++){
       Eigen::VectorXd error = this->tasks[i]->calc_error();
       Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian = this->tasks[i]->calc_jacobian(this->variables);
 
-      H += Eigen::SparseMatrix<double,Eigen::RowMajor>(jacobian.transpose() * jacobian);
-      gradient += jacobian.transpose() * error;
+      this->H += Eigen::SparseMatrix<double,Eigen::RowMajor>(jacobian.transpose() * jacobian);
+      this->gradient += jacobian.transpose() * error;
       sum_error += error.squaredNorm();
     }
     //regular term
     double weight = std::min(this->regular + this->regular_rel * sum_error, this->regular_max);
     for(size_t i=0;i<num_variables;i++){
-      H.coeffRef(i,i) += weight;
+      this->H.coeffRef(i,i) += weight;
     }
     if(this->debuglevel>0){
       gettimeofday(&e, NULL);
@@ -221,19 +211,19 @@ namespace IK{
                 << std::endl;
       gettimeofday(&s, NULL);
     }
-    A = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_constraints,num_variables);
-    lowerBound = Eigen::VectorXd(num_constraints);
-    upperBound = Eigen::VectorXd(num_constraints);
+    this->A.resize(num_constraints,num_variables);
+    this->lowerBound.resize(num_constraints);
+    this->upperBound.resize(num_constraints);
     int idx = 0;
     for(size_t i=0;i<this->constraints.size();i++){
-      A.middleRows(idx,errors[i].get().rows()) = jacobians[i].get();
-      lowerBound.segment(idx,errors[i].get().rows()) = - errors[i].get();
-      upperBound.segment(idx,errors[i].get().rows()) = - errors[i].get();
+      this->A.middleRows(idx,errors[i].get().rows()) = jacobians[i].get();
+      this->lowerBound.segment(idx,errors[i].get().rows()) = - errors[i].get();
+      this->upperBound.segment(idx,errors[i].get().rows()) = - errors[i].get();
       idx += errors[i].get().rows();
 
-      A.middleRows(idx,minineqs[i].get().rows()) = jacobianineqs[i].get();
-      lowerBound.segment(idx,minineqs[i].get().rows()) = minineqs[i].get();
-      upperBound.segment(idx,minineqs[i].get().rows()) = maxineqs[i].get();
+      this->A.middleRows(idx,minineqs[i].get().rows()) = jacobianineqs[i].get();
+      this->lowerBound.segment(idx,minineqs[i].get().rows()) = minineqs[i].get();
+      this->upperBound.segment(idx,minineqs[i].get().rows()) = maxineqs[i].get();
       idx += minineqs[i].get().rows();
     }
     if(this->debuglevel>0){

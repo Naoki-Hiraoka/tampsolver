@@ -1,4 +1,4 @@
-model: /home/hiraoka/hiraoka_ws/gazebo_ws/src/rtm-ros-robotics/rtmros_hrp2/hrp2_models/HRP2JSKNTS_WITH_3HAND_for_OpenHRP3/HRP2JSKNTSmain.wrl
+model: package://hrp2_models/HRP2JSKNTS_WITH_3HAND_for_OpenHRP3/HRP2JSKNTSmain.wrl
 
 end_effectors:
   - name: rleg

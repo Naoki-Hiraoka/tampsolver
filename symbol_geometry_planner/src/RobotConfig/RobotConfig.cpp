@@ -1,4 +1,5 @@
 #include "RobotConfig.h"
+#include <ros/package.h>
 #include <yaml-cpp/yaml.h>
 #include <cnoid/BodyLoader>
 #include "EditCollisionModel.h"
@@ -16,13 +17,21 @@ namespace RobotConfig {
     YAML::Node config = YAML::LoadFile(url);
 
     if(config["model"].IsDefined()) {
+      std::string filename = config["model"].as<std::string>();
+      std::string packagestr = "package://";
+      if(filename.size()>packagestr.size() && filename.substr(0,packagestr.size()) == packagestr){
+        filename = filename.substr(packagestr.size());
+        int pos = filename.find("/");
+        filename = ros::package::getPath(filename.substr(0,pos)) + filename.substr(pos);
+      }
+
       bodyLoader.setMessageSink(os);
-      this->robot = bodyLoader.load(config["model"].as<std::string>());
+      this->robot = bodyLoader.load(filename);
       if(!this->robot){
         std::cerr << "[RobotConfig] load " << config["model"] << " failed" << std::endl;
         return false;
       }
-      this->robot->setName(name);
+      if(name!="") this->robot->setName(name);
     } else {
       std::cerr << "[RobotConfig] model is not defined" << std::endl;
       return false;

@@ -29,11 +29,7 @@ namespace IK{
     void set_eps(double _maxvel){ maxvel = eps;}
   protected:
     // errorの和を返す
-    virtual double calc_qp_matrix(Eigen::SparseMatrix<double,Eigen::RowMajor>& H,
-                                  Eigen::SparseMatrix<double,Eigen::RowMajor>& A,
-                                  Eigen::VectorXd& gradient,
-                                  Eigen::VectorXd& upperBound,
-                                  Eigen::VectorXd& lowerBound);
+    virtual double calc_qp_matrix();
     virtual void update_qp_variables(const Eigen::VectorXd& solution);
 
     int debuglevel;
@@ -48,6 +44,12 @@ namespace IK{
     double regular_max;
     double maxvel;
     double eps;
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> H;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+    Eigen::VectorXd gradient;
+    Eigen::VectorXd upperBound;
+    Eigen::VectorXd lowerBound;
   };
 }
 

@@ -1,6 +1,7 @@
 #include "PlannerBaseItem.h"
 
 #include <QCoreApplication>
+#include <iostream>
 
 using namespace std::placeholders;
 using namespace cnoid;
@@ -80,6 +81,7 @@ namespace cnoid {
     mv->flush();
     if(!bodyItem->load(url)){
       mv->putln(MessageView::WARNING, std::string("OnlineViewer: Loading ") + name + " failed.");
+      std::cerr << "OnlineViewer: Loading " << name << " failed." << std::endl;
       return nullptr;
     } else {
       bodyItem->setName(name);
