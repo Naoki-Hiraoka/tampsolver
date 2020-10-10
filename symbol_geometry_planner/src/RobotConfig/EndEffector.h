@@ -42,16 +42,18 @@ namespace RobotConfig {
 
   class EndEffector{
   public:
-    EndEffector(const std::string& name, cnoid::Link* link, const cnoid::Position& localpos, std::shared_ptr<Contact> contact);
+    EndEffector(const std::string& name, cnoid::Link* link, const cnoid::Position& localpos, const std::string& identifier, std::shared_ptr<Contact> contact);
 
     std::string& getname() {return name;}
     cnoid::Link* getlink() {return link;}
     cnoid::Position& getlocalpos() {return localpos;}
+    std::string& getidentifier() {return identifier;}
     std::shared_ptr<Contact> getcontact() {return contact;}
   private:
     std::string name;
     cnoid::Link* link;
     cnoid::Position localpos;
+    std::string identifier;
 
     std::shared_ptr<Contact> contact;
   };

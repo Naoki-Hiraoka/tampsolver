@@ -1,6 +1,6 @@
 #include "CollisionConstraint.h"
 #include <cnoid/EigenUtil>
-#include <sys/time.h>
+#include <cnoid/TimeMeasure>
 
 namespace IK{
 
@@ -9,6 +9,9 @@ namespace IK{
     B_link(_B_link),
     tolerance(0.01),
     maxvel(0.1),
+    A_current_localp(cnoid::Vector3::Zero()),
+    B_current_localp(cnoid::Vector3::Zero()),
+    current_distance(1.0),
     prev_BA(cnoid::Vector3::UnitX())
   {
   }
@@ -33,9 +36,9 @@ namespace IK{
     if(!this->is_bodies_same(bodies,this->jacobianineq_bodies) || this->jacobianineq.rows()!=1){
       this->jacobianineq_bodies = bodies;
 
-      struct timeval s, e;
+      cnoid::TimeMeasure timer;
       if(this->debuglevel>0){
-        gettimeofday(&s, NULL);
+        timer.begin();
       }
 
       std::vector<Eigen::Triplet<double> > tripletList;
@@ -94,19 +97,21 @@ namespace IK{
       this->jacobianineq.setFromTriplets(tripletList.begin(), tripletList.end());
 
       if(this->debuglevel>0){
-        gettimeofday(&e, NULL);
-        std::cerr << " CollisionConstraint initialize jacobianineq time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+        double time = timer.measure();
+        std::cerr << " CollisionConstraint initialize jacobianineq time: " << time
                   << std::endl;
       }
     }
 
-    struct timeval s, e;
+    cnoid::TimeMeasure timer;
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
 
     cnoid::Vector3 A_v, B_v;
     this->current_distance = this->detectDistance(A_v,B_v);
+    this->A_current_localp = this->A_link->T().inverse() * A_v;
+    this->B_current_localp = this->B_link->T().inverse() * B_v;
 
     //jacobian A-B
     cnoid::Vector3 BA;
@@ -175,43 +180,51 @@ namespace IK{
     }
 
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " CollisionConstraint calc jacobianineq time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " CollisionConstraint calc jacobianineq time: " << time
                 << std::endl;
     }
 
     return this->jacobianineq;
   }
 
-  std::vector<cnoid::SgNodePtr> CollisionConstraint::getDrawOnObjects(){
+  std::vector<cnoid::SgNodePtr>& CollisionConstraint::getDrawOnObjects(){
     if(!this->lines){
-      lines = new cnoid::SgLineSet;
-      lines->setLineWidth(1.0);
-      lines->getOrCreateColors()->resize(2);
-      lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
-      lines->getOrCreateColors()->at(1) = cnoid::Vector3f(1.0,0.0,0.0);
+      this->lines = new cnoid::SgLineSet;
+      this->lines->setLineWidth(1.0);
+      this->lines->getOrCreateColors()->resize(3);
+      this->lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
+      this->lines->getOrCreateColors()->at(1) = cnoid::Vector3f(0.6,0.0,0.0);
+      this->lines->getOrCreateColors()->at(2) = cnoid::Vector3f(1.0,0.0,0.0);
       // A, B
-      lines->getOrCreateVertices()->resize(2);
-      lines->colorIndices().resize(0);
-      lines->addLine(0,1); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+      this->lines->getOrCreateVertices()->resize(2);
+      this->lines->colorIndices().resize(0);
+      this->lines->addLine(0,1); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+
+      this->drawOnObjects = std::vector<cnoid::SgNodePtr>{this->lines};
     }
 
-    cnoid::Vector3 A_v, B_v;
-    double d = this->detectDistance(A_v,B_v);
+    cnoid::Vector3 A_v = this->A_link->T() * this->A_current_localp;
+    cnoid::Vector3 B_v = this->B_link->T() * this->B_current_localp;
+    double d = this->current_distance;
 
-    lines->getOrCreateVertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
-    lines->getOrCreateVertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
+    this->lines->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
+    this->lines->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
     if (d < tolerance) {
-      lines->setLineWidth(3.0);
-      lines->colorIndices().at(0) = 1;
-      lines->colorIndices().at(1) = 1;
+      this->lines->setLineWidth(3.0);
+      this->lines->colorIndices().at(0) = 2;
+      this->lines->colorIndices().at(1) = 2;
+    } else if (d < tolerance * 2) {
+      this->lines->setLineWidth(2.0);
+      this->lines->colorIndices().at(0) = 1;
+      this->lines->colorIndices().at(1) = 1;
     } else {
-      lines->setLineWidth(1.0);
-      lines->colorIndices().at(0) = 0;
-      lines->colorIndices().at(1) = 0;
+      this->lines->setLineWidth(1.0);
+      this->lines->colorIndices().at(0) = 0;
+      this->lines->colorIndices().at(1) = 0;
     }
 
-    return std::vector<cnoid::SgNodePtr>{lines};
+    return this->drawOnObjects;
   }
 
 }

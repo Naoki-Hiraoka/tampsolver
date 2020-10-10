@@ -8,7 +8,7 @@
 #include "../IK/Constraints/LPSCFRConstraint.h"
 #include "../IK/Util.h"
 #include <ros/package.h>
-#include <sys/time.h>
+#include <cnoid/TimeMeasure>
 
 using namespace std::placeholders;
 using namespace cnoid;
@@ -117,13 +117,14 @@ namespace cnoid {
       for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
       for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
 
+      cnoid::TimeMeasure timer;
       for(size_t i=0; i<100;i++){
-        struct timeval s, e1, e2;
-        gettimeofday(&s, NULL);
+        timer.begin();
 
         bool solved = solver.solve_one_loop();
 
-        gettimeofday(&e1, NULL);
+        double time1 = timer.measure();
+        timer.begin();
 
         this->drawObjects(false);
         std::vector<cnoid::SgNodePtr> drawonobjects = solver.getDrawOnObjects();
@@ -132,15 +133,14 @@ namespace cnoid {
         }
         this->flush();
 
-        gettimeofday(&e2, NULL);
+      double time2 = timer.measure();
 
-        this->os << i
-                 << " solve time: " << (e1.tv_sec - s.tv_sec) + (e1.tv_usec - s.tv_usec)*1.0E-6
-                 << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
-                 << std::endl;
+      this->os << i
+               << " solve time: " << time1
+               << " draw time: " << time2
+               << std::endl;
 
         if(solved)break;
-        //cnoid::msleep(50);
       }
     }
 
@@ -198,13 +198,14 @@ namespace cnoid {
       for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
       for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
 
+      cnoid::TimeMeasure timer;
       for(size_t i=0; i<100;i++){
-        struct timeval s, e1, e2;
-        gettimeofday(&s, NULL);
+        timer.begin();
 
-        solver.solve_one_loop();
+        bool solved = solver.solve_one_loop();
 
-        gettimeofday(&e1, NULL);
+        double time1 = timer.measure();
+        timer.begin();
 
         this->drawObjects(false);
         std::vector<cnoid::SgNodePtr> drawonobjects = solver.getDrawOnObjects();
@@ -213,14 +214,15 @@ namespace cnoid {
         }
         this->flush();
 
-        gettimeofday(&e2, NULL);
+        double time2 = timer.measure();
 
         this->os << i
-                 << " solve time: " << (e1.tv_sec - s.tv_sec) + (e1.tv_usec - s.tv_usec)*1.0E-6
-                 << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
+                 << " solve time: " << time1
+                 << " draw time: " << time2
                  << std::endl;
 
-        //cnoid::msleep(50);
+        if(solved) break;
+
       }
     }
 

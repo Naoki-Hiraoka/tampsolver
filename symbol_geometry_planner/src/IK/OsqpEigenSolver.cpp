@@ -1,6 +1,5 @@
 #include "OsqpEigenSolver.h"
-
-#include <sys/time.h>
+#include <cnoid/TimeMeasure>
 
 namespace IK{
   OsqpEigenSolver::OsqpEigenSolver():
@@ -71,16 +70,16 @@ namespace IK{
 
 
   bool OsqpEigenSolver::solve() {
-    struct timeval s, e;
+    cnoid::TimeMeasure timer;
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
 
     bool solved = solver.solve();
 
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " SQPEigen solve time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " SQPEigen solve time: " << time
                 << std::endl;
     }
 
@@ -88,13 +87,13 @@ namespace IK{
       return true;
     }else{
       if(this->debuglevel>0){
-        gettimeofday(&s, NULL);
+        timer.begin();
       }
       solver.clearSolverVariables();
       bool solved2 = solver.solve();
       if(this->debuglevel>0){
-        gettimeofday(&e, NULL);
-        std::cerr << " SQPEigen solve2 time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+        double time = timer.measure();
+        std::cerr << " SQPEigen solve2 time: " << time
                   << std::endl;
       }
       return solved2;

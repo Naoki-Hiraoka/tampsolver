@@ -45,7 +45,7 @@ namespace IK{
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
-    std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
+    std::vector<cnoid::SgNodePtr>& getDrawOnObjects() override;
 
     void setmaxvel(double _maxvel) {maxvel=_maxvel;}
 

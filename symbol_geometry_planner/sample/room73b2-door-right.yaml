@@ -1,1 +1,77 @@
 model: package://eusurdfwrl/models/room73b2-door-right.wrl
+
+interfaces:
+  - name: handle-rear-knob
+    link: KNOB
+    localpos: 0.06,0.02,0.0,0.0,0.707107,0.707107,3.14159
+    type: Grasp
+    access:
+      - name: lhand
+        methods:
+          reach_pose:
+            localpos: 0.0,-0.05,0.0,0.0,0.0,1.0,0.0
+            pose:
+              - joint: L_THUMBCM_Y
+                angle: 0.261799
+              - joint: L_THUMBCM_P
+                angle: 1.22173
+              - joint: L_INDEXMP_R
+                angle: 0.0
+              - joint: L_INDEXMP_P
+                angle: -0.174533
+              - joint: L_INDEXPIP_R
+                angle: 0.523599
+              - joint: L_MIDDLEPIP_R
+                angle: 0.523599
+          pregrasp_pose:
+            localpos: 0.0,0.0,0.0,0.0,0.0,1.0,0.0
+            pose:
+              - joint: L_THUMBCM_Y
+                angle: 0.261799
+              - joint: L_THUMBCM_P
+                angle: 1.22173
+              - joint: L_INDEXMP_R
+                angle: 0.0
+              - joint: L_INDEXMP_P
+                angle: -0.174533
+              - joint: L_INDEXPIP_R
+                angle: 0.523599
+              - joint: L_MIDDLEPIP_R
+                angle: 0.523599
+            ignore_collision_link:
+              robot:
+                - link: LARM_JOINT7
+                - link: L_THUMBCM_Y
+                - link: L_THUMBCM_P
+                - link: L_INDEXMP_R
+                - link: L_INDEXMP_P
+                - link: L_INDEXPIP_R
+                - link: L_MIDDLEPIP_R
+              object:
+                - link: KNOB
+          grasp_pose:
+            localpos: 0.0,0.0,0.0,0.0,0.0,1.0,0.0
+            pose:
+              - joint: L_THUMBCM_Y
+                angle: 0.261799
+              - joint: L_THUMBCM_P
+                angle: -0.349066
+              - joint: L_INDEXMP_R
+                angle: 0.174533
+              - joint: L_INDEXMP_P
+                angle: -0.174533
+              - joint: L_INDEXPIP_R
+                angle: 2.0944
+              - joint: L_MIDDLEPIP_R
+                angle: 2.0944
+            ignore_collision_link:
+              robot:
+                - link: LARM_JOINT7
+                - link: L_THUMBCM_Y
+                - link: L_THUMBCM_P
+                - link: L_INDEXMP_R
+                - link: L_INDEXMP_P
+                - link: L_INDEXPIP_R
+                - link: L_MIDDLEPIP_R
+              object:
+                - link: KNOB

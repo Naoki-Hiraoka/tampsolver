@@ -14,7 +14,7 @@ namespace IK{
     const Eigen::VectorXd& calc_minineq () override;
     const Eigen::VectorXd& calc_maxineq () override;
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
-    std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
+    std::vector<cnoid::SgNodePtr>& getDrawOnObjects() override;
 
     void setTolerance(double _tolerance) {tolerance=tolerance;}
     void set_maxvel(double _maxvel) {maxvel=_maxvel;}
@@ -30,6 +30,8 @@ namespace IK{
     cnoid::SgLineSetPtr lines;
 
     double current_distance;
+    cnoid::Vector3 A_current_localp;
+    cnoid::Vector3 B_current_localp;
     cnoid::Vector3 prev_BA;
 
     cnoid::JointPath path_A;

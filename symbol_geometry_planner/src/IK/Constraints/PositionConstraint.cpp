@@ -243,7 +243,7 @@ namespace IK{
     return this->jacobian;
   }
 
-  std::vector<cnoid::SgNodePtr> PositionConstraint::getDrawOnObjects(){
+  std::vector<cnoid::SgNodePtr>& PositionConstraint::getDrawOnObjects(){
     if(!this->lines){
       lines = new cnoid::SgLineSet;
       lines->setLineWidth(1.0);
@@ -262,6 +262,8 @@ namespace IK{
       lines->addLine(4,6); lines->colorIndices().push_back(2); lines->colorIndices().push_back(2);
       lines->addLine(4,7); lines->colorIndices().push_back(3); lines->colorIndices().push_back(3);
       lines->addLine(0,4); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+
+      this->drawOnObjects = std::vector<cnoid::SgNodePtr>{lines};
     }
 
     const cnoid::Position& A_pos = (this->A_link) ? this->A_link->T() * this->A_localpos : this->A_localpos;
@@ -276,6 +278,6 @@ namespace IK{
     lines->getOrCreateVertices()->at(6) = (B_pos * (0.05 * cnoid::Vector3::UnitY())).cast<cnoid::Vector3f::Scalar>();
     lines->getOrCreateVertices()->at(7) = (B_pos * (0.05 * cnoid::Vector3::UnitZ())).cast<cnoid::Vector3f::Scalar>();
 
-    return std::vector<cnoid::SgNodePtr>{lines};
+    return this->drawOnObjects;
   }
 }

@@ -7,8 +7,8 @@
 #include "../IK/Constraints/CddSCFRConstraint2.h"
 #include "../IK/Constraints/LPSCFRConstraint.h"
 #include "../IK/Util.h"
+#include <cnoid/TimeMeasure>
 #include <ros/package.h>
-#include <sys/time.h>
 
 using namespace std::placeholders;
 using namespace cnoid;
@@ -54,7 +54,9 @@ namespace cnoid {
         0.0, 0.0, -0.453786, 0.872665, -0.418879, 0.0, 0.0,
         0.0, 0.0, 0.0, 0.698132,
         0.872665, -0.523599, -0.174533, -2.0944, -0.436332, -0.087266, -0.349066, 0.0,
-        0.872665, 0.523599, 0.174533, -2.0944, 0.436332, 0.087266, -0.349066, 0.0};
+        0.872665, 0.523599, 0.174533, -2.0944, 0.436332, 0.087266, -0.349066, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     for(int j=0; j < robot->body()->numJoints(); ++j){
       robot->body()->joint(j)->q() = reset_manip_pose[j];
@@ -114,13 +116,14 @@ namespace cnoid {
     for(size_t i=0;i<tasks.size();i++) tasks[i]->set_debug_level(debuglevel);
     for(size_t i=0;i<constraints.size();i++) constraints[i]->set_debug_level(debuglevel);
 
+    cnoid::TimeMeasure timer;
     for(size_t i=0; i<100;i++){
-      struct timeval s, e1, e2;
-      gettimeofday(&s, NULL);
+      timer.begin();
 
       bool solved = solver.solve_one_loop();
 
-      gettimeofday(&e1, NULL);
+      double time1 = timer.measure();
+      timer.begin();
 
       this->drawObjects(false);
       std::vector<cnoid::SgNodePtr> drawonobjects = solver.getDrawOnObjects();
@@ -129,16 +132,16 @@ namespace cnoid {
       }
       this->flush();
 
-      gettimeofday(&e2, NULL);
+      double time2 = timer.measure();
 
       this->os << i
-               << " solve time: " << (e1.tv_sec - s.tv_sec) + (e1.tv_usec - s.tv_usec)*1.0E-6
-               << " total time: " << (e2.tv_sec - s.tv_sec) + (e2.tv_usec - s.tv_usec)*1.0E-6
+               << " solve time: " << time1
+               << " draw time: " << time2
                << std::endl;
 
       if(solved)break;
 
-      cnoid::msleep(50);
+      //cnoid::msleep(50); //sleepがあると，sleepしていない部分の処理まで遅くなるみたい?
     }
 
   }

@@ -1,5 +1,5 @@
 #include "IKsolver.h"
-#include <sys/time.h>
+#include <cnoid/TimeMeasure>
 
 namespace IK{
   IKsolver::IKsolver(const std::vector<cnoid::Body*>& _variables,
@@ -20,18 +20,18 @@ namespace IK{
 
   // 解けたらtrue
   bool IKsolver::solve_one_loop(){
-    struct timeval s, e;
+    cnoid::TimeMeasure timer;
 
     // calc qp matrix
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
 
     double sum_error = this->calc_qp_matrix();
 
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " IKsolver calc_qp_matrix time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " IKsolver calc_qp_matrix time: " << time
                 << std::endl;
     }
 
@@ -62,7 +62,7 @@ namespace IK{
 
     // update qpsolver
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
 
     if(!osqpeigensolver.is_initialized()){
@@ -72,28 +72,28 @@ namespace IK{
     }
 
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " IKsolver update qpsolver time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " IKsolver update qpsolver time: " << time
                 << std::endl;
     }
 
     // solve qp
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
 
     if(osqpeigensolver.solve()){
 
       if(this->debuglevel>0){
-        gettimeofday(&e, NULL);
-        std::cerr << " IKsolver solve qp time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+        double time = timer.measure();
+        std::cerr << " IKsolver solve qp time: " << time
                   << std::endl;
       }
 
       // update system
 
       if(this->debuglevel>0){
-        gettimeofday(&s, NULL);
+        timer.begin();
       }
 
       Eigen::VectorXd solution = osqpeigensolver.getSolution();
@@ -101,8 +101,8 @@ namespace IK{
       update_qp_variables(solution);
 
       if(this->debuglevel>0){
-        gettimeofday(&e, NULL);
-        std::cerr << " IKsolver update system time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+        double time = timer.measure();
+        std::cerr << " IKsolver update system time: " << time
                   << std::endl;
       }
 
@@ -141,7 +141,7 @@ namespace IK{
   }
 
   double IKsolver::calc_qp_matrix(){
-    struct timeval s, e;
+    cnoid::TimeMeasure timer;
 
     int num_variables = 0;
     for(size_t i=0;i<this->variables.size();i++){
@@ -150,7 +150,7 @@ namespace IK{
 
     // H gradient
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
     this->H = Eigen::SparseMatrix<double,Eigen::RowMajor>(num_variables,num_variables);
     this->gradient = Eigen::VectorXd::Zero(num_variables);
@@ -169,14 +169,14 @@ namespace IK{
       this->H.coeffRef(i,i) += weight;
     }
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " IKsolver calc H gradient time: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " IKsolver calc H gradient time: " << time
                 << std::endl;
     }
 
     //A upperBound lowerBound
     if(this->debuglevel>0){
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
     int num_constraints = 0;
     std::vector<std::reference_wrapper<const Eigen::VectorXd> > errors;errors.reserve(this->constraints.size());
@@ -185,11 +185,11 @@ namespace IK{
     std::vector<std::reference_wrapper<const Eigen::VectorXd> > maxineqs;maxineqs.reserve(this->constraints.size());
     std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > > jacobianineqs;jacobianineqs.reserve(this->constraints.size());
 
-    struct timeval s2, e2;
+    cnoid::TimeMeasure timer2;
 
     for(size_t i=0;i<this->constraints.size();i++){
       if(this->debuglevel>0){
-        gettimeofday(&s2, NULL);
+        timer2.begin();
       }
       errors.emplace_back(this->constraints[i]->calc_error());
       jacobians.emplace_back(this->constraints[i]->calc_jacobian(this->variables));
@@ -200,16 +200,16 @@ namespace IK{
 
       num_constraints += errors[i].get().rows()+minineqs[i].get().rows();
       if(this->debuglevel>0){
-        gettimeofday(&e2, NULL);
-        std::cerr << i <<" IKsolver calc  time: " << (e2.tv_sec - s2.tv_sec) + (e2.tv_usec - s2.tv_usec)*1.0E-6
+        double time = timer2.measure();
+        std::cerr << i <<" IKsolver calc  time: " << time
                   << std::endl;
       }
     }
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " IKsolver calc A upperBound lower Bound time1: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " IKsolver calc A upperBound lower Bound time1: " << time
                 << std::endl;
-      gettimeofday(&s, NULL);
+      timer.begin();
     }
     this->A.resize(num_constraints,num_variables);
     this->lowerBound.resize(num_constraints);
@@ -227,8 +227,8 @@ namespace IK{
       idx += minineqs[i].get().rows();
     }
     if(this->debuglevel>0){
-      gettimeofday(&e, NULL);
-      std::cerr << " IKsolver calc A upperBound lower Bound time2: " << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6
+      double time = timer.measure();
+      std::cerr << " IKsolver calc A upperBound lower Bound time2: " << time
                 << std::endl;
     }
 

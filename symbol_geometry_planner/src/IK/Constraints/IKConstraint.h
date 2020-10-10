@@ -26,7 +26,7 @@ namespace IK{
 
     // gradient(-ヤコビアン^T*エラー)を返す
 
-    virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects();
+    virtual std::vector<cnoid::SgNodePtr>& getDrawOnObjects();
 
     void set_debug_level(int _debuglevel){debuglevel = _debuglevel;}
   protected:
@@ -42,6 +42,7 @@ namespace IK{
     Eigen::VectorXd maxineq;
     std::vector<cnoid::Body*> jacobianineq_bodies;
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobianineq;
+    std::vector<cnoid::SgNodePtr> drawOnObjects;
   };
 }
 

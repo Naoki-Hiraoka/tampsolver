@@ -17,7 +17,7 @@ namespace IK{
     const Eigen::VectorXd& calc_minineq () override;
     const Eigen::VectorXd& calc_maxineq () override;
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& calc_jacobianineq (const std::vector<cnoid::Body*>& bodies) override;
-    std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
+    std::vector<cnoid::SgNodePtr>& getDrawOnObjects() override;
 
     void setmaxvel(double _maxvel) {maxvel=_maxvel;}
 

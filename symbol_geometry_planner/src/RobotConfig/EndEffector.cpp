@@ -189,10 +189,11 @@ namespace RobotConfig{
   }
 
 
-  EndEffector::EndEffector(const std::string& _name, cnoid::Link* _link, const cnoid::Position& _localpos, std::shared_ptr<Contact> _contact):
+  EndEffector::EndEffector(const std::string& _name, cnoid::Link* _link, const cnoid::Position& _localpos, const std::string &_identifier, std::shared_ptr<Contact> _contact):
     name(_name),
     link(_link),
     localpos(_localpos),
+    identifier(_identifier),
     contact(_contact)
   {
   }
@@ -239,6 +240,11 @@ namespace RobotConfig{
         localpos.linear() = cnoid::Matrix3(cnoid::AngleAxis(angle,axis.normalized()));
       }
 
+      std::string identifier;
+      if(property[i]["identifier"].IsDefined()){
+        identifier=property[i]["identifier"].as<std::string>();
+      }
+
       std::shared_ptr<Contact> contact;
       if(!property[i]["contact"].IsDefined() || !property[i]["contact"]["type"].IsDefined()){
         contact = std::make_shared<Contact>();
@@ -273,7 +279,7 @@ namespace RobotConfig{
         }
       }
 
-      endeffectors[name]=std::make_shared<EndEffector>(name,link,localpos,contact);
+      endeffectors[name]=std::make_shared<EndEffector>(name,link,localpos,identifier,contact);
     }
   }
 };

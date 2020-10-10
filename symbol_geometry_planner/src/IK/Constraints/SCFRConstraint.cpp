@@ -59,7 +59,7 @@ namespace IK{
     return this->jacobianineq;
   }
 
-  std::vector<cnoid::SgNodePtr> SCFRConstraint::getDrawOnObjects() {
+  std::vector<cnoid::SgNodePtr>& SCFRConstraint::getDrawOnObjects() {
 
     if(!this->COMmarker){
       this->COMmarker = new cnoid::CrossMarker(0.2/*size*/,cnoid::Vector3f(0.5,1.0,0.0)/*color*/,10/*width*/);
@@ -69,14 +69,14 @@ namespace IK{
     this->updateSCFRlines();
     this->COMmarker->setTranslation(this->robot->centerOfMass().cast<Eigen::Vector3f::Scalar>());
 
-    std::vector<cnoid::SgNodePtr> ret{COMmarker,SCFRlines};
+    this->drawOnObjects = std::vector<cnoid::SgNodePtr>{COMmarker,SCFRlines};
 
     for(size_t i=0;i<this->endeffectors.size();i++){
       std::vector<cnoid::SgNodePtr> contactlines = this->endeffectors[i]->getcontact()->getDrawOnObjects(this->endeffectors[i]->getlink()->T()*this->endeffectors[i]->getlocalpos());
-      std::copy(contactlines.begin(),contactlines.end(),std::back_inserter(ret));
+      std::copy(contactlines.begin(),contactlines.end(),std::back_inserter(this->drawOnObjects));
     }
 
-    return ret;
+    return this->drawOnObjects;
   }
 
   void SCFRConstraint::calcSCFR(){

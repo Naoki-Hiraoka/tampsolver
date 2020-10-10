@@ -49,8 +49,8 @@ namespace IK{
 
   // gradient(-ヤコビアン^T*エラー)を返す
 
-  std::vector<cnoid::SgNodePtr> IKConstraint::getDrawOnObjects(){
-    return std::vector<cnoid::SgNodePtr>();
+  std::vector<cnoid::SgNodePtr>& IKConstraint::getDrawOnObjects(){
+    return this->drawOnObjects;
   }
 
   bool IKConstraint::is_bodies_same(const std::vector<cnoid::Body*>& bodies1,const std::vector<cnoid::Body*>& bodies2){

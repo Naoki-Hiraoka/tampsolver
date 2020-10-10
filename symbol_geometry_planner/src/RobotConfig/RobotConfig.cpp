@@ -103,6 +103,12 @@ namespace RobotConfig {
                                         config["joint_limit_table"].as<std::string>());
     }
 
+    // if(config["interfaces"].IsDefined()) {
+    //   readInterfaceFromProperties(this->interfaces,
+    //                               this->robot,
+    //                               config["interfaces"].as<std::string>());
+    // }
+
     return true;
   }
 
