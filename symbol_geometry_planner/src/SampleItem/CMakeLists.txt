@@ -4,8 +4,10 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   actionlib
   pddl_msgs
-  roboptim-core
   )
+
+find_package(PkgConfig)
+pkg_check_modules(roboptim-core roboptim-core REQUIRED)
 
 set(target CnoidSymbolGeometryPlannerPlugin)
 set(sources
@@ -22,8 +24,8 @@ set(sources
   )
 link_directories(${CHOREONOID_LIBRARY_DIRS} ${catkin_LIBRARY_DIRS}) #temporary
 add_library(${target} SHARED ${sources})
-target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS})
-target_link_libraries(${target} ${CHOREONOID_LIBRARIES} ${catkin_LIBRARIES} RobotConfig Utility IKsolver)
+target_include_directories(${target} PUBLIC ${catkin_INCLUDE_DIRS} ${CHOREONOID_INCLUDE_DIRS} ${roboptim-core_INCLUDE_DIRS})
+target_link_libraries(${target} ${CHOREONOID_LIBRARIES} ${catkin_LIBRARIES} ${roboptim-core_LIBRARIES} RobotConfig Utility IKsolver)
 # target_link_directories(${target} PUBLIC ${CHOREONOID_LIBRARY_DIRS} ${catkin_LIBRARY_DIRS}) # require cmake3.13
 target_compile_definitions(${target} PUBLIC ${CHOREONOID_DEFINITIONS})
 set_target_properties(${target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})
