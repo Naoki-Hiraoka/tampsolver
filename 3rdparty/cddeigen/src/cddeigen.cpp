@@ -17,7 +17,7 @@ namespace cddeigen{
     if(!initialized) ddf_set_global_constants();
 
     if( (A_eq.rows() != b_eq.rows()) || (A_ineq.rows() != b_ineq.rows()) || (A_eq.cols() != A_ineq.cols())) {
-      std::cerr << "[cddeigen::HtoV] dimention mismatch" << std::cerr;
+      std::cerr << "[cddeigen::HtoV] dimention mismatch" << std::endl;
       return false;
     }
 
@@ -137,7 +137,7 @@ namespace cddeigen{
     if(!initialized) dd_set_global_constants();
 
     if( (A_eq.rows() != b_eq.rows()) || (A_ineq.rows() != b_ineq.rows()) || (A_eq.cols() != A_ineq.cols())) {
-      std::cerr << "[cddeigen::HtoV] dimention mismatch" << std::cerr;
+      std::cerr << "[cddeigen::HtoV] dimention mismatch" << std::endl;
       return false;
     }
 
@@ -267,7 +267,7 @@ namespace cddeigen{
     if(!initialized) ddf_set_global_constants();
 
     if( (V.rows() != R_nonneg.rows()) || (R_nonneg.rows() != R_free.rows()) ) {
-      std::cerr << "[cddeigen::VtoH] dimention mismatch" << std::cerr;
+      std::cerr << "[cddeigen::VtoH] dimention mismatch" << std::endl;
       return false;
     }
 
@@ -385,7 +385,7 @@ namespace cddeigen{
     if(!initialized) dd_set_global_constants();
 
     if( (V.rows() != R_nonneg.rows()) || (R_nonneg.rows() != R_free.rows()) ) {
-      std::cerr << "[cddeigen::VtoH] dimention mismatch" << std::cerr;
+      std::cerr << "[cddeigen::VtoH] dimention mismatch" << std::endl;
       return false;
     }
 
@@ -448,7 +448,7 @@ namespace cddeigen{
       dd_MatrixPtr A = dd_CopyInequalities(poly);
 
       if (verbose){
-        std::cerr << "output H-representation:" << std::endl;;
+        std::cerr << "output H-representation:" << std::endl;
         dd_WriteMatrix(stderr,A);
         std::cerr << std::endl;
       }

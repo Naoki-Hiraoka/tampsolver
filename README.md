@@ -1,10 +1,12 @@
 # Install
 Follow the instruction of README.md of rtmros_hrp2.
 
+You need https://github.com/jsk-ros-pkg/jsk_model_tools/pull/231 and https://github.com/start-jsk/rtmros_hrp2/pull/555 .
+
 Then,
 
 ```
-wstool merge -t src src/tampsolver/.rosintall
+wstool merge -t src src/tampsolver/.rosinstall
 wstool update -t src
 ```
 

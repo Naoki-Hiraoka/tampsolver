@@ -11,7 +11,10 @@ externalproject_add(roboptim-core
   GIT_REPOSITORY https://github.com/roboptim/roboptim-core
   TIMEOUT 120
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
-  BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> -j8
+  # add -j8
+  # BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> -j8 #require cmake3.12
+  BUILD_COMMAND make -j8
+  INSTALL_COMMAND make install
   )
 
 catkin_add_env_hooks(99.roboptim-core SHELLS bash zsh
