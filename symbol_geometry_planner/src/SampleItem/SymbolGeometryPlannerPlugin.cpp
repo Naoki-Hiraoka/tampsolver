@@ -2,8 +2,6 @@
 #include <cnoid/MenuManager>
 #include <cnoid/MessageView>
 
-#include "PlannerBaseItem.h"
-
 #include "IrtViewerSampleItem.h"
 #include "PddlSampleItem.h"
 #include "RoboptimSampleItem.h"
@@ -25,8 +23,6 @@ public:
 
     virtual bool initialize() override
     {
-      PlannerBaseItem::initializeClass(this);
-
       IrtViewerSampleItem::initializeClass(this);
       PddlSampleItem::initializeClass(this);
       RoboptimSampleItem::initializeClass(this);

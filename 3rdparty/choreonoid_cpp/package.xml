@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>symbol_geometry_planner</name>
+  <name>choreonoid_cpp</name>
   <version>0.0.0</version>
-  <description>The symbol_geometry_planner package</description>
+  <description>The choreonoid_cpp package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/symbol_geometry_planner</url> -->
+  <!-- <url type="website">http://wiki.ros.org/choreonoid_cpp</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -50,20 +50,7 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>roscpp</depend>
-  <depend>roslib</depend>
-  <depend>actionlib</depend>
-  <depend>pddl_msgs</depend>
-  <exec_depend>pddl_planner</exec_depend>
-
-  <depend>roboptim-core</depend>
-  <depend>roboptim-core-plugin-ipopt</depend>
-  <depend>OsqpEigen</depend>
-  <depend>vclip</depend>
-  <depend>cddeigen</depend>
-  <depend>qhulleigen</depend>
-  <depend>clpeigen</depend>
-  <depend>choreonoid_cpp</depend>
+  <depend>choreonoid</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

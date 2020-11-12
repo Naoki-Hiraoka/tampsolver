@@ -1,7 +1,7 @@
 #ifndef CNOID_MULTICONTACTIK_SAMPLE_ITEM_H
 #define CNOID_MULTICONTACTIK_SAMPLE_ITEM_H
 
-#include "PlannerBaseItem.h"
+#include <choreonoid_cpp/PlannerBaseItem.h>
 
 namespace cnoid {
 

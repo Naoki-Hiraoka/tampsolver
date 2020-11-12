@@ -1,5 +1,5 @@
-#include "RoboptimSampleItem.h"
 #include <roboptim/core.hh>
+#include "RoboptimSampleItem.h" //roboptimをchoreonoidより先にincludeしないとマクロエラーになる
 
 using namespace std::placeholders;
 using namespace cnoid;

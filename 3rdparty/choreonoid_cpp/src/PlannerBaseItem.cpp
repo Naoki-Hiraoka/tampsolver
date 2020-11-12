@@ -1,4 +1,4 @@
-#include "PlannerBaseItem.h"
+#include <choreonoid_cpp/PlannerBaseItem.h>
 
 #include <QCoreApplication>
 #include <iostream>
@@ -7,14 +7,12 @@ using namespace std::placeholders;
 using namespace cnoid;
 
 namespace cnoid {
-
   void PlannerBaseItem::initializeClass(ExtensionManager* ext)
   {
     ext->itemManager()
       .registerClass<PlannerBaseItem>("PlannerBaseItem");
     //.addCreationPanel<ViewerSampleItem>() プラグインをロードしただけで勝手にこのItemのコンストラクタが呼ばれてしまう
   }
-
 
   PlannerBaseItem::PlannerBaseItem()
     : os(MessageView::instance()->cout()),
@@ -35,12 +33,14 @@ namespace cnoid {
       os(MessageView::instance()->cout()),
       mv(MessageView::instance())
   {
+    this->_markerGroup = new SgGroup;
+    this->_markerGroup->setName("Marker");
+    SceneView::instance()->sceneWidget()->sceneRoot()->addChild(this->_markerGroup);
+
     this->_worker.sigTimeout().connect([&](){ this->main_common(); });
     this->_worker.start(200);
 
   }
-
-
 
   PlannerBaseItem::~PlannerBaseItem()
   {
@@ -55,7 +55,7 @@ namespace cnoid {
 
   SgNode* PlannerBaseItem::getScene()
   {
-    return 0;
+    return nullptr;
   }
 
 
