@@ -18,32 +18,32 @@ set(CMAKE_BUILD_TYPE Release)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+get_target_property(osqp_INCLUDE_DIRS osqp::osqp INTERFACE_INCLUDE_DIRECTORIES)
+
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include ${OsqpEigen_INCLUDE_DIRS} ${osqp_INCLUDE_DIRS}
   LIBRARIES prioritized_qp
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  # CATKIN_DEPENDS OsqpEigen
+  # DEPENDS OsqpEigen
 )
 
 ###########
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
-
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/PrioritizedQPSolver.cpp
   )
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME} PUBLIC
   ${catkin_LIBRARIES}
   )
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  include
+  ${catkin_INCLUDE_DIRS}
+)
 
 #############
 ## Install ##

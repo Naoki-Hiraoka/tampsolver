@@ -50,7 +50,10 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>imu_filter_madgwick</depend>
+  <depend>choreonoid_cpp</depend>
+  <depend>prioritized_qp</depend>
+
+  <exec_depend>imu_filter_madgwick</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
