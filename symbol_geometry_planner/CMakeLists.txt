@@ -4,7 +4,6 @@ project(symbol_geometry_planner)
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
-  choreonoid
   roscpp
   roslib)
 
