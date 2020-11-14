@@ -4,9 +4,7 @@ project(multicontact_controller)
 add_compile_options(-std=c++11)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
-find_package(catkin REQUIRED
-  choreonoid_cpp
-  prioritized_qp)
+find_package(catkin REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -99,7 +97,7 @@ find_package(catkin REQUIRED
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES multicontact_controller
+#  LIBRARIES ContactForceEstimator
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -115,14 +113,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   )
 
-## Declare a C++ library
-add_library(${PROJECT_NAME}
-  src/ContactForceEstimator.cpp
-  )
-
-target_link_libraries(${PROJECT_NAME} PUBLIC
-  ${catkin_LIBRARIES}
-  )
+add_subdirectory(src/ContactForceEstimator)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

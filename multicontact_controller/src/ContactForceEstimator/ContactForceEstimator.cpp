@@ -1,7 +1,6 @@
-#include <multicontact_controller/ContactForceEstimator.h>
+#include <multicontact_controller/ContactForceEstimator/ContactForceEstimator.h>
 #include <cnoid/ForceSensor>
 #include <cnoid/src/Body/InverseDynamics.h>
-#include <prioritized_qp/PrioritizedQPSolver.h>
 
 namespace multicontact_controller {
   const Eigen::SparseMatrix<double,Eigen::RowMajor>& ContactPoint::calcJacobian(){//world系,contactpoint周り
@@ -53,12 +52,12 @@ namespace multicontact_controller {
     //  0     p[2] -p[1]
     // -p[2]  0     p[0]
     //  p[1] -p[0]  0
-    this->jacobian_.coeffRef(0,4)=dp[2];
-    this->jacobian_.coeffRef(0,5)=-dp[1];
-    this->jacobian_.coeffRef(1,3)=-dp[2];
-    this->jacobian_.coeffRef(1,5)=dp[0];
-    this->jacobian_.coeffRef(2,3)=dp[1];
-    this->jacobian_.coeffRef(2,4)=-dp[0];
+    jacobian_.coeffRef(0,4)=dp[2];
+    jacobian_.coeffRef(0,5)=-dp[1];
+    jacobian_.coeffRef(1,3)=-dp[2];
+    jacobian_.coeffRef(1,5)=dp[0];
+    jacobian_.coeffRef(2,3)=dp[1];
+    jacobian_.coeffRef(2,4)=-dp[0];
 
     //joints
     for(size_t j=0;j<path_.numJoints();j++){
@@ -67,24 +66,39 @@ namespace multicontact_controller {
       if(!path_.isJointDownward(j)) omega = -omega;
       if(path_.joint(j)->jointType() == cnoid::Link::JointType::PRISMATIC_JOINT ||
          path_.joint(j)->jointType() == cnoid::Link::JointType::SLIDE_JOINT){
-        this->jacobian_.coeffRef(0,col)=omega[0];
-        this->jacobian_.coeffRef(1,col)=omega[1];
-        this->jacobian_.coeffRef(2,col)=omega[2];
-        this->jacobian_.coeffRef(3,col)=0;
-        this->jacobian_.coeffRef(4,col)=0;
-        this->jacobian_.coeffRef(5,col)=0;
+        jacobian_.coeffRef(0,col)=omega[0];
+        jacobian_.coeffRef(1,col)=omega[1];
+        jacobian_.coeffRef(2,col)=omega[2];
+        jacobian_.coeffRef(3,col)=0;
+        jacobian_.coeffRef(4,col)=0;
+        jacobian_.coeffRef(5,col)=0;
       }
       if(path_.joint(j)->jointType() == cnoid::Link::JointType::ROTATIONAL_JOINT ||
          path_.joint(j)->jointType() == cnoid::Link::JointType::REVOLUTE_JOINT){
         cnoid::Vector3 dp = omega.cross(target_p - path_.joint(j)->p());
-        this->jacobian_.coeffRef(0,col)=dp[0];
-        this->jacobian_.coeffRef(1,col)=dp[1];
-        this->jacobian_.coeffRef(2,col)=dp[2];
-        this->jacobian_.coeffRef(3,col)=omega[0];
-        this->jacobian_.coeffRef(4,col)=omega[1];
-        this->jacobian_.coeffRef(5,col)=omega[2];
+        jacobian_.coeffRef(0,col)=dp[0];
+        jacobian_.coeffRef(1,col)=dp[1];
+        jacobian_.coeffRef(2,col)=dp[2];
+        jacobian_.coeffRef(3,col)=omega[0];
+        jacobian_.coeffRef(4,col)=omega[1];
+        jacobian_.coeffRef(5,col)=omega[2];
       }
     }
+
+    return jacobian_;
+  }
+
+  const Eigen::SparseMatrix<double,Eigen::RowMajor>& ContactPoint::calcRinv() {
+    Rinv_.resize(6,6);
+    cnoid::Matrix3 Rtrans = ( parent_est_->R() * T_local_est_.linear() ).transpose();
+    for(size_t j=0;j<3;j++){
+      for(size_t k=0;k<3;k++){
+        Rinv_.coeffRef(j,k) = Rtrans(j,k);
+        Rinv_.coeffRef(3+j,3+k) = Rtrans(j,k);
+      }
+    }
+
+    return Rinv_;
   }
 
   bool ContactForceEstimator::setRobot(const cnoid::Body* robot) {
@@ -216,7 +230,7 @@ namespace multicontact_controller {
   std::shared_ptr<ContactPoint> ContactForceEstimator::getCandidatePoint(const std::string& name) {
     std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == name; });
 
-    if (result != candidatePoints_.end()){
+    if (result == candidatePoints_.end()){
       return nullptr;
     } else {
       return *result;
@@ -234,30 +248,7 @@ namespace multicontact_controller {
 
   bool ContactForceEstimator::estimateForce() {
 
-    // update parameters
-    robot_->rootLink()->T() = robot_org_->rootLink()->T();
-    for(size_t i=0;i<robot_org_->numJoints();i++){
-      const cnoid::Link* joint_org = robot_org_->joint(i);
-      cnoid::Link* joint = robot_->link(joint_org->name());
-      joint->q() = joint_org->q();
-      joint->dq() = joint_org->dq();
-      joint->ddq() = joint_org->ddq();
-      joint->u() = joint_org->u();
-    }
-
-    const cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_org_->devices());
-    for(size_t i=0;i<forceSensors.size();i++){
-      const std::string& name = forceSensors[i]->name();
-      const cnoid::Vector6& F = forceSensors[i]->F();
-      robot_->link(name+"X")->u() = F(0);
-      robot_->link(name+"Y")->u() = F(1);
-      robot_->link(name+"Z")->u() = F(2);
-      robot_->link(name+"Roll")->u() = F(3);
-      robot_->link(name+"Pitch")->u() = F(4);
-      robot_->link(name+"Yaw")->u() = F(5);
-    }
-
-    robot_->calcForwardKinematics(true,true);
+    updateRobotState();
 
     /*
       g = sensors + J^F
@@ -278,25 +269,177 @@ namespace multicontact_controller {
     jacobian_.resize(6*candidatePoints_.size(),6+robot_->numJoints()); // contactpoint系、contactpoint周り
     Eigen::SparseMatrix<double,Eigen::RowMajor> Rinv(6,6);
     for(size_t i=0;i<candidatePoints_.size();i++){
-      cnoid::Matrix3 Rtrans = (candidatePoints_[i]->parent_est()->R() * candidatePoints_[i]->T_local_est().linear() ).transpose();
-      for(size_t j=0;j<3;j++){
-        for(size_t k=0;k<3;k++){
-          Rinv.coeffRef(j,k) = Rtrans(j,k);
-          Rinv.coeffRef(3+j,3+k) = Rtrans(j,k);
-        }
-      }
-      jacobian_.middleRows(6*i,6) = Rinv * candidatePoints_[i]->calcJacobian();
+      jacobian_.middleRows(6*i,6) = candidatePoints_[i]->calcRinv() * candidatePoints_[i]->calcJacobian();
     }
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> jt = jacobian_.transpose();
 
     if(changed_){
       changed_ = false;
+    }
+
+    int task_idx=0;
+    int dim = 6*candidatePoints_.size();
+    const cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_->devices());
+
+    {
+      // 力センサの値
+      if(tasks_.size() <= task_idx) {
+        std::shared_ptr<prioritized_qp::Task> task = std::make_shared<prioritized_qp::Task>();
+        task->name() = "Force Sensor Task";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        //task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setAlpha(0.1);
+        task->solver().settings()->setMaxIteraction(4000);
+        task->solver().settings()->setRho(1e-6);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        //settings->eps_abs = 1e-05;
+        //settings->eps_rel = 1e-05;
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+
+        tasks_.push_back(task);
+      }
+      std::shared_ptr<prioritized_qp::Task> task = tasks_[task_idx];
+
+      task->A().resize(6*forceSensors.size(),dim);
+      task->b().resize(6*forceSensors.size());
+      task->wa().resize(6*forceSensors.size());
+      task->C().resize(0,dim);
+      task->dl().resize(0);
+      task->du().resize(0);
+      task->wc().resize(0);
+      task->w().resize(dim);
+
+      for(size_t i=0;i<forceSensors.size();i++){
+        const std::string& name = forceSensors[i]->name();
+        int id = 6+robot_->link(name+"X")->jointId();
+        task->A().middleRows(i*6,6) = jt.middleRows(id,6);
+        task->b().segment<6>(i*6) = g.segment<6>(id) - sensors.segment<6>(id);
+        for(size_t j=0;j<3;j++) task->wa()(i*6+j) = 1;
+        for(size_t j=0;j<3;j++) task->wa()(i*6+3+j) = 1;
+      }
+
+      for(size_t i=0;i<candidatePoints_.size();i++){
+        for(size_t j=0;j<3;j++) task->w()(i*6+j) = 1e-10;
+        for(size_t j=0;j<3;j++) task->w()(i*6+3+j) = 1e-10;
+      }
+
+      task_idx++;
+    }
+
+    {
+      // rootのつりあい
+      if(tasks_.size() <= task_idx) {
+        std::shared_ptr<prioritized_qp::Task> task = std::make_shared<prioritized_qp::Task>();
+        task->name() = "Root Force Task";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        //task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setAlpha(0.1);
+        task->solver().settings()->setMaxIteraction(4000);
+        task->solver().settings()->setRho(1e-6);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        //settings->eps_abs = 1e-05;
+        //settings->eps_rel = 1e-05;
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+
+        tasks_.push_back(task);
+      }
+      std::shared_ptr<prioritized_qp::Task> task = tasks_[task_idx];
+
+      task->A().resize(6,dim);
+      task->b().resize(6);
+      task->wa().resize(6);
+      task->C().resize(0,dim);
+      task->dl().resize(0);
+      task->du().resize(0);
+      task->wc().resize(0);
+      task->w().resize(dim);
+
+      task->A() = jt.topRows(6);
+      task->b() = g.head<6>() - sensors.head<6>();
+      for(size_t j=0;j<3;j++) task->wa()(j) = 1;
+      for(size_t j=0;j<3;j++) task->wa()(3+j) = 1;
+
+      for(size_t i=0;i<candidatePoints_.size();i++){
+        for(size_t j=0;j<3;j++) task->w()(i*6+j) = 1e-10;
+        for(size_t j=0;j<3;j++) task->w()(i*6+3+j) = 1e-10;
+      }
+
+      task_idx++;
+    }
+
+    {
+      // 関節トルクの値
+      if(tasks_.size() <= task_idx) {
+        std::shared_ptr<prioritized_qp::Task> task = std::make_shared<prioritized_qp::Task>();
+        task->name() = "Joint Torque Task";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        //task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setAlpha(0.1);
+        task->solver().settings()->setMaxIteraction(4000);
+        task->solver().settings()->setRho(1e-6);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        //settings->eps_abs = 1e-05;
+        //settings->eps_rel = 1e-05;
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+
+        tasks_.push_back(task);
+      }
+      std::shared_ptr<prioritized_qp::Task> task = tasks_[task_idx];
+
+      task->A().resize(robot_org_->numJoints(),dim);
+      task->b().resize(robot_org_->numJoints());
+      task->wa().resize(robot_org_->numJoints());
+      task->C().resize(0,dim);
+      task->dl().resize(0);
+      task->du().resize(0);
+      task->wc().resize(0);
+      task->w().resize(dim);
+
+      for(size_t i=0;i<robot_org_->numJoints();i++){
+        int id = 6+i;
+        task->A().innerVector(i) = jt.innerVector(id);
+        task->b()(i) = g(id) - sensors(id);
+        task->wa()(i) = 1;
+      }
+
+      for(size_t i=0;i<candidatePoints_.size();i++){
+        for(size_t j=0;j<3;j++) task->w()(i*6+j) = 1e-10;
+        for(size_t j=0;j<3;j++) task->w()(i*6+3+j) = 1e-10;
+      }
+
+      task_idx++;
+    }
+
+    cnoid::VectorX result;
+    bool solved = prioritized_qp::solve(tasks_,result);
+
+    if(!solved) return false;
+
+    for(size_t i=0;i<candidatePoints_.size();i++){
+      candidatePoints_[i]->F() = result.segment<6>(i*6);
     }
 
     return true;
   }
 
   cnoid::Vector6 ContactForceEstimator::getEstimatedForce(const std::string& name) {
-    return cnoid::Vector6::Zero();
+    std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == name; });
+
+    if (result == candidatePoints_.end()){
+      return cnoid::Vector6::Zero();
+    } else {
+      return (*result)->F();
+    }
   }
 
   bool ContactForceEstimator::removeForceSensorOffset(double time) {
@@ -306,6 +449,35 @@ namespace multicontact_controller {
     return true;
   }
   bool ContactForceEstimator::remoteJointTorqueOffset(double time) {
+    return true;
+  }
+
+  bool ContactForceEstimator::updateRobotState() {
+    // update parameters. 今のrobot_orgの状態をrobotに反映
+    robot_->rootLink()->T() = robot_org_->rootLink()->T();
+    for(size_t i=0;i<robot_org_->numJoints();i++){
+      const cnoid::Link* joint_org = robot_org_->joint(i);
+      cnoid::Link* joint = robot_->link(joint_org->name());
+      joint->q() = joint_org->q();
+      joint->dq() = joint_org->dq();
+      joint->ddq() = joint_org->ddq();
+      joint->u() = joint_org->u();
+    }
+
+    const cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_org_->devices());
+    for(size_t i=0;i<forceSensors.size();i++){
+      const std::string& name = forceSensors[i]->name();
+      const cnoid::Vector6& F = forceSensors[i]->F();
+      robot_->link(name+"X")->u() = - F(0);
+      robot_->link(name+"Y")->u() = - F(1);
+      robot_->link(name+"Z")->u() = - F(2);
+      robot_->link(name+"Roll")->u() = - F(3);
+      robot_->link(name+"Pitch")->u() = - F(4);
+      robot_->link(name+"Yaw")->u() = - F(5);
+    }
+
+    robot_->calcForwardKinematics(true,true);
+
     return true;
   }
 

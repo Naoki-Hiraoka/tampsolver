@@ -12,6 +12,9 @@ namespace prioritized_qp{
       dl <= Cx <= du
      */
   public:
+    std::string name() const { return name_; }
+    std::string& name() { return name_; }
+
     Eigen::SparseMatrix<double,Eigen::RowMajor> A() const { return A_; }
     Eigen::SparseMatrix<double,Eigen::RowMajor>& A() { return A_; }
 
@@ -42,6 +45,8 @@ namespace prioritized_qp{
     bool& toSolve() {return toSolve_; }
 
   private:
+    std::string name_;
+
     Eigen::SparseMatrix<double,Eigen::RowMajor> A_;
     Eigen::VectorXd b_;
     Eigen::VectorXd wa_;
@@ -58,6 +63,6 @@ namespace prioritized_qp{
 
   bool solve(std::vector< std::shared_ptr<Task> >& tasks, Eigen::VectorXd& result, int debuglevel=0);
 
-}
+};
 
 #endif

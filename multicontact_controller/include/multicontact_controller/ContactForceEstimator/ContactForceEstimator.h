@@ -5,6 +5,7 @@
 #include <cnoid/JointPath>
 #include <memory>
 #include <Eigen/Sparse>
+#include <prioritized_qp/PrioritizedQPSolver.h>
 
 namespace multicontact_controller {
 
@@ -30,6 +31,7 @@ namespace multicontact_controller {
     cnoid::Position& T_local_est() {return T_local_est_; }
 
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcJacobian();//world系,contactpoint周り
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcRinv();//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
   private:
     std::string name_;
 
@@ -42,6 +44,7 @@ namespace multicontact_controller {
     cnoid::Position T_local_est_;
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> Rinv_;
     cnoid::JointPath path_;
 
   };
@@ -65,13 +68,17 @@ namespace multicontact_controller {
     bool remoteJointTorqueOffset(double time);
 
   protected:
+    bool updateRobotState();
+
     const cnoid::Body* robot_org_;
     std::shared_ptr<cnoid::Body> robot_;
 
     std::vector<std::shared_ptr<ContactPoint> > candidatePoints_;
     bool changed_ = true;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_;
 
+    // cache
+    Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_;
+    std::vector<std::shared_ptr<prioritized_qp::Task> > tasks_;
   };
 
 };

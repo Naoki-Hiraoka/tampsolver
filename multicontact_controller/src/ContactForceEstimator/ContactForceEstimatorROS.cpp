@@ -1,0 +1,1 @@
+#include <multicontact_controller/ContactForceEstimator/ContactForceEstimatorROS.h>

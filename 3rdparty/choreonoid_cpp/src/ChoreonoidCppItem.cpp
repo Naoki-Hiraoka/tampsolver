@@ -23,6 +23,7 @@ namespace cnoid {
     worker->setDrawOn(std::bind(&ChoreonoidCppItem::drawOn,this,_1,_2));
     worker->setDrawObjects(std::bind(&ChoreonoidCppItem::drawObjects,this,_1));
     worker->setFlush(std::bind(&ChoreonoidCppItem::flush,this));
+    worker->viewer() = true;
 
     worker->main();
   }

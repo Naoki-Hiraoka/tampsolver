@@ -22,6 +22,9 @@ namespace choreonoid_cpp {
     void setDrawObjects(std::function<void(bool)> f) {drawobjects_ = f; }
     void setFlush(std::function<void()> f) {flush_ = f; }
 
+    bool viewer() const {return viewer_; }
+    bool& viewer() {return viewer_; }
+
     virtual void main() {};
 
   protected:
@@ -31,6 +34,8 @@ namespace choreonoid_cpp {
     void drawOn(cnoid::SgNodePtr obj, bool flush=false);
     void drawObjects(bool flush=true);
     void flush();
+
+    bool viewer_=false;
 
   private:
     std::function<void(const std::set<cnoid::Body*>&)> objects_set_;
