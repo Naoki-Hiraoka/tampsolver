@@ -3,6 +3,7 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   actionlib
   pddl_msgs
+  choreonoid
   choreonoid_cpp
   )
 
