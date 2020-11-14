@@ -4,7 +4,10 @@ project(multicontact_controller)
 add_compile_options(-std=c++11)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  choreonoid
+  choreonoid_cpp
+  )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -42,9 +45,9 @@ find_package(catkin REQUIRED)
 ## Generate messages in the 'msg' folder
 # add_message_files(
 #   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+#   ContactPoint.msg
+#   ContactPoints.msg
+#   )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -63,8 +66,8 @@ find_package(catkin REQUIRED)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+#   std_msgs
+#   )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -114,6 +117,13 @@ include_directories(
   )
 
 add_subdirectory(src/ContactForceEstimator)
+
+add_library(CnoidMultiContactControllerPlugin SHARED
+  src/MultiContactControllerPlugin.cpp)
+target_link_libraries(CnoidMultiContactControllerPlugin
+  ${catkin_LIBRARIES}
+  ContactForceEstimator)
+set_target_properties(CnoidMultiContactControllerPlugin PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -169,11 +179,11 @@ add_subdirectory(src/ContactForceEstimator)
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES

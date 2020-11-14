@@ -1,10 +1,18 @@
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  geometry_msgs
+  sensor_msgs
+  eigen_conversions
+  tf2_ros
+  urdf
   choreonoid_cpp
-  prioritized_qp)
+  prioritized_qp
+  multicontact_controller_msgs)
 
 add_library(ContactForceEstimator
   ContactForceEstimator.cpp
   ContactForceEstimatorROS.cpp
+  ContactForceEstimatorROSItem.cpp
   )
 
 target_include_directories(ContactForceEstimator PUBLIC
@@ -13,4 +21,16 @@ target_include_directories(ContactForceEstimator PUBLIC
 
 target_link_libraries(ContactForceEstimator PUBLIC
   ${catkin_LIBRARIES}
+  )
+
+add_executable(contact_force_estimator ContactForceEstimatorROSNode.cpp)
+target_include_directories(contact_force_estimator PUBLIC
+  ${catkin_INCLUDE_DIRS}
+  )
+target_link_libraries(contact_force_estimator
+  ContactForceEstimator
+  ${catkin_LIBRARIES}
+  )
+install(TARGETS contact_force_estimator
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   )

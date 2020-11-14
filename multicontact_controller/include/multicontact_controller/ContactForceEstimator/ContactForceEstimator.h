@@ -58,6 +58,7 @@ namespace multicontact_controller {
     bool setCandidatePoint(std::shared_ptr<ContactPoint> candidatepoint);
     std::shared_ptr<ContactPoint> getCandidatePoint(const std::string& name);
     bool deleteCandidatePoint(const std::string& name);
+    bool clearCandidatePoints();
 
     bool estimateForce();
 

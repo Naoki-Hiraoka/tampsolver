@@ -246,6 +246,11 @@ namespace multicontact_controller {
     return true;
   }
 
+  bool ContactForceEstimator::clearCandidatePoints() {
+    candidatePoints_.clear();
+    return true;
+  }
+
   bool ContactForceEstimator::estimateForce() {
 
     updateRobotState();

@@ -7,7 +7,7 @@
 #include <cnoid/SceneCollision>
 #include <cnoid/CollisionSeq>
 #include <cnoid/Sleep>
-#include <cnoid/Timer>
+//#include <cnoid/Timer>
 #include <functional>
 
 namespace choreonoid_cpp {
@@ -22,10 +22,10 @@ namespace choreonoid_cpp {
     void setDrawObjects(std::function<void(bool)> f) {drawobjects_ = f; }
     void setFlush(std::function<void()> f) {flush_ = f; }
 
-    bool viewer() const {return viewer_; }
-    bool& viewer() {return viewer_; }
+    bool hasViewer() const {return has_viewer_; }
+    bool& hasViewer() {return has_viewer_; }
 
-    virtual void main() {};
+    virtual void main(int argc, char **argv) {};
 
   protected:
     void objects(const std::set<cnoid::Body*>& objs);
@@ -35,7 +35,7 @@ namespace choreonoid_cpp {
     void drawObjects(bool flush=true);
     void flush();
 
-    bool viewer_=false;
+    bool has_viewer_=false;
 
   private:
     std::function<void(const std::set<cnoid::Body*>&)> objects_set_;

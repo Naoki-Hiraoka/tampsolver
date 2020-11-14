@@ -50,8 +50,16 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
 
+  <depend>roscpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>eigen_conversions</depend>
+  <depend>tf2_ros</depend>
+  <depend>urdf</depend>
+
   <depend>choreonoid_cpp</depend>
   <depend>prioritized_qp</depend>
+  <depend>multicontact_controller_msgs</depend>
 
   <exec_depend>imu_filter_madgwick</exec_depend>
 
