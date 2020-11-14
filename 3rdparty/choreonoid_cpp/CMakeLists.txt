@@ -39,6 +39,8 @@ include_directories(
 set(target ${PROJECT_NAME})
 set(sources
   src/PlannerBaseItem.cpp
+  src/ChoreonoidCpp.cpp
+  src/ChoreonoidCppItem.cpp
   )
 
 add_library(${target} SHARED ${sources})

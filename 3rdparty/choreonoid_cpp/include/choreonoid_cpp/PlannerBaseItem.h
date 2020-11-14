@@ -38,6 +38,9 @@ namespace cnoid {
     void objects(const std::set<BodyItemPtr>& objs);
     void objects(const std::vector<BodyItemPtr>& objs);
     void objects(const BodyItemPtr& obj);
+    void objects(const std::set<Body*>& objs);
+    void objects(const std::vector<Body*>& objs);
+    void objects(Body*& obj);
 
     // cnoid::SgNodePtrについてはchoreonoid/src/Util/SceneDrawables.h参照
     void drawOn(cnoid::SgNodePtr obj, bool flush=false);

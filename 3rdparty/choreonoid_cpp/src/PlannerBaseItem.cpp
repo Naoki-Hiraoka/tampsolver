@@ -166,6 +166,49 @@ namespace cnoid {
     this->_objects.insert(obj);
   }
 
+  void PlannerBaseItem::objects(const std::set<Body*>& objs)
+  {
+    this->_objects.clear();
+
+    // search for existing body items
+    ItemList<BodyItem> bodyItems;
+    bodyItems.extractChildItems(this);
+    for(size_t i=0; i < bodyItems.size(); ++i){
+      ItemTreeView::instance()->checkItem(bodyItems[i], false);
+    }
+    for(std::set<Body*>::iterator obj=objs.begin();obj!=objs.end();obj++){
+      ItemList<BodyItem>::iterator result = std::find_if(bodyItems.begin(), bodyItems.end(), [&](BodyItemPtr x) { return x->body() == *obj; });
+      if(result != bodyItems.end()){
+        ItemTreeView::instance()->checkItem(*result, true);
+        this->_objects.insert(*result);
+      } else {
+        BodyItemPtr bodyItem = instantiate(*obj);
+        ItemTreeView::instance()->checkItem(bodyItem, true);
+        this->_objects.insert(bodyItem);
+      }
+    }
+  }
+
+  void PlannerBaseItem::objects(const std::vector<Body*>& objs){
+    objects(std::set<Body*>(objs.begin(), objs.end()));
+  }
+
+  void PlannerBaseItem::objects(Body*& obj){
+    // search for existing body items
+    ItemList<BodyItem> bodyItems;
+    bodyItems.extractChildItems(this);
+    ItemList<BodyItem>::iterator result = std::find_if(bodyItems.begin(), bodyItems.end(), [&](BodyItemPtr x) { return x->body() == obj; });
+    if(result != bodyItems.end()){
+      ItemTreeView::instance()->checkItem(*result, true);
+      this->_objects.insert(*result);
+    } else {
+      BodyItemPtr bodyItem = instantiate(obj);
+      ItemTreeView::instance()->checkItem(bodyItem, true);
+      this->_objects.insert(bodyItem);
+    }
+  }
+
+
   void PlannerBaseItem::drawOn(cnoid::SgNodePtr obj, bool flush)
   {
     if(this->_markerGroup->addChildOnce(obj)){
