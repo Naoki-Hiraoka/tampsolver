@@ -1,0 +1,1 @@
+multicontact_controller_msgs/ContactPoint[] contactpoints
