@@ -3,8 +3,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   eigen_conversions
-  tf2_ros
-  urdf
   choreonoid_cpp
   prioritized_qp
   multicontact_controller_msgs)

@@ -55,7 +55,6 @@
   <depend>sensor_msgs</depend>
   <depend>eigen_conversions</depend>
   <depend>tf2_ros</depend>
-  <depend>urdf</depend>
 
   <depend>choreonoid_cpp</depend>
   <depend>prioritized_qp</depend>

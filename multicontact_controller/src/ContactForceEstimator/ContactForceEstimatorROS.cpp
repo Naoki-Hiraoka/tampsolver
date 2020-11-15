@@ -1,20 +1,18 @@
 #include <multicontact_controller/ContactForceEstimator/ContactForceEstimatorROS.h>
 
-#include <ros/ros.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <cnoid/ForceSensor>
 #include <cnoid/BodyLoader>
-#include <tf2_ros/buffer_client.h>
 
 namespace multicontact_controller {
   void ContactForceEstimatorROS::main(int argc, char** argv) {
-    ros::init(argc,argv,"ContactForceEstimator");
+    ros::init(argc,argv,"contact_force_estimator");
     ros::NodeHandle n;
 
     // initialize robot
     // 質量パラメータのキャリブ TODO
     std::string vrml_file;
-    if (!n.getParam("vrml_file", vrml_file)) {
+    if (!n.getParam("/vrml_file", vrml_file)) {
       ROS_ERROR("Failed to get param 'vrml_file'");
       return;
     }
@@ -24,15 +22,6 @@ namespace multicontact_controller {
       ROS_ERROR("Failed to load %s", vrml_file.c_str());
       return;
     }
-
-    std::string robot_description;
-    if (!n.getParam("/robot_description", robot_description)) {
-      ROS_ERROR("Failed to get param '/robot_description'");
-      return;
-    }
-    model_.initString(robot_description);
-
-
 
     // setup subscribers
     ros::Subscriber jointStateSub = n.subscribe("joint_states", 1, &ContactForceEstimatorROS::jointStateCallback, this);
@@ -48,10 +37,6 @@ namespace multicontact_controller {
     }
 
     ros::Subscriber contactPointsSub = n.subscribe("contactPoints", 1, &ContactForceEstimatorROS::contactPointsCallback, this);
-
-    std::string tf2_buffer_server_ns;
-    n.param("tf2_buffer_server_ns", tf2_buffer_server_ns, std::string("tf2_buffer_server"));
-    tf2_ros::BufferClient tf2client(tf2_buffer_server_ns,10000);
 
     // setup publishers
     std::map<std::string,ros::Publisher> contactForcePub;
@@ -71,34 +56,15 @@ namespace multicontact_controller {
 
       // update candidatepoints
       contactForceEstimator.clearCandidatePoints();
-      for(size_t i=0;i<contactPoints_.size();i++){
-        contactForceEstimator.setCandidatePoint(contactPoints_[i]);
-      }
-
-      for(size_t i=0;i<contactPoints_.size();i++){
-        geometry_msgs::TransformStamped transformStamped;
-        try{
-          transformStamped = tf2client.lookupTransform(contactPoints_[i]->parent()->name(),contactPoints_[i]->name(),ros::Time(0));
-        } catch (tf2::LookupException ex) {
-          ROS_WARN("%s",ex.what());
-          continue;
-        } catch (tf2::ConnectivityException ex) {
-          ROS_WARN("%s",ex.what());
-          continue;
-        } catch (tf2::ExtrapolationException ex) {
-          ROS_WARN("%s",ex.what());
-          continue;
-        } catch (tf2::InvalidArgumentException ex){
-          ROS_WARN("%s",ex.what());
-          continue;
+      for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates_.begin();it!=endEffectorStates_.end();it++){
+        switch(it->second->state()){
+        case multicontact_controller_msgs::EndEffectorState::NOT_CARED :
+        case multicontact_controller_msgs::EndEffectorState::AIR :
+          break;
+        default:
+          contactForceEstimator.setCandidatePoint(it->second->contactPoint());
+          break;
         }
-
-        cnoid::Vector3 p;
-        tf::vectorMsgToEigen(transformStamped.transform.translation,p);
-        contactPoints_[i]->T_local().translation() = p;
-        Eigen::Quaterniond q;
-        tf::quaternionMsgToEigen(transformStamped.transform.rotation,q);
-        contactPoints_[i]->T_local().linear() = q.normalized().toRotationMatrix();
       }
 
       //estimate
@@ -106,19 +72,15 @@ namespace multicontact_controller {
 
       //publish
       ros::Time now = ros::Time::now();
-      for(size_t i=0;i<contactPoints_.size();i++){
-        cnoid::Vector6 F = contactForceEstimator.getEstimatedForce(contactPoints_[i]->name());
-
-        if(contactForcePub.find(contactPoints_[i]->name()) == contactForcePub.end()){
-          contactForcePub[contactPoints_[i]->name()] = n.advertise<geometry_msgs::WrenchStamped>(contactPoints_[i]->name()+"force", 1000);
-        }
+      for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates_.begin();it!=endEffectorStates_.end();it++){
+        cnoid::Vector6 F = contactForceEstimator.getEstimatedForce(it->first);
 
         geometry_msgs::WrenchStamped msg;
         msg.header.seq = seq;
         msg.header.stamp = now;
-        msg.header.frame_id = contactPoints_[i]->name();
+        msg.header.frame_id = it->first;
         tf::wrenchEigenToMsg(F, msg.wrench);
-        contactForcePub[contactPoints_[i]->name()].publish(msg);
+        it->second->contactForcePub().publish(msg);
       }
       seq++;
 
@@ -165,30 +127,56 @@ namespace multicontact_controller {
     }
   }
 
-  void ContactForceEstimatorROS::contactPointsCallback(const multicontact_controller_msgs::ContactPoints::ConstPtr& msg) {
-    std::vector<std::shared_ptr<ContactPoint> > nextContactPoints;
-    for(size_t i=0;i<msg->contactpoints.size();i++){
-      std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(contactPoints_.begin(),contactPoints_.end(),[&](std::shared_ptr<ContactPoint> p){return p->name()==msg->contactpoints[i].header.frame_id;});
-      if( result != contactPoints_.end() ){
-        //choreonoidのロボットモデルはリンク名が関節名によって管理されている
-        urdf::LinkConstSharedPtr link = model_.getLink(msg->contactpoints[i].link);
-        if(!link)continue;
-        urdf::JointSharedPtr joint = link->parent_joint;
-        cnoid::Link* parent;
-        if(!joint) parent = robot_->link(link->name);
-        else  parent = robot_->link(joint->name);
-        if(!parent) continue;
-        (*result)->parent() = parent;
-        nextContactPoints.push_back(*result);
-      } else {
-        std::shared_ptr<ContactPoint> p = std::make_shared<ContactPoint>();
-        p->name() = msg->contactpoints[i].header.frame_id;
-        cnoid::Link* parent = robot_->link(msg->contactpoints[i].link);
-        p->parent() = parent;
-        p->T_local().setIdentity();
-        nextContactPoints.push_back(p);
+  void ContactForceEstimatorROS::contactPointsCallback(const multicontact_controller_msgs::EndEffectorStateArray::ConstPtr& msg) {
+    // 消滅したEndEffectorを削除
+    for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it = endEffectorStates_.begin(); it != endEffectorStates_.end(); ) {
+      if (std::find_if(msg->endeffectorstates.begin(),msg->endeffectorstates.end(),[&](multicontact_controller_msgs::EndEffectorState x){return x.name==it->first;}) == msg->endeffectorstates.end()) {
+        it = endEffectorStates_.erase(it);
+      }
+      else {
+        ++it;
       }
     }
-    contactPoints_ = nextContactPoints;
+
+    // EndEffectorの反映
+    for(size_t i=0;i<msg->endeffectorstates.size();i++){
+      //choreonoidのロボットモデルはリンク名が関節名によって管理されている
+      const std::string& linkname = msg->endeffectorstates[i].header.frame_id;
+      if(jointLinkMap_.find(linkname)==jointLinkMap_.end()){
+        for(size_t i=0;i<robot_->links().size();i++){
+          cnoid::Affine3 tmp;
+          cnoid::SgNodePath path = robot_->links()[i]->visualShape()->findNode(linkname,tmp);
+          if(path.size()!=0){
+            jointLinkMap_[linkname] = robot_->links()[i];
+          }else{
+            jointLinkMap_[linkname] = nullptr;
+          }
+        }
+      }
+      cnoid::Link* link = jointLinkMap_[linkname];
+      if(!link) {
+        ROS_WARN("Link '%s' not found",linkname.c_str());
+        continue;
+      }
+
+
+      // 反映
+      if(endEffectorStates_.find(msg->endeffectorstates[i].name)==endEffectorStates_.end()){
+        endEffectorStates_[msg->endeffectorstates[i].name] = std::make_shared<EndEffectorState>(msg->endeffectorstates[i].name);
+      }
+      std::shared_ptr<EndEffectorState> eef = endEffectorStates_[msg->endeffectorstates[i].name];
+
+      eef->linkName() = linkname;
+      eef->state() = msg->endeffectorstates[i].state;
+
+      eef->contactPoint()->name() = msg->endeffectorstates[i].name;
+      eef->contactPoint()->parent() = link;
+      cnoid::Vector3 p;
+      tf::vectorMsgToEigen(msg->endeffectorstates[i].transform.translation,p);
+      eef->contactPoint()->T_local().translation() = p;
+      Eigen::Quaterniond q;
+      tf::quaternionMsgToEigen(msg->endeffectorstates[i].transform.rotation,q);
+      eef->contactPoint()->T_local().linear() = q.normalized().toRotationMatrix();
+    }
   }
 };
