@@ -1,13 +1,16 @@
 #include <multicontact_controller/ContactForceEstimator/ContactForceEstimatorROS.h>
 
+#include <ros/package.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <cnoid/ForceSensor>
 #include <cnoid/BodyLoader>
 
 namespace multicontact_controller {
   void ContactForceEstimatorROS::main(int argc, char** argv) {
+
     ros::init(argc,argv,"contact_force_estimator");
     ros::NodeHandle n;
+    ros::NodeHandle nl("~");
 
     // initialize robot
     // 質量パラメータのキャリブ TODO
@@ -16,15 +19,23 @@ namespace multicontact_controller {
       ROS_ERROR("Failed to get param 'vrml_file'");
       return;
     }
+    // package://に対応
+    std::string packagestr = "package://";
+    if(vrml_file.size()>packagestr.size() && vrml_file.substr(0,packagestr.size()) == packagestr){
+      vrml_file = vrml_file.substr(packagestr.size());
+      int pos = vrml_file.find("/");
+      vrml_file = ros::package::getPath(vrml_file.substr(0,pos)) + vrml_file.substr(pos);
+    }
     cnoid::BodyLoader loader;
     robot_ = loader.load(vrml_file);
     if(!robot_){
       ROS_ERROR("Failed to load %s", vrml_file.c_str());
       return;
     }
+    objects(robot_);
 
     // setup subscribers
-    ros::Subscriber jointStateSub = n.subscribe("joint_states", 1, &ContactForceEstimatorROS::jointStateCallback, this);
+    ros::Subscriber jointStateSub = n.subscribe("joint_states", 100, &ContactForceEstimatorROS::jointStateCallback, this); // 一部しか含まないjoint_statesにも対応するため、バッファは1(最新のみ)では不可
 
     ros::Subscriber imuSub = n.subscribe("imu", 1, &ContactForceEstimatorROS::imuCallback, this);
 
@@ -36,7 +47,7 @@ namespace multicontact_controller {
       }
     }
 
-    ros::Subscriber contactPointsSub = n.subscribe("contactPoints", 1, &ContactForceEstimatorROS::contactPointsCallback, this);
+    ros::Subscriber contactPointsSub = n.subscribe("end_effector_states", 1, &ContactForceEstimatorROS::contactPointsCallback, this);
 
     // setup publishers
     std::map<std::string,ros::Publisher> contactForcePub;
@@ -48,9 +59,13 @@ namespace multicontact_controller {
 
 
     // main loop
-    ros::Rate r(250); // 250 hz
+    int rate;
+    nl.param("rate", rate, 250); // 250 hz
+    ros::Rate r(rate);
+
     unsigned int seq = 0;
     while (ros::ok()) {
+
       // spin
       ros::spinOnce();
 
@@ -84,8 +99,12 @@ namespace multicontact_controller {
       }
       seq++;
 
+      drawObjects();
+
       r.sleep();
     }
+
+    exit(0);
 
   }
 
@@ -143,13 +162,13 @@ namespace multicontact_controller {
       //choreonoidのロボットモデルはリンク名が関節名によって管理されている
       const std::string& linkname = msg->endeffectorstates[i].header.frame_id;
       if(jointLinkMap_.find(linkname)==jointLinkMap_.end()){
+        jointLinkMap_[linkname] = nullptr;
         for(size_t i=0;i<robot_->links().size();i++){
           cnoid::Affine3 tmp;
           cnoid::SgNodePath path = robot_->links()[i]->visualShape()->findNode(linkname,tmp);
           if(path.size()!=0){
             jointLinkMap_[linkname] = robot_->links()[i];
-          }else{
-            jointLinkMap_[linkname] = nullptr;
+            break;
           }
         }
       }

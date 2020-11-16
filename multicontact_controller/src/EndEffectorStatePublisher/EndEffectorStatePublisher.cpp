@@ -20,13 +20,13 @@ public:
       ROS_WARN("rosparam %s not found",(ns+"/name").c_str());
       return false;
     }
-    n.getParam(ns+"name",name_);
+    n.getParam(ns+"/name",name_);
 
     if(!n.hasParam(ns+"/link")){
       ROS_WARN("rosparam %s not found",(ns+"/link").c_str());
       return false;
     }
-    n.getParam(ns+"link",linkName_);
+    n.getParam(ns+"/link",linkName_);
 
     if(!n.hasParam(ns+"/localpos")){
       localpos_.setIdentity();
@@ -90,6 +90,7 @@ private:
 int main(int argc, char** argv){
   ros::init(argc,argv,"end_effector_state_pubisher");
   ros::NodeHandle n;
+  ros::NodeHandle nl("~");
 
   std::vector<std::string> end_effectors;
   n.getParam("end_effectors",end_effectors);
@@ -106,7 +107,10 @@ int main(int argc, char** argv){
 
   ros::Publisher endEffectorStateArrayPub = n.advertise<multicontact_controller_msgs::EndEffectorStateArray>("end_effector_states", 1000);
 
-  ros::Rate r(250); // 250 hz
+  int rate;
+  nl.param("rate", rate, 250); // 250 hz
+  ros::Rate r(rate);
+
   unsigned int seq = 0;
   while (ros::ok()) {
     // spin

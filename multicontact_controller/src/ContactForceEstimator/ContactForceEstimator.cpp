@@ -8,7 +8,8 @@ namespace multicontact_controller {
     cnoid::Link* parent_est = parent_est_;
     cnoid::Position T_local_est = T_local_est_;
 
-    if(path_.endLink() != parent_est){
+    if(path_.empty() || path_.endLink() != parent_est){
+
       std::vector<Eigen::Triplet<double> > tripletList;
       tripletList.reserve(100);//適当
 
@@ -272,7 +273,6 @@ namespace multicontact_controller {
     }
 
     jacobian_.resize(6*candidatePoints_.size(),6+robot_->numJoints()); // contactpoint系、contactpoint周り
-    Eigen::SparseMatrix<double,Eigen::RowMajor> Rinv(6,6);
     for(size_t i=0;i<candidatePoints_.size();i++){
       jacobian_.middleRows(6*i,6) = candidatePoints_[i]->calcRinv() * candidatePoints_[i]->calcJacobian();
     }
@@ -304,6 +304,7 @@ namespace multicontact_controller {
         //settings->eps_abs = 1e-05;
         //settings->eps_rel = 1e-05;
         task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
 
         tasks_.push_back(task);
       }
@@ -353,6 +354,8 @@ namespace multicontact_controller {
         //settings->eps_rel = 1e-05;
         task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
 
+        task->toSolve() = true;
+
         tasks_.push_back(task);
       }
       std::shared_ptr<prioritized_qp::Task> task = tasks_[task_idx];
@@ -396,6 +399,8 @@ namespace multicontact_controller {
         //settings->eps_abs = 1e-05;
         //settings->eps_rel = 1e-05;
         task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+
+        task->toSolve() = true;
 
         tasks_.push_back(task);
       }
@@ -458,6 +463,7 @@ namespace multicontact_controller {
   }
 
   bool ContactForceEstimator::updateRobotState() {
+
     // update parameters. 今のrobot_orgの状態をrobotに反映
     robot_->rootLink()->T() = robot_org_->rootLink()->T();
     for(size_t i=0;i<robot_org_->numJoints();i++){

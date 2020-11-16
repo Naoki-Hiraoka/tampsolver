@@ -9,12 +9,12 @@ items:
       name: "MultiContactControllerPlugin"
       plugin: MultiContactController
       class: ContactForceEstimatorROSItem
-    -
-      id: 2
+    - 
+      id: 3
       name: "World"
       plugin: Body
       class: WorldItem
-      data:
+      data: 
         collisionDetection: false
         collisionDetector: AISTCollisionDetector
         materialTableFile: "${SHARE}/default/materials.yaml"
@@ -23,12 +23,13 @@ views:
     id: 0
     plugin: Base
     class: ItemPropertyView
-    mounted: true
   - 
     id: 1
     plugin: Base
     class: ItemTreeView
-    mounted: true
+    state: 
+      checked: [ 2 ]
+      expanded: [ 1 ]
   - 
     id: 2
     plugin: Base
@@ -44,6 +45,7 @@ views:
       viewpointControlMode: thirdPerson
       collisionLines: true
       polygonMode: fill
+      cullingMode: enabled
       defaultHeadLight: true
       defaultHeadLightIntensity: 0.75
       headLightLightingFromBack: false
@@ -51,6 +53,7 @@ views:
       worldLightIntensity: 0.5
       worldLightAmbient: 0.3
       additionalLights: true
+      fog: true
       floorGrid: true
       floorGridSpan: 10
       floorGridInterval: 0.5
@@ -65,18 +68,26 @@ views:
       normalVisualization: false
       normalLength: 0.01
       coordinateAxes: true
+      fpsTestIteration: 1
       showFPS: false
       enableNewDisplayListDoubleRendering: false
       useBufferForPicking: true
-      camera: 
-        current: Perspective
-        eye: [ 4, 2, 1.5 ]
-        direction: [ -0.888888889, -0.444444444, -0.111111111 ]
-        up: [ -0.0993807989, -0.0496903995, 0.99380799 ]
-        fieldOfView: 0.6978
-        near: 0.01
-        far: 100
-        orthoHeight: 20
+      upsideDown: false
+      cameras: 
+        - 
+          camera: [ System, Perspective ]
+          isCurrent: true
+          fieldOfView: 0.6978
+          near: 0.01
+          far: 100
+          eye: [ 2.55754415, -1.25776235, 0.447282552 ]
+          direction: [ -0.845949223, 0.436495709, -0.30633545 ]
+          up: [ -0.272232172, 0.140467266, 0.951923627 ]
+        - 
+          camera: [ System, Orthographic ]
+          orthoHeight: 20
+          near: 0.01
+          far: 100
       backgroundColor: [ 0.100000001, 0.100000001, 0.300000012 ]
       gridColor: [ 0.899999976, 0.899999976, 0.899999976, 1 ]
       xzgridColor: [ 0.899999976, 0.899999976, 0.899999976, 1 ]
@@ -86,14 +97,12 @@ views:
     id: 4
     plugin: Body
     class: BodyLinkView
-    mounted: true
     state: 
       showRotationMatrix: false
   - 
     id: 5
     plugin: Body
     class: JointSliderView
-    mounted: true
     state: 
       showAllJoints: true
       jointId: false
@@ -101,41 +110,31 @@ views:
       numColumns: 1
       spinBox: true
       slider: true
+      dial: false
       labelOnLeft: true
   - 
     id: 6
     plugin: Body
     class: LinkSelectionView
-    mounted: true
     state: 
       listingMode: "Link List"
   - 
     id: 7
+    plugin: OpenRTM
+    class: RTSNameServerView
+    state: 
+      NameServers: 
+        - 
+          isDefaultNameServer: true
+          host: "localhost"
+          port: 2809
+  - 
+    id: 8
     plugin: Python
     class: PythonConsoleView
-    mounted: true
 toolbars: 
-  "TimeBar": 
-    minTime: 0
-    maxTime: 30
-    frameRate: 100
-    playbackFrameRate: 50
-    idleLoopDrivenMode: false
-    currentTime: 0
-    speedScale: 1
-    syncToOngoingUpdates: true
-    autoExpansion: true
-  "KinematicsBar": 
-    mode: AUTO
-    enablePositionDragger: true
-    penetrationBlock: false
-    collisionLinkHighlight: false
-    snapDistance: 0.025
-    penetrationBlockDepth: 0.0005
-    lazyCollisionDetectionMode: true
-  "LeggedBodyBar": 
-    stanceWidth: 0.15
   "BodyMotionGenerationBar": 
+    autoGenerationForNewBody: true
     balancer: false
     autoGeneration: false
     timeScaleRatio: 1
@@ -167,9 +166,37 @@ toolbars:
     waistHeightRelaxation: false
     gravity: 9.8
     dynamicsTimeRatio: 1
+  "TimeBar": 
+    minTime: 0
+    maxTime: 30
+    frameRate: 100
+    playbackFrameRate: 50
+    idleLoopDrivenMode: false
+    currentTime: 0
+    speedScale: 1
+    syncToOngoingUpdates: true
+    autoExpansion: true
+  "KinematicsBar": 
+    mode: AUTO
+    enablePositionDragger: true
+    penetrationBlock: false
+    collisionLinkHighlight: false
+    snapDistance: 0.025
+    penetrationBlockDepth: 0.0005
+    lazyCollisionDetectionMode: true
+  "LeggedBodyBar": 
+    stanceWidth: 0.15
 Body: 
   "BodyMotionEngine": 
     updateJointVelocities: false
+  "EditableSceneBody": 
+    editableSceneBodies: 
+      - 
+        bodyItem: 2
+        showCenterOfMass: false
+        showPpcom: false
+        showZmp: false
+    staticModelEditing: true
   "KinematicFaultChecker": 
     checkJointPositions: true
     angleMargin: 0
@@ -179,9 +206,31 @@ Body:
     targetJoints: all
     checkSelfCollisions: true
     onlyTimeBarRange: false
-Media: 
-  "PulseAudioManager": 
-    keepStreamConnection: false
+  "SplineFilterDialog": 
+    isInputFrameRateSpecified: false
+    inputFrameRate: 200
+    isOutputFrameRateSpecified: false
+    outputFrameRate: 200
 OpenRTM: 
   "deleteUnmanagedRTCsOnStartingSimulation": false
-
+viewAreas: 
+  - 
+    type: embedded
+    tabs: false
+    contents: 
+      type: splitter
+      orientation: vertical
+      sizes: [ 685, 274 ]
+      children: 
+        - 
+          type: pane
+          views: [ 3 ]
+          current: 3
+        - 
+          type: pane
+          views: [ 2 ]
+          current: 2
+layoutOfToolBars: 
+  rows: 
+    - 
+      - { name: "SceneBar", x: 0, priority: 1 }

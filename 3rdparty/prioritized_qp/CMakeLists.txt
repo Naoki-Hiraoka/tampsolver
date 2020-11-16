@@ -7,7 +7,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   OsqpEigen)
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ###################################
 ## catkin specific configuration ##
