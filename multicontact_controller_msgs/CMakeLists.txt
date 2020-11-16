@@ -53,6 +53,7 @@ add_message_files(
   FILES
   EndEffectorState.msg
   EndEffectorStateArray.msg
+  MotorTemperatureState.msg
   )
 
 ## Generate services in the 'srv' folder

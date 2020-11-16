@@ -56,6 +56,8 @@
   <depend>eigen_conversions</depend>
   <depend>tf2_ros</depend>
 
+  <depend>hrpsys_ros_bridge</depend>
+
   <depend>choreonoid_cpp</depend>
   <depend>prioritized_qp</depend>
   <depend>iir_filter</depend>

@@ -120,6 +120,7 @@ add_subdirectory(src/ContactForceEstimator)
 add_subdirectory(src/EndEffectorStatePublisher)
 add_subdirectory(src/JointStatesFilter)
 add_subdirectory(src/ForceSensorFilter)
+add_subdirectory(src/MotorTemperatureEstimator)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
