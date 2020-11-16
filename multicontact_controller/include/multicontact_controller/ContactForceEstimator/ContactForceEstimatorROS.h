@@ -16,7 +16,7 @@ namespace multicontact_controller {
       name_ = name;
       contactPoint_ = std::make_shared<ContactPoint>();
       ros::NodeHandle n;
-      contactForcePub_ = n.advertise<geometry_msgs::WrenchStamped>(name_+"force", 1000);
+      contactForcePub_ = n.advertise<geometry_msgs::WrenchStamped>(name_+"_force", 1000);
     }
     std::string name() const { return name_; }
     std::string linkName() const { return linkName_; }

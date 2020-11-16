@@ -47,32 +47,6 @@ private:
 };
 
 
-void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg, std::map<std::string, std::shared_ptr<JointStateFilter> >& jointStateMap, const double& position_cutoff_freq, const double& velocity_cutoff_freq, const double& effort_cutoff_freq) {
-  const ros::Time stamp = msg->header.stamp;
-  for(size_t i=0;i<msg->name.size();i++){
-    const std::string& name = msg->name[i];
-    double position = msg->position.size()==msg->name.size() ? msg->position[i] : 0;
-    double velocity = msg->velocity.size()==msg->name.size() ? msg->velocity[i] : 0;
-    double effort = msg->effort.size()==msg->name.size() ? msg->effort[i] : 0;
-    if(jointStateMap.find(name) == jointStateMap.end()){
-      jointStateMap[name] = std::make_shared<JointStateFilter>(stamp,
-                                                               name,
-                                                               position,
-                                                               velocity,
-                                                               effort,
-                                                               position_cutoff_freq,
-                                                               velocity_cutoff_freq,
-                                                               effort_cutoff_freq);
-    }else{
-      jointStateMap[name]->passFilter(stamp,
-                                      position,
-                                      velocity,
-                                      effort);
-    }
-  }
-}
-
-
 int main(int argc, char** argv){
   ros::init(argc,argv,"joint_states_filter");
   ros::NodeHandle n;
