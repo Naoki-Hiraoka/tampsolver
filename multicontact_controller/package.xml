@@ -58,6 +58,7 @@
 
   <depend>choreonoid_cpp</depend>
   <depend>prioritized_qp</depend>
+  <depend>iir_filter</depend>
   <depend>multicontact_controller_msgs</depend>
 
   <exec_depend>imu_filter_madgwick</exec_depend>

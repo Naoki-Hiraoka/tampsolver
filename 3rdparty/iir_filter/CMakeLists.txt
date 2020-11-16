@@ -9,7 +9,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(hrpsys hrpsys-base REQUIRED)
 set(TORQUEFILTER_SOURCE ${hrpsys_PREFIX}/share/hrpsys/src/rtc/TorqueFilter)
 set(iir_filter_sources
-  ${TORQUEFILTER_SOURCE}/IIRFilter.cpp
   src/Filter.cpp
   )
 message(${TORQUEFILTER_SOURCE})

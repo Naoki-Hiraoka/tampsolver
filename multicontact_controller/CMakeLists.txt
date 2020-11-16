@@ -118,6 +118,7 @@ include_directories(
 
 add_subdirectory(src/ContactForceEstimator)
 add_subdirectory(src/EndEffectorStatePublisher)
+add_subdirectory(src/JointStatesFilter)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
