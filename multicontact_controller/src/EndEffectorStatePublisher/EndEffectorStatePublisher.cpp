@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <multicontact_controller_msgs/EndEffectorStateArray.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 class EndEffectorState {
 public:
@@ -107,6 +108,8 @@ int main(int argc, char** argv){
 
   ros::Publisher endEffectorStateArrayPub = n.advertise<multicontact_controller_msgs::EndEffectorStateArray>("end_effector_states", 1000);
 
+  tf2_ros::TransformBroadcaster br;
+
   int rate;
   nl.param("rate", rate, 250); // 250 hz
   ros::Rate r(rate);
@@ -117,6 +120,7 @@ int main(int argc, char** argv){
     ros::spinOnce();
     ros::Time now = ros::Time::now();
 
+    // publish EffectorStateArray
     multicontact_controller_msgs::EndEffectorStateArray msg;
     for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates.begin();it!=endEffectorStates.end();it++){
       multicontact_controller_msgs::EndEffectorState state = it->second->toMsg();
@@ -125,6 +129,20 @@ int main(int argc, char** argv){
       msg.endeffectorstates.push_back(std::move(state));
     }
     endEffectorStateArrayPub.publish(msg);
+
+    // publish tf for EndEffectors
+    for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates.begin();it!=endEffectorStates.end();it++){
+      geometry_msgs::TransformStamped msg;
+      msg.header.stamp = now;
+      msg.header.seq = seq;
+      msg.header.frame_id = it->second->linkName();
+      msg.child_frame_id = it->second->name();
+      tf::transformEigenToMsg(it->second->localpos(),msg.transform);
+
+      br.sendTransform(msg);
+    }
+
+
     seq++;
     r.sleep();
   }
