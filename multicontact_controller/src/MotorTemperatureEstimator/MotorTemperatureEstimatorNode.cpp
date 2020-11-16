@@ -31,37 +31,37 @@ public:
       ROS_WARN("rosparam %s not found",(ns+"/Re").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.Re());
+    n.getParam(ns+"/Re",estimator_.Re());
 
     if(!n.hasParam(ns+"/K")){
       ROS_WARN("rosparam %s not found",(ns+"/K").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.K());
+    n.getParam(ns+"/K",estimator_.K());
 
     if(!n.hasParam(ns+"/Ccoil")){
       ROS_WARN("rosparam %s not found",(ns+"/Ccoil").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.Ccoil());
+    n.getParam(ns+"/Ccoil",estimator_.Ccoil());
 
     if(!n.hasParam(ns+"/Chousing")){
       ROS_WARN("rosparam %s not found",(ns+"/Chousing").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.Chousing());
+    n.getParam(ns+"/Chousing",estimator_.Chousing());
 
     if(!n.hasParam(ns+"/R1")){
       ROS_WARN("rosparam %s not found",(ns+"/R1").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.R1());
+    n.getParam(ns+"/R1",estimator_.R1());
 
     if(!n.hasParam(ns+"/R2")){
       ROS_WARN("rosparam %s not found",(ns+"/R2").c_str());
       return false;
     }
-    n.getParam(ns+"/name",estimator_.R2());
+    n.getParam(ns+"/R2",estimator_.R2());
 
     estimator_.Tcoil() = Tair;
     estimator_.Thousing() = Tair;
@@ -96,7 +96,7 @@ int main(int argc, char** argv){
   n.param("Tair", Tair, 25.0);
 
   std::vector<std::string> joints;
-  n.param("joints", joints); // link of joints to estimate
+  n.getParam("joints", joints); // link of joints to estimate
 
   std::map<std::string,std::shared_ptr<MotorTemperatureEstimatorImpl> > motorTemperatureEstimators;
 
