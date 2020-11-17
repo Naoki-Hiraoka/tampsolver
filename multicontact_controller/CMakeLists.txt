@@ -121,6 +121,7 @@ add_subdirectory(src/EndEffectorStatePublisher)
 add_subdirectory(src/JointStatesFilter)
 add_subdirectory(src/ForceSensorFilter)
 add_subdirectory(src/MotorTemperatureEstimator)
+add_subdirectory(src/MotorTemperatureLimiter)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
