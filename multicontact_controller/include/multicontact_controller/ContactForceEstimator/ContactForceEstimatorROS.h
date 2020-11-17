@@ -42,6 +42,7 @@ namespace multicontact_controller {
   private:
     cnoid::Body* robot_;
     std::map<std::string,cnoid::Link*> jointLinkMap_;
+    std::map<std::string,cnoid::Vector6> forceSensorOffsets_;
 
     std::map<std::string,std::shared_ptr<EndEffectorState> > endEffectorStates_;
 

@@ -63,10 +63,7 @@ namespace multicontact_controller {
     bool estimateForce();
 
     cnoid::Vector6 getEstimatedForce(const std::string& name);
-
-    bool removeForceSensorOffset(double time);
-    bool remoteRootForceOffset(double time);
-    bool remoteJointTorqueOffset(double time);
+    cnoid::Vector6 getOffsetForce(const std::string& name);
 
   protected:
     bool updateRobotState();
@@ -76,6 +73,9 @@ namespace multicontact_controller {
 
     std::vector<std::shared_ptr<ContactPoint> > candidatePoints_;
     bool changed_ = true;
+
+    std::vector<cnoid::Vector6> forceSensorOffsets_;
+    //TODO rootForceOffset
 
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_;

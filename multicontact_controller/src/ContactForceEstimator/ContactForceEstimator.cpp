@@ -136,8 +136,13 @@ namespace multicontact_controller {
        */
       const std::string& name = forceSensors[i]->name();
       cnoid::Link* parent_link = forceSensors[i]->link();
-      cnoid::Link* child_link = forceSensors[i]->link()->child();
-      parent_link->removeChild(child_link);
+      std::vector<cnoid::Link*> child_links;
+      for(cnoid::Link* link=forceSensors[i]->link()->child();link;link=link->sibling()){
+        child_links.push_back(link);
+      }
+      for(size_t i=0;i<child_links.size();i++){
+        parent_link->removeChild(child_links[i]);//childのsiblingが代わりにparentのchildになることに注意
+      }
 
       cnoid::Link* linkX = new cnoid::Link();
       linkX->setName(name+"X");
@@ -177,8 +182,10 @@ namespace multicontact_controller {
       linkYaw->setJointAxis(forceSensors[i]->R_local() * cnoid::Vector3::UnitZ());
       linkYaw->setJointId(nj++);
 
-      linkYaw->appendChild(child_link);
-      child_link->T() = linkX->Tb().inverse() * child_link->T();
+      for(size_t i=0;i<child_links.size();i++){
+        linkYaw->appendChild(child_links[i]);
+        child_links[i]->setOffsetTranslation(linkX->Tb().inverse() * child_links[i]->b());
+      }
 
       linkYaw->setCenterOfMass(parent_link->centerOfMass() - forceSensors[i]->p_local());
       linkYaw->setMass(parent_link->mass());
@@ -194,6 +201,11 @@ namespace multicontact_controller {
       if(!setCandidatePoint(candidatePoints_[i])){
         deleteCandidatePoint(candidatePoints_[i]->name());
       }
+    }
+
+    forceSensorOffsets_.clear();
+    for(size_t i=0;i<forceSensors.size();i++){
+      forceSensorOffsets_.push_back(cnoid::Vector6::Zero());
     }
 
     return true;
@@ -265,6 +277,9 @@ namespace multicontact_controller {
     }
 
     cnoid::VectorX g = cnoid::VectorX::Zero(6+robot_->numJoints());
+    cnoid::Vector3 gravity(0, 0, 9.80665);
+    robot_->rootLink()->dv() = gravity;
+    robot_->rootLink()->dw().setZero();
     cnoid::Vector6 f = cnoid::calcInverseDynamics(robot_->rootLink()); //原点周り
     f.tail<3>() -= robot_->rootLink()->p().cross(f.head<3>()); // world系, rootlink周り
     g.head<6>() = f;
@@ -439,6 +454,11 @@ namespace multicontact_controller {
       candidatePoints_[i]->F() = result.segment<6>(i*6);
     }
 
+    cnoid::VectorX forceOffsets = tasks_[0]->A() * result - tasks_[0]->b();
+    for(size_t i=0;i<forceSensorOffsets_.size();i++){
+      forceSensorOffsets_[i] = - forceOffsets.segment<6>(i*6); //符号が逆であることに注意
+    }
+
     return true;
   }
 
@@ -452,14 +472,13 @@ namespace multicontact_controller {
     }
   }
 
-  bool ContactForceEstimator::removeForceSensorOffset(double time) {
-    return true;
-  }
-  bool ContactForceEstimator::remoteRootForceOffset(double time) {
-    return true;
-  }
-  bool ContactForceEstimator::remoteJointTorqueOffset(double time) {
-    return true;
+  cnoid::Vector6 ContactForceEstimator::getOffsetForce(const std::string& name) {
+    const cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_->devices());
+
+    for(size_t i=0;i<forceSensors.size();i++){
+      if(forceSensors[i]->name() == name) return forceSensorOffsets_[i];
+    }
+    return cnoid::Vector6::Zero();
   }
 
   bool ContactForceEstimator::updateRobotState() {
@@ -479,6 +498,7 @@ namespace multicontact_controller {
     for(size_t i=0;i<forceSensors.size();i++){
       const std::string& name = forceSensors[i]->name();
       const cnoid::Vector6& F = forceSensors[i]->F();
+       //符号が逆であることに注意
       robot_->link(name+"X")->u() = - F(0);
       robot_->link(name+"Y")->u() = - F(1);
       robot_->link(name+"Z")->u() = - F(2);
