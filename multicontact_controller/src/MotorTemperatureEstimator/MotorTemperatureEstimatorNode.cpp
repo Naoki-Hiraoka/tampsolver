@@ -63,6 +63,33 @@ public:
     }
     n.getParam(ns+"/R2",estimator_.R2());
 
+    if(!n.hasParam(ns+"/Tlimit")){
+      ROS_WARN("rosparam %s not found",(ns+"/Tlimit").c_str());
+      return false;
+    }
+    n.getParam(ns+"/Tlimit",estimator_.Tlimit());
+
+    if(!n.hasParam(ns+"/tsoft")){
+      ROS_WARN("rosparam %s not found",(ns+"/tsoft").c_str());
+      return false;
+    }
+    n.getParam(ns+"/tsoft",estimator_.tsoft());
+
+    if(!n.hasParam(ns+"/thard")){
+      ROS_WARN("rosparam %s not found",(ns+"/thard").c_str());
+      return false;
+    }
+    n.getParam(ns+"/thard",estimator_.thard());
+
+    if(!n.hasParam(ns+"/TempPredParams")){
+      ROS_WARN("rosparam %s not found",(ns+"/TempPredParams").c_str());
+      return false;
+    }
+    n.getParam(ns+"/TempPredParams",estimator_.TempPredParams());
+
+    n.param(ns+"/maxRemainingTime",estimator_.maxRemainingTime(),600.0);
+    n.param(ns+"/remainingTimeStep",estimator_.remainingTimeStep(),5.0);
+
     estimator_.Tcoil() = Tair;
     estimator_.Thousing() = Tair;
     estimator_.Tair() = Tair;
@@ -81,8 +108,19 @@ public:
   double& Tcoil() {return estimator_.Tcoil();}
   double Thousing() const {return estimator_.Thousing();}
   double& Thousing() {return estimator_.Thousing();}
+  double Tlimit() const {return estimator_.Tlimit();}
+  double& Tlimit() {return estimator_.Tlimit();}
+  double tauMaxsoft() const {return estimator_.tauMaxsoft();}
+  double& tauMaxsoft() {return estimator_.tauMaxsoft();}
+  double tauMaxhard() const {return estimator_.tauMaxhard();}
+  double& tauMaxhard() {return estimator_.tauMaxhard();}
+  double tauBalance() const {return estimator_.tauBalance();}
+  double& tauBalance() {return estimator_.tauBalance();}
+  double remainingTime() const {return estimator_.remainingTime();}
+  double& remainingTime() {return estimator_.remainingTime();}
+
 private:
-  MotorTemperatureEstimator estimator_;
+  multicontact_controller::MotorTemperatureEstimator estimator_;
   std::string name_;
   ros::Time stamp_ = ros::Time(0);
 };
@@ -154,8 +192,13 @@ int main(int argc, char** argv){
     msg.header.seq = seq;
     for(std::map<std::string, std::shared_ptr<MotorTemperatureEstimatorImpl> >::iterator it=motorTemperatureEstimators.begin();it!=motorTemperatureEstimators.end();it++){
       msg.name.push_back(it->second->name());
+      msg.coil_temperature_limit.push_back(it->second->Tlimit());
       msg.housing_temperature.push_back(it->second->Thousing());
       msg.coil_temperature.push_back(it->second->Tcoil());
+      msg.maximum_effort_soft.push_back(it->second->tauMaxsoft());
+      msg.maximum_effort_hard.push_back(it->second->tauMaxhard());
+      msg.balance_effort.push_back(it->second->tauBalance());
+      msg.remaining_time.push_back(it->second->remainingTime());
     }
     motorTemperatureStatePub.publish(msg);
     seq++;
