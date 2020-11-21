@@ -1,0 +1,6 @@
+geometry_msgs/TransformStamped transform
+
+---
+
+bool success
+string message # informational, e.g. for error messages
