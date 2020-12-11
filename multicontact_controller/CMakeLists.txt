@@ -123,7 +123,6 @@ add_subdirectory(src/ForceSensorFilter)
 add_subdirectory(src/MotorTemperatureEstimator)
 add_subdirectory(src/MotorTemperatureLimiter)
 add_subdirectory(src/IdleFootCoords)
-#add_subdirectory(src/WalkController)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
