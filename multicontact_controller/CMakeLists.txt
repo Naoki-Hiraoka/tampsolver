@@ -123,14 +123,13 @@ add_subdirectory(src/ForceSensorFilter)
 add_subdirectory(src/MotorTemperatureEstimator)
 add_subdirectory(src/MotorTemperatureLimiter)
 add_subdirectory(src/IdleFootCoords)
-add_subdirectory(src/WalkController)
+#add_subdirectory(src/WalkController)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
 target_link_libraries(CnoidMultiContactControllerPlugin
   ${catkin_LIBRARIES}
-  ContactForceEstimator
-  WalkController)
+  ContactForceEstimator)
 set_target_properties(CnoidMultiContactControllerPlugin PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})
 
 ## Add cmake target dependencies of the library
