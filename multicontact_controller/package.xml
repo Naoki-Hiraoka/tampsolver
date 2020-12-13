@@ -57,6 +57,8 @@
   <depend>eigen_conversions</depend>
   <depend>tf2_ros</depend>
 
+  <depend>roseus</depend>
+  <depend>roseus_smach</depend>
   <depend>hrpsys_ros_bridge</depend>
 
   <depend>choreonoid_cpp</depend>
