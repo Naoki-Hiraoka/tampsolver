@@ -88,8 +88,8 @@ namespace multicontact_controller {
       contactForceEstimator.clearCandidatePoints();
       for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates_.begin();it!=endEffectorStates_.end();it++){
         switch(it->second->state()){
-        case multicontact_controller_msgs::EndEffectorState::NOT_CARED :
-        case multicontact_controller_msgs::EndEffectorState::AIR :
+        case multicontact_controller_msgs::EndEffectorInfo::NOT_CARED :
+        case multicontact_controller_msgs::EndEffectorInfo::AIR :
           break;
         default:
           contactForceEstimator.setCandidatePoint(it->second->contactPoint());
@@ -183,10 +183,10 @@ namespace multicontact_controller {
     }
   }
 
-  void ContactForceEstimatorROS::contactPointsCallback(const multicontact_controller_msgs::EndEffectorStateArray::ConstPtr& msg) {
+  void ContactForceEstimatorROS::contactPointsCallback(const multicontact_controller_msgs::EndEffectorInfoArray::ConstPtr& msg) {
     // 消滅したEndEffectorを削除
     for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it = endEffectorStates_.begin(); it != endEffectorStates_.end(); ) {
-      if (std::find_if(msg->endeffectorstates.begin(),msg->endeffectorstates.end(),[&](multicontact_controller_msgs::EndEffectorState x){return x.name==it->first;}) == msg->endeffectorstates.end()) {
+      if (std::find_if(msg->endeffectorstates.begin(),msg->endeffectorstates.end(),[&](multicontact_controller_msgs::EndEffectorInfo x){return x.name==it->first;}) == msg->endeffectorstates.end()) {
         it = endEffectorStates_.erase(it);
       }
       else {

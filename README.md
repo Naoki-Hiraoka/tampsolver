@@ -8,6 +8,7 @@ You need
 - https://github.com/start-jsk/rtmros_common/pull/1099
 - https://github.com/fkanehiro/hrpsys-base/pull/1294
 - https://github.com/fkanehiro/hrpsys-base/pull/1295
+- https://github.com/jsk-ros-pkg/jsk_roseus/pull/652
 
 Then,
 

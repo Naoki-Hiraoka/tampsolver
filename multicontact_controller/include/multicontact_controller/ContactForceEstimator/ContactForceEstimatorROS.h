@@ -6,7 +6,7 @@
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/WrenchStamped.h>
-#include <multicontact_controller_msgs/EndEffectorStateArray.h>
+#include <multicontact_controller_msgs/EndEffectorInfoArray.h>
 #include <ros/ros.h>
 
 namespace multicontact_controller {
@@ -30,7 +30,7 @@ namespace multicontact_controller {
   private:
     std::string name_;
     std::string linkName_;
-    int32_t state_;//multicontact_controller_msgs::EndEffectorState::state
+    int32_t state_;//multicontact_controller_msgs::EndEffectorInfo::state
     std::shared_ptr<ContactPoint> contactPoint_;
 
     ros::Publisher contactForcePub_;
@@ -49,7 +49,7 @@ namespace multicontact_controller {
     void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);
     void forceSensorCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg);
-    void contactPointsCallback(const multicontact_controller_msgs::EndEffectorStateArray::ConstPtr& msg);
+    void contactPointsCallback(const multicontact_controller_msgs::EndEffectorInfoArray::ConstPtr& msg);
   };
 
 };

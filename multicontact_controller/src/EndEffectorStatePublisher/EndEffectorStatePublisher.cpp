@@ -1,5 +1,5 @@
 #include <ros/ros.h>
-#include <multicontact_controller_msgs/EndEffectorStateArray.h>
+#include <multicontact_controller_msgs/EndEffectorInfoArray.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <tf2_ros/transform_broadcaster.h>
 
@@ -52,16 +52,16 @@ public:
       }
 
       if(!n.hasParam(ns+"/initialstate")){
-        state_ = multicontact_controller_msgs::EndEffectorState::NOT_CARED;
+        state_ = multicontact_controller_msgs::EndEffectorInfo::NOT_CARED;
       }else{
         std::string param;
         n.getParam(ns+"/initialstate",param);
-        if(param=="NOT_CARED") state_ = multicontact_controller_msgs::EndEffectorState::NOT_CARED;
-        else if(param=="AIR") state_ = multicontact_controller_msgs::EndEffectorState::AIR;
-        else if(param=="AIR_NEAR_CONTACT") state_ = multicontact_controller_msgs::EndEffectorState::AIR_NEAR_CONTACT;
-        else if(param=="TOWARD_BREAK_CONTACT") state_ = multicontact_controller_msgs::EndEffectorState::TOWARD_BREAK_CONTACT;
-        else if(param=="TOWARD_MAKE_CONTACT") state_ = multicontact_controller_msgs::EndEffectorState::TOWARD_MAKE_CONTACT;
-        else if(param=="CONTACT") state_ = multicontact_controller_msgs::EndEffectorState::CONTACT;
+        if(param=="NOT_CARED") state_ = multicontact_controller_msgs::EndEffectorInfo::NOT_CARED;
+        else if(param=="AIR") state_ = multicontact_controller_msgs::EndEffectorInfo::AIR;
+        else if(param=="AIR_NEAR_CONTACT") state_ = multicontact_controller_msgs::EndEffectorInfo::AIR_NEAR_CONTACT;
+        else if(param=="TOWARD_BREAK_CONTACT") state_ = multicontact_controller_msgs::EndEffectorInfo::TOWARD_BREAK_CONTACT;
+        else if(param=="TOWARD_MAKE_CONTACT") state_ = multicontact_controller_msgs::EndEffectorInfo::TOWARD_MAKE_CONTACT;
+        else if(param=="CONTACT") state_ = multicontact_controller_msgs::EndEffectorInfo::CONTACT;
         else{
           ROS_WARN("%s is not supported",param.c_str());
           return false;
@@ -72,8 +72,8 @@ public:
     return true;
   }
 
-  multicontact_controller_msgs::EndEffectorState toMsg() {
-    multicontact_controller_msgs::EndEffectorState msg;
+  multicontact_controller_msgs::EndEffectorInfo toMsg() {
+    multicontact_controller_msgs::EndEffectorInfo msg;
     msg.header.frame_id = linkName_;
     msg.name = name_;
     tf::transformEigenToMsg(localpos_,msg.transform);
@@ -84,7 +84,7 @@ private:
   std::string name_;
   std::string linkName_;
   Eigen::Affine3d localpos_;
-  int32_t state_;//multicontact_controller_msgs::EndEffectorState::state
+  int32_t state_;//multicontact_controller_msgs::EndEffectorMsg::state
 };
 
 
@@ -106,7 +106,7 @@ int main(int argc, char** argv){
     }
   }
 
-  ros::Publisher endEffectorStateArrayPub = n.advertise<multicontact_controller_msgs::EndEffectorStateArray>("end_effector_states", 1000);
+  ros::Publisher endEffectorStateArrayPub = n.advertise<multicontact_controller_msgs::EndEffectorInfoArray>("end_effector_states", 1000);
 
   tf2_ros::TransformBroadcaster br;
 
@@ -121,9 +121,9 @@ int main(int argc, char** argv){
     ros::Time now = ros::Time::now();
 
     // publish EffectorStateArray
-    multicontact_controller_msgs::EndEffectorStateArray msg;
+    multicontact_controller_msgs::EndEffectorInfoArray msg;
     for(std::map<std::string,std::shared_ptr<EndEffectorState> >::iterator it=endEffectorStates.begin();it!=endEffectorStates.end();it++){
-      multicontact_controller_msgs::EndEffectorState state = it->second->toMsg();
+      multicontact_controller_msgs::EndEffectorInfo state = it->second->toMsg();
       state.header.stamp = now;
       state.header.seq = seq;
       msg.endeffectorstates.push_back(std::move(state));
