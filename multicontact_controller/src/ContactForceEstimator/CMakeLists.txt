@@ -1,6 +1,8 @@
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib
+  std_msgs
+  std_srvs
   geometry_msgs
   sensor_msgs
   eigen_conversions

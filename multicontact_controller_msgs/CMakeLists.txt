@@ -54,7 +54,6 @@ add_message_files(
   StringArray.msg
   ContactInfo.msg
   EndEffectorInfo.msg
-  EndEffectorInfoArray.msg
   MotorTemperatureState.msg
   )
 

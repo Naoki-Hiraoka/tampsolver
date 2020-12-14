@@ -92,6 +92,8 @@ namespace multicontact_controller {
     ContactForceEstimator contactForceEstimator;
     contactForceEstimator.setRobot(robot_);
 
+    ros::ServiceServer enableService = nl.advertiseService("enable",&ContactForceEstimatorROS::enableCallback,this);
+
     double offsetUpdaterate;
     nl.param("offset_update_rate", offsetUpdaterate, 1.0); // 1 hz
     double forceOffsetUpdateThre;
@@ -111,54 +113,56 @@ namespace multicontact_controller {
       // spin
       ros::spinOnce();
 
-      // update candidatepoints
-      contactForceEstimator.clearCandidatePoints();
-      for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-        if(it->second->contactPoint()->parent() &&
-           (it->second->state() == "NEAR_CONTACT" ||
-            it->second->state() == "TOWARD_BREAK_CONTACT" ||
-            it->second->state() == "CONTACT" ||
-            it->second->state() == "TOWARD_MAKE_CONTACT")){
-          contactForceEstimator.setCandidatePoint(it->second->contactPoint());
+      if( this->isEnabled_ ){
+        // update candidatepoints
+        contactForceEstimator.clearCandidatePoints();
+        for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+          if(it->second->contactPoint()->parent() &&
+             (it->second->state() == "NEAR_CONTACT" ||
+              it->second->state() == "TOWARD_BREAK_CONTACT" ||
+              it->second->state() == "CONTACT" ||
+              it->second->state() == "TOWARD_MAKE_CONTACT")){
+            contactForceEstimator.setCandidatePoint(it->second->contactPoint());
+          }
         }
-      }
 
-      ros::Time now = ros::Time::now();
+        ros::Time now = ros::Time::now();
 
-      //estimate
-      contactForceEstimator.estimateForce();
+        //estimate
+        contactForceEstimator.estimateForce();
 
-      //publish
-      for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-        cnoid::Vector6 F = contactForceEstimator.getEstimatedForce(it->first);
+        //publish
+        for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+          cnoid::Vector6 F = contactForceEstimator.getEstimatedForce(it->first);
 
-        geometry_msgs::WrenchStamped msg;
-        msg.header.seq = seq;
-        msg.header.stamp = now;
-        msg.header.frame_id = it->first;
-        tf::wrenchEigenToMsg(F, msg.wrench);
-        it->second->contactForcePub().publish(msg);
-      }
-
-      cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_->devices());
-      for(size_t i=0;i<forceSensors.size();i++){
-        cnoid::Vector6 F = contactForceEstimator.getOffsetForce(forceSensors[i]->name());
-        if(F.head<3>().norm() > forceOffsetUpdateThre) {
-          forceSensorOffsets_[forceSensors[i]->name()].head<3>() += 1.0/offsetUpdaterate*(now-stamp).toSec() * F.head<3>();
+          geometry_msgs::WrenchStamped msg;
+          msg.header.seq = seq;
+          msg.header.stamp = now;
+          msg.header.frame_id = it->first;
+          tf::wrenchEigenToMsg(F, msg.wrench);
+          it->second->contactForcePub().publish(msg);
         }
-        if(F.tail<3>().norm() > momentOffsetUpdateThre) {
-          forceSensorOffsets_[forceSensors[i]->name()].tail<3>() += 1.0/offsetUpdaterate*(now-stamp).toSec() * F.tail<3>();
-        }
-        geometry_msgs::WrenchStamped msg;
-        msg.header.seq = seq;
-        msg.header.stamp = now;
-        msg.header.frame_id = forceSensors[i]->name();
-        tf::wrenchEigenToMsg(forceSensorOffsets_[forceSensors[i]->name()], msg.wrench);
-        offsetForcePub[forceSensors[i]->name()].publish(msg);
-      }
 
-      seq++;
-      stamp = now;
+        cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_->devices());
+        for(size_t i=0;i<forceSensors.size();i++){
+          cnoid::Vector6 F = contactForceEstimator.getOffsetForce(forceSensors[i]->name());
+          if(F.head<3>().norm() > forceOffsetUpdateThre) {
+            forceSensorOffsets_[forceSensors[i]->name()].head<3>() += 1.0/offsetUpdaterate*(now-stamp).toSec() * F.head<3>();
+          }
+          if(F.tail<3>().norm() > momentOffsetUpdateThre) {
+            forceSensorOffsets_[forceSensors[i]->name()].tail<3>() += 1.0/offsetUpdaterate*(now-stamp).toSec() * F.tail<3>();
+          }
+          geometry_msgs::WrenchStamped msg;
+          msg.header.seq = seq;
+          msg.header.stamp = now;
+          msg.header.frame_id = forceSensors[i]->name();
+          tf::wrenchEigenToMsg(forceSensorOffsets_[forceSensors[i]->name()], msg.wrench);
+          offsetForcePub[forceSensors[i]->name()].publish(msg);
+        }
+
+        seq++;
+        stamp = now;
+      }
 
       drawObjects();
 
@@ -190,11 +194,12 @@ namespace multicontact_controller {
       cnoid::Device* device = robot_->findDevice(msg->header.frame_id);
       if(!device) return;
       cnoid::Position T = device->link()->T() * device->T_local();
-      cnoid::Position realT;
+      cnoid::Position realT; realT.setIdentity();
       Eigen::Quaterniond q;
       tf::quaternionMsgToEigen(msg->orientation,q);
       realT.linear() = q.normalized().toRotationMatrix();
-      robot_->rootLink()->T() = realT * T.inverse() * robot_->rootLink()->T();
+      cnoid::Position nextT = realT * T.inverse() * robot_->rootLink()->T();
+      robot_->rootLink()->T() = nextT;
       robot_->calcForwardKinematics(false,false);
     }
   }
@@ -226,5 +231,11 @@ namespace multicontact_controller {
         endEffectors_[msg->strings[i]] = std::make_shared<EndEffectorCFEROS>(msg->strings[i], this->robot_);
       }
     }
+  }
+
+  bool ContactForceEstimatorROS::enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {
+    this->isEnabled_ = req.data;
+    res.success = true;
+    return true;
   }
 };

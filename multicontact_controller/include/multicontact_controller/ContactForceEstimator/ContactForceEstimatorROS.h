@@ -4,6 +4,7 @@
 #include <multicontact_controller/ContactForceEstimator/ContactForceEstimator.h>
 #include <choreonoid_cpp/ChoreonoidCpp.h>
 #include <std_msgs/String.h>
+#include <std_srvs/SetBool.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/WrenchStamped.h>
@@ -54,6 +55,7 @@ namespace multicontact_controller {
   public:
     virtual void main(int argc, char** argv) override;
   private:
+    bool isEnabled_;
     cnoid::Body* robot_;
     std::map<std::string,cnoid::Vector6> forceSensorOffsets_;
 
@@ -63,6 +65,7 @@ namespace multicontact_controller {
     void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);
     void forceSensorCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
+    bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
   };
 
 };

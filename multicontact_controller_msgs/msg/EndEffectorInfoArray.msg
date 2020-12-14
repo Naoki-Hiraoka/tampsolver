@@ -1,1 +1,0 @@
-multicontact_controller_msgs/EndEffectorInfo[] endeffectorstates
