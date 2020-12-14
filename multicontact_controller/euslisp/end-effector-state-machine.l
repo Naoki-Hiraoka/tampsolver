@@ -126,7 +126,6 @@
    )
   )
 
-
 (defun add-end-effector-cb (req)
   (let ((res (send req :response)))
     (if (send *sm* :node (send req :name))
@@ -169,11 +168,13 @@
 (setq *structure-changed* t)
 (setq *enabled* t)
 
+(dolist (eef-name (ros::get-param "end_effectors")
+  (add-end-effector-cb (instance multicontact_controller_msgs::setstringrequest :init :name eef-name))))
+
 (unix::sleep 2)
 
 (ros::advertise-service "~add_end_effector" multicontact_controller_msgs::SetString #'add-end-effector-cb)
 (ros::advertise-service "~remove_end_effector" multicontact_controller_msgs::SetString #'remove-end-effector-cb)
-
 (ros::advertise-service "~enable" std_srvs::SetBool #'enable-cb)
 
 (ros::rate 100)

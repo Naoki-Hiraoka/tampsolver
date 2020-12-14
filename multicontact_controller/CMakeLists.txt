@@ -117,7 +117,7 @@ include_directories(
   )
 
 add_subdirectory(src/ContactForceEstimator)
-add_subdirectory(src/EndEffectorStatePublisher)
+add_subdirectory(src/EndEffectorInfoPublisher)
 add_subdirectory(src/JointStatesFilter)
 add_subdirectory(src/ForceSensorFilter)
 add_subdirectory(src/MotorTemperatureEstimator)
