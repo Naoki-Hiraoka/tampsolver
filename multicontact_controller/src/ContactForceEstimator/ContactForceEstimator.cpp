@@ -446,9 +446,14 @@ namespace multicontact_controller {
     }
 
     cnoid::VectorX result;
-    bool solved = prioritized_qp::solve(tasks_,result);
 
-    if(!solved) return false;
+    if(dim!=0){
+      bool solved = prioritized_qp::solve(tasks_,result);
+
+      if(!solved) return false;
+    }else{
+      result = cnoid::VectorX(0);
+    }
 
     for(size_t i=0;i<candidatePoints_.size();i++){
       candidatePoints_[i]->F() = result.segment<6>(i*6);

@@ -117,6 +117,7 @@ namespace multicontact_controller {
     unsigned int seq = 0;
     ros::Time stamp = ros::Time::now();
     while (ros::ok()) {
+      ros::Time now = ros::Time::now();
 
       // spin
       ros::spinOnce();
@@ -133,8 +134,6 @@ namespace multicontact_controller {
             contactForceEstimator.setCandidatePoint(it->second->contactPoint());
           }
         }
-
-        ros::Time now = ros::Time::now();
 
         //estimate
         contactForceEstimator.estimateForce();
@@ -168,9 +167,10 @@ namespace multicontact_controller {
           offsetForcePub[forceSensors[i]->name()].publish(msg);
         }
 
-        seq++;
-        stamp = now;
       }
+
+      seq++;
+      stamp = now;
 
       drawObjects();
 
