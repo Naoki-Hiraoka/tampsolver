@@ -5,7 +5,7 @@
 (ros::load-ros-manifest "std_srvs")
 (ros::load-ros-manifest "multicontact_controller_msgs")
 
-(ros::roseus "walk_mode_switcher")
+(ros::roseus "walk_mode_switcher" :anonymous nil)
 
 (if (ros::has-param "base_frame")
     (setq *base-frame* (ros::get-param "base_frame"))

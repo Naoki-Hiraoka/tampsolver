@@ -34,11 +34,86 @@ bool loadEndEffectorInfoParam(ros::NodeHandle& n, std::string& name, std::shared
       }
   }
 
+  {
+    std::string contact_ns = ns + "/contact";
+    if(!n.hasParam(contact_ns+"/type")){
+      ROS_WARN("rosparam %s not found",(ns+"/type").c_str());
+      endEffectorInfo->contact.type="SURFACE";
+    }else{
+      n.getParam(contact_ns+"/type",endEffectorInfo->contact.type);
+    }
+
+    if(!n.hasParam(contact_ns+"/vertices")){
+      ROS_WARN("rosparam %s not found",(ns+"/vertices").c_str());
+      endEffectorInfo->contact.vertices.points.clear();
+      geometry_msgs::Point32 p1; p1.x = 0.05; p1.y = 0.05; p1.z = 0;
+      endEffectorInfo->contact.vertices.points.push_back(p1);
+      geometry_msgs::Point32 p2; p2.x = -0.05; p2.y = 0.05; p2.z = 0;
+      endEffectorInfo->contact.vertices.points.push_back(p2);
+      geometry_msgs::Point32 p3; p3.x = -0.05; p3.y = -0.05; p3.z = 0;
+      endEffectorInfo->contact.vertices.points.push_back(p3);
+      geometry_msgs::Point32 p4; p4.x = 0.05; p4.y = -0.05; p4.z = 0;
+      endEffectorInfo->contact.vertices.points.push_back(p4);
+    }else{
+      std::vector<double> param;
+      n.getParam(contact_ns+"/vertices",param);
+      if(param.size() % 3 !=0) ROS_WARN("rosparam %s size mismatch %lu",(ns+"/vertices").c_str(), param.size());
+      endEffectorInfo->contact.vertices.points.clear();
+      for(size_t i=0;i<param.size() / 3; i++){
+        geometry_msgs::Point32 p; p.x = param[i*3+0]; p.y = param[i*3+1]; p.z = param[i*3+2];
+        endEffectorInfo->contact.vertices.points.push_back(p);
+      }
+    }
+
+    if(!n.hasParam(contact_ns+"/mu_trans")){
+      ROS_WARN("rosparam %s not found",(ns+"/mu_trans").c_str());
+      endEffectorInfo->contact.mu_trans=0.1;
+    }else{
+      n.getParam(contact_ns+"/mu_trans",endEffectorInfo->contact.mu_trans);
+    }
+
+    if(!n.hasParam(contact_ns+"/mu_rot")){
+      ROS_WARN("rosparam %s not found",(ns+"/mu_rot").c_str());
+      endEffectorInfo->contact.mu_rot=0.1;
+    }else{
+      n.getParam(contact_ns+"/mu_rot",endEffectorInfo->contact.mu_rot);
+    }
+
+    if(!n.hasParam(contact_ns+"/max_fz")){
+      ROS_WARN("rosparam %s not found",(ns+"/max_fz").c_str());
+      endEffectorInfo->contact.max_fz=200.0;
+    }else{
+      n.getParam(contact_ns+"/max_fz",endEffectorInfo->contact.max_fz);
+    }
+
+    if(!n.hasParam(contact_ns+"/min_fz")){
+      ROS_WARN("rosparam %s not found",(ns+"/min_fz").c_str());
+      endEffectorInfo->contact.min_fz=50.0;
+    }else{
+      n.getParam(contact_ns+"/min_fz",endEffectorInfo->contact.min_fz);
+    }
+
+    if(!n.hasParam(contact_ns+"/contact_decision_threshold1")){
+      ROS_WARN("rosparam %s not found",(ns+"/contact_decision_threshold1").c_str());
+      endEffectorInfo->contact.contact_decision_threshold1=30.0;
+    }else{
+      n.getParam(contact_ns+"/contact_decision_threshold1",endEffectorInfo->contact.contact_decision_threshold1);
+    }
+
+    if(!n.hasParam(contact_ns+"/contact_decision_threshold2")){
+      ROS_WARN("rosparam %s not found",(ns+"/contact_decision_threshold2").c_str());
+      endEffectorInfo->contact.contact_decision_threshold2=50.0;
+    }else{
+      n.getParam(contact_ns+"/contact_decision_threshold2",endEffectorInfo->contact.contact_decision_threshold2);
+    }
+
+  }
+
   return true;
 }
 
 int main(int argc, char** argv){
-  ros::init(argc,argv,"end_effector_info_pubisher");
+  ros::init(argc,argv,"end_effector_info_publisher");
   ros::NodeHandle n;
   ros::NodeHandle nl("~");
 
@@ -66,6 +141,26 @@ int main(int argc, char** argv){
       }
       endEffectorsPub.publish(msg);
 
+      res.success = true;
+      return true;});
+
+  ros::ServiceServer removeEndEffectorService
+    = nl.advertiseService<multicontact_controller_msgs::SetString::Request, multicontact_controller_msgs::SetString::Response>
+    ("remove_end_effector",
+     [&](multicontact_controller_msgs::SetString::Request  &req,
+         multicontact_controller_msgs::SetString::Response &res){
+      if(endEffectorInfos.find(req.name) == endEffectorInfos.end()){
+        res.success = true;
+        return true;
+      }
+      endEffectorInfoPubs.erase(req.name);
+      multicontact_controller_msgs::StringArray msg;
+      for(std::map<std::string,std::shared_ptr<multicontact_controller_msgs::EndEffectorInfo> >::iterator it=endEffectorInfos.begin();it!=endEffectorInfos.end();it++){
+        msg.strings.push_back(it->first);
+      }
+      endEffectorsPub.publish(msg);
+
+      res.success = true;
       return true;});
 
   tf2_ros::TransformBroadcaster br;

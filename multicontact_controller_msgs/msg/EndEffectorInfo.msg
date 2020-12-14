@@ -1,7 +1,12 @@
 Header header # header.frame_id : name of parent link
 
-string name # name of EndEffector
 geometry_msgs/Transform transform # local transform of EndEffector in parent link coordinate
+multicontact_controller_msgs/ContactInfo contact
+
+
+# to be removed
+
+string name # name of EndEffector
 
 uint8 NOT_CARED=0
 uint8 AIR=1

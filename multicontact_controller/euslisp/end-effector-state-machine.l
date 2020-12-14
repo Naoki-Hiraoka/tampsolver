@@ -8,11 +8,18 @@
 (load "package://roseus_smach/src/state-machine.l")
 (load "package://roseus_smach/src/state-machine-ros.l")
 
-(ros::roseus "end_effector_state_machine")
+(ros::roseus "end_effector_state_machine" :anonymous nil)
 
 (defclass end-effector-state-machine
   :super state-machine
-  :slots (eef-name state-topic state-msg))
+  :slots (eef-name
+          state-topic state-msg
+          force-topic act-force act-torque
+          info-topic info
+          set-ref-contact-serivice current-ref-contact cmd-ref-contact
+          set-near-contact-serivice current-near-contact cmd-near-contact
+          set-cared-serivice current-cared cmd-cared
+          ))
 
 (defmethod end-effector-state-machine
     (:init
@@ -26,10 +33,10 @@
    ()
    (send self :add-node (instance state :init :NOT_CARED `(lambda-closure nil 0 0 (&rest args) (send ,self :NOT_CARED-exec))))
    (send self :add-node (instance state :init :AIR `(lambda-closure nil 0 0 (&rest args) (send ,self :AIR-exec))))
-   (send self :add-node (instance state :init :NEAR_CONTACT '(lambda-closure nil 0 0 (&rest args) (send self :NEAR_CONTACT-exec))))
-   (send self :add-node (instance state :init :TOWARD_MAKE_CONTACT `(lambda-closure nil 0 0 (&rest args) (send self :TOWARD_MAKE_CONTACT-exec))))
-   (send self :add-node (instance state :init :TOWARD_BREAK_CONTACT `(lambda-closure nil 0 0 (&rest args) (send self :TOWARD_BREAK_CONTACT-exec))))
-   (send self :add-node (instance state :init :CONTACT `(lambda-closure nil 0 0 (&rest args) (send self :CONTACT-exec))))
+   (send self :add-node (instance state :init :NEAR_CONTACT `(lambda-closure nil 0 0 (&rest args) (send ,self :NEAR_CONTACT-exec))))
+   (send self :add-node (instance state :init :TOWARD_MAKE_CONTACT `(lambda-closure nil 0 0 (&rest args) (send ,self :TOWARD_MAKE_CONTACT-exec))))
+   (send self :add-node (instance state :init :TOWARD_BREAK_CONTACT `(lambda-closure nil 0 0 (&rest args) (send ,self :TOWARD_BREAK_CONTACT-exec))))
+   (send self :add-node (instance state :init :CONTACT `(lambda-closure nil 0 0 (&rest args) (send ,self :CONTACT-exec))))
 
    (send self :start-state :NOT_CARED)
 
@@ -63,11 +70,38 @@
    (setq act-force (float-vector 0 0 0))
    (setq act-torque (float-vector 0 0 0))
    (ros::subscribe force-topic geometry_msgs::WrenchStamped #'send self :force-cb)
+
+   (setq info-topic (concatenate string eef-name "/info"))
+   (setq info (instance multicontact_controller_msgs::EndEffectorInfo :init))
+   (ros::subscribe info-topic multicontact_controller_msgs::EndEffectorInfo #'send self :info-cb)
+
+   (ros::wait-for-service "end_effector_info_publisher/add_end_effector")
+   (let ((req (instance multicontact_controller_msgs::SetStringRequest :init)))
+     (send req :name eef-name)
+     (ros::service-call "end_effector_info_publisher/add_end_effector" req))
+
+   (setq set-ref-contact-serivice (concatenate string eef-name "/set_ref_contact"))
+   (ros::advertise-service set-ref-contact-serivice std_srvs::SetBool #'send self :set-ref-contact-cb)
+
+   (setq set-near-contact-serivice (concatenate string eef-name "/set_near_contact"))
+   (ros::advertise-service set-near-contact-serivice std_srvs::SetBool #'send self :set-near-contact-cb)
+
+   (setq set-cared-serivice (concatenate string eef-name "/set_cared"))
+   (ros::advertise-service set-cared-serivice std_srvs::SetBool #'send self :set-cared-cb)
+
    t)
   (:cleanup
    ()
    (ros::unadvertise state-topic)
    (ros::unsubscribe force-topic)
+   (ros::unsubscribe info-topic)
+   (ros::wait-for-service "end_effector_info_publisher/remove_end_effector")
+   (let ((req (instance multicontact_controller_msgs::SetStringRequest :init)))
+     (send req :name eef-name)
+     (ros::service-call "end_effector_info_publisher/remove_end_effector" req))
+   (ros::unadvertise-service set-ref-contact-serivice)
+   (ros::unadvertise-service set-near-contact-serivice)
+   (ros::unadvertise-service set-cared-serivice)
    t)
   (:force-cb
    (msg)
@@ -78,50 +112,119 @@
    (setelt act-torque 1 (send (send (send msg :wrench) :torque) :y))
    (setelt act-torque 2 (send (send (send msg :wrench) :torque) :z))
    )
+  (:info-cb
+   (msg)
+   (setq info msg)
+   )
+  (:set-ref-contact-cb
+   (req)
+   (let ((res (send req :response))
+         (org-cmd-ref-contact cmd-ref-contact))
+     (setq cmd-ref-contact (send req :data))
+     (send self :execute nil :step 0)
+     (send self :execute nil :step 0)
+     (if (equal (send req :data) current-ref-contact)
+         (send res :success t)
+         (progn (send res :success nil)
+                (setq cmd-ref-contact org-cmd-ref-contact)))
+     res))
+  (:set-near-contact-cb
+   (req)
+   (let ((res (send req :response))
+         (org-cmd-near-contact cmd-near-contact))
+     (setq cmd-near-contact (send req :data))
+     (send self :execute nil :step 0)
+     (send self :execute nil :step 0)
+     (if (equal (send req :data) current-near-contact)
+         (send res :success t)
+         (progn (send res :success nil)
+                (setq cmd-near-contact org-cmd-near-contact)))
+     res))
+  (:set-cared-cb
+   (req)
+   (let ((res (send req :response))
+         (org-cmd-cared cmd-cared))
+     (setq cmd-cared (send req :data))
+     (send self :execute nil :step 0)
+     (send self :execute nil :step 0)
+     (if (equal (send req :data) current-cared)
+         (send res :success t)
+         (progn (send res :success nil)
+                (setq cmd-cared org-cmd-cared)))
+     res))
   (:publish-state
    ()
    (send state-msg :data (string (send (send self :active-state) :name)))
    (ros::publish state-topic state-msg)
    t)
   (:act-contact
-   ()
-   act-force
-   nil
-   )
+   (high)
+   (cond
+     ((equal "SURFACE" (send info :contact :type))
+      (if high
+          (< (send info :contact :contact_decision_threshold2) (elt act-force 2))
+          (< (send info :contact :contact_decision_threshold1) (elt act-force 2))))
+     (t nil)))
   (:NOT_CARED-exec
    (&rest args)
+   (setq current-cared nil)
+   (setq current-near-contact nil)
+   (setq current-ref-contact nil)
    (send self :publish-state)
-   :stay
+   (cond (cmd-cared :cared)
+         (t :stay))
    )
   (:AIR-exec
    (&rest args)
+   (setq current-cared t)
+   (setq current-near-contact nil)
+   (setq current-ref-contact nil)
    (send self :publish-state)
-   :stay
+   (cond ((null cmd-cared) :not-cared)
+         (cmd-near-contact :near-contact)
+         (t :stay))
    )
   (:NEAR_CONTACT-exec
    (&rest args)
+   (setq current-cared t)
+   (setq current-near-contact t)
+   (setq current-ref-contact nil)
    (send self :publish-state)
-   :stay
+   (cond ((null cmd-near-contact) :far-contact)
+         (cmd-ref-contact :ref-contact)
+         (t :stay))
    )
   (:TOWARD_MAKE_CONTACT-exec
    (&rest args)
+   (setq current-cared t)
+   (setq current-near-contact t)
+   (setq current-ref-contact t)
    (send self :publish-state)
    (cond
-     ((send self :act-contact) :act-contact)
+     ((send self :act-contact t) :act-contact)
+     ((null cmd-ref-contact) :ref-not-contact)
      (t :stay))
    )
   (:CONTACT-exec
    (&rest args)
+   (setq current-cared t)
+   (setq current-near-contact t)
+   (setq current-ref-contact t)
    (send self :publish-state)
    (cond
-     ((null (send self :act-contact)) :act-not-contact)
+     ((null cmd-ref-contact) :ref-not-contact)
+     ((null (send self :act-contact nil)) :act-not-contact)
      (t :stay))
    )
   (:TOWARD_BREAK_CONTACT-exec
    (&rest args)
+   (setq current-cared t)
+   (setq current-near-contact t)
+   (setq current-ref-contact nil)
    (send self :publish-state)
    (cond
-     ((null (send self :act-contact)) :act-not-contact)
+     ((null (send self :act-contact nil)) :act-not-contact)
+     (cmd-ref-contact :ref-contact)
      (t :stay))
    )
   )
@@ -168,8 +271,8 @@
 (setq *structure-changed* t)
 (setq *enabled* t)
 
-(dolist (eef-name (ros::get-param "end_effectors")
-  (add-end-effector-cb (instance multicontact_controller_msgs::setstringrequest :init :name eef-name))))
+(dolist (eef-name (ros::get-param "end_effectors"))
+  (add-end-effector-cb (instance multicontact_controller_msgs::setstringrequest :init :name eef-name)))
 
 (unix::sleep 2)
 
