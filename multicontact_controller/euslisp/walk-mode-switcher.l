@@ -40,7 +40,8 @@
   (let ((tm (ros::time-now)))
     (unless (send *tfl* :wait-for-transform *base-frame* *odom-frame* tm 5.0)
       (return-from enable-walk-mode nil))
-    (send *ri* :set-base-coords (send *tfl* :lookup-transform *odom-frame* *base-frame* tm))
+    (print (send *tfl* :lookup-transform *odom-frame* *base-frame* tm))
+    (send *ri* :set-base-coords (send *tfl* :lookup-transform *odom-frame* *base-frame* tm) 1);;ms
     (let ((req (instance std_srvs::SetBoolRequest :init)))
       (send req :data nil)
       (ros::service-call "/idle_footcoords/enable" req))
@@ -56,7 +57,7 @@
     (send *ri* :start-auto-balancer-odom-safe)
     (send *ri* :start-impedance :arms)
     (send *ri* :start-st)
-    ))
+    t))
 
 (defun disable-walk-mode
     ()
@@ -91,7 +92,7 @@
   (let ((req (instance std_srvs::SetBoolRequest :init)))
     (send req :data t)
     (ros::service-call "/idle_footcoords/enable" req))
-  )
+  t)
 
 (ros::advertise-service "enable_walk_mode" std_srvs::SetBool #'enable-walk-mode-cb)
 
