@@ -84,7 +84,15 @@ namespace multicontact_controller {
       cnoid::DeviceList<cnoid::ForceSensor> forceSensors(robot_->devices());
       for(size_t i=0;i<forceSensors.size();i++){
         offsetForcePub[forceSensors[i]->name()] = n.advertise<geometry_msgs::WrenchStamped>(forceSensors[i]->name()+"_offset", 1000);
-        forceSensorOffsets_[forceSensors[i]->name()] = cnoid::Vector6::Zero();
+        std::vector<double> initial_offset;
+        n.param(forceSensors[i]->name()+"/initial_offset",initial_offset,std::vector<double>());
+        cnoid::Vector6 offset;
+        if(initial_offset.size() == 6){
+          for(size_t i=0;i<6;i++)offset[i] = initial_offset[i];
+        }else{
+          offset = cnoid::Vector6::Zero();
+        }
+        forceSensorOffsets_[forceSensors[i]->name()] = offset;
       }
     }
 
