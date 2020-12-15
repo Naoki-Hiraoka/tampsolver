@@ -51,11 +51,14 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>roscpp</depend>
+  <depend>std_msgs</depend>
   <depend>std_srvs</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>eigen_conversions</depend>
   <depend>tf2_ros</depend>
+  <depend>interactive_markers</depend>
+  <depend>urdf</depend>
 
   <depend>roseus</depend>
   <depend>roseus_smach</depend>
