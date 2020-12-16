@@ -5,33 +5,23 @@
 #include <cnoid/ForceSensor>
 #include <cnoid/BodyLoader>
 
+#include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
+
 namespace multicontact_controller {
-  void EndEffectorCFEROS::infoCallback(const multicontact_controller_msgs::EndEffectorInfo::ConstPtr& msg){
-    //choreonoidのロボットモデルはリンク名が関節名によって管理されている
-    const std::string& linkname = msg->header.frame_id;
-    if(jointLinkMap_.find(linkname)==jointLinkMap_.end()){
-      jointLinkMap_[linkname] = nullptr;
-      for(size_t i=0;i<robot_->links().size();i++){
-        cnoid::Affine3 tmp;
-        cnoid::SgNodePath path = robot_->links()[i]->visualShape()->findNode(linkname,tmp);
-        if(path.size()!=0){
-          jointLinkMap_[linkname] = robot_->links()[i];
-          break;
-        }
-      }
-    }
-    cnoid::Link* link = jointLinkMap_[linkname];
+  void EndEffectorCFEROS::onInfoUpdated(){
+    const std::string& linkname = info_->header.frame_id;
+    cnoid::Link* link = cnoidbodyutils::getLinkFromURDFlinkName(robot_,linkname);
     if(!link) {
-      ROS_WARN("Link '%s' not found",linkname.c_str());
+      ROS_WARN("Link '%s' is not found in %s",linkname.c_str(),robot_->name().c_str());
     }
 
     this->linkName() = linkname;
     this->contactPoint()->parent() = link;
     cnoid::Vector3 p;
-    tf::vectorMsgToEigen(msg->transform.translation,p);
+    tf::vectorMsgToEigen(info_->transform.translation,p);
     this->contactPoint()->T_local().translation() = p;
     Eigen::Quaterniond q;
-    tf::quaternionMsgToEigen(msg->transform.rotation,q);
+    tf::quaternionMsgToEigen(info_->transform.rotation,q);
     this->contactPoint()->T_local().linear() = q.normalized().toRotationMatrix();
   }
 
@@ -43,22 +33,9 @@ namespace multicontact_controller {
 
     // initialize robot
     // 質量パラメータのキャリブ TODO
-    std::string vrml_file;
-    if (!n.getParam("/vrml_file", vrml_file)) {
-      ROS_ERROR("Failed to get param 'vrml_file'");
-      return;
-    }
-    // package://に対応
-    std::string packagestr = "package://";
-    if(vrml_file.size()>packagestr.size() && vrml_file.substr(0,packagestr.size()) == packagestr){
-      vrml_file = vrml_file.substr(packagestr.size());
-      int pos = vrml_file.find("/");
-      vrml_file = ros::package::getPath(vrml_file.substr(0,pos)) + vrml_file.substr(pos);
-    }
-    cnoid::BodyLoader loader;
-    robot_ = loader.load(vrml_file);
+    robot_ = cnoidbodyutils::loadBodyFromParam("/vrml_file");
     if(!robot_){
-      ROS_ERROR("Failed to load %s", vrml_file.c_str());
+      ROS_ERROR("Failed to load robot from '/vrml_file'");
       return;
     }
     objects(robot_);
@@ -184,31 +161,14 @@ namespace multicontact_controller {
   void ContactForceEstimatorROS::jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     // 加速度がない TODO
     if(robot_){
-      for(size_t i=0;i<msg->name.size();i++){
-        cnoid::Link* joint = robot_->link(msg->name[i]);
-        if(!joint) continue;
-        if(msg->position.size() == msg->name.size()) joint->q() = msg->position[i];
-        if(msg->velocity.size() == msg->name.size()) joint->dq() = msg->velocity[i];
-        if(msg->effort.size() == msg->name.size()) joint->u() = msg->effort[i];
-      }
-
-      robot_->calcForwardKinematics(false,false);
+      cnoidbodyutils::jointStateToBody(msg,robot_);
     }
   }
 
   void ContactForceEstimatorROS::imuCallback(const sensor_msgs::Imu::ConstPtr& msg){
     if(robot_){
       // rootのvel, accがない TODO
-      cnoid::Device* device = robot_->findDevice(msg->header.frame_id);
-      if(!device) return;
-      cnoid::Position T = device->link()->T() * device->T_local();
-      cnoid::Position realT; realT.setIdentity();
-      Eigen::Quaterniond q;
-      tf::quaternionMsgToEigen(msg->orientation,q);
-      realT.linear() = q.normalized().toRotationMatrix();
-      cnoid::Position nextT = realT * T.inverse() * robot_->rootLink()->T();
-      robot_->rootLink()->T() = nextT;
-      robot_->calcForwardKinematics(false,false);
+      cnoidbodyutils::imuToBody(msg,robot_);
     }
   }
 
@@ -223,22 +183,7 @@ namespace multicontact_controller {
   }
 
   void ContactForceEstimatorROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
-    // 消滅したEndEffectorを削除
-    for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it = endEffectors_.begin(); it != endEffectors_.end(); ) {
-      if (std::find_if(msg->strings.begin(),msg->strings.end(),[&](std::string x){return x==it->first;}) == msg->strings.end()) {
-        it = endEffectors_.erase(it);
-      }
-      else {
-        ++it;
-      }
-    }
-
-    // 増加したEndEffectorの反映
-    for(size_t i=0;i<msg->strings.size();i++){
-      if(endEffectors_.find(msg->strings[i])==endEffectors_.end()){
-        endEffectors_[msg->strings[i]] = std::make_shared<EndEffectorCFEROS>(msg->strings[i], this->robot_);
-      }
-    }
+    endeffectorutils::stringArrayToEndEffectors(msg,endEffectors_,this->robot_);
   }
 
   bool ContactForceEstimatorROS::enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {

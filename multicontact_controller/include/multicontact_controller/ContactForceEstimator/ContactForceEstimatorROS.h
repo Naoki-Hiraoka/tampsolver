@@ -12,19 +12,19 @@
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
 #include <ros/ros.h>
 
+#include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
+
 namespace multicontact_controller {
-  class EndEffectorCFEROS {
+  class EndEffectorCFEROS: public endeffectorutils::EndEffectorClient {
   public:
-    EndEffectorCFEROS(const std::string& name, cnoid::Body* robot) {
+    EndEffectorCFEROS(const std::string& name, cnoid::Body* robot)
+      : endeffectorutils::EndEffectorClient::EndEffectorClient(name)
+    {
       robot_ = robot;
-      name_ = name;
       linkName_ = "";
-      state_ = "NOT_CARED";
       contactPoint_ = std::make_shared<ContactPoint>();
       contactPoint_->name() = name_;
       ros::NodeHandle n;
-      infoSub_ = n.subscribe(name_ + "/info", 1, &EndEffectorCFEROS::infoCallback, this);
-      stateSub_ = n.subscribe(name_ + "/state", 1, &EndEffectorCFEROS::stateCallback, this);
       contactForcePub_ = n.advertise<geometry_msgs::WrenchStamped>(name_+"/force", 10);
     }
     std::string name() const { return name_; }
@@ -36,18 +36,13 @@ namespace multicontact_controller {
     std::string& state() {return state_; }
     ros::Publisher contactForcePub() const {return contactForcePub_; }
     ros::Publisher& contactForcePub() {return contactForcePub_; }
-    void infoCallback(const multicontact_controller_msgs::EndEffectorInfo::ConstPtr& msg);
-    void stateCallback(const std_msgs::String::ConstPtr& msg){ state_ = msg->data; }
+    void onInfoUpdated() override;
   private:
     cnoid::Body* robot_;
-    std::string name_;
     std::string linkName_;
-    std::string state_;
     std::shared_ptr<ContactPoint> contactPoint_;
 
     std::map<std::string,cnoid::Link*> jointLinkMap_;
-    ros::Subscriber infoSub_;
-    ros::Subscriber stateSub_;
     ros::Publisher contactForcePub_;
   };
 

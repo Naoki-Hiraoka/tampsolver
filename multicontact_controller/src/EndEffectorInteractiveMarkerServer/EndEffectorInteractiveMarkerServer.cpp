@@ -14,17 +14,19 @@
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
 #include <multicontact_controller_msgs/StringArray.h>
 
-class EndEffectorInteractiveMarkerController {
+#include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
+
+class EndEffectorInteractiveMarkerController: public multicontact_controller::endeffectorutils::EndEffectorClient {
 public:
   EndEffectorInteractiveMarkerController(const std::string& name,
                                          std::shared_ptr<interactive_markers::InteractiveMarkerServer> interactiveMarkerServer,
                                          std::shared_ptr<tf::TransformListener> tfListener,
-                                         std::shared_ptr<urdf::Model> robot_model){
-    name_ = name;
+                                         std::shared_ptr<urdf::Model> robot_model)
+    : multicontact_controller::endeffectorutils::EndEffectorClient::EndEffectorClient(name)
+  {
     interactiveMarkerServer_ = interactiveMarkerServer;
     tfListener_ = tfListener;
     robot_model_ = robot_model;
-    state_ = "NOT_CARED";
 
     int_marker_.name = name_;
     int_marker_.header.stamp=ros::Time(0);
@@ -32,8 +34,6 @@ public:
 
     ros::NodeHandle n;
     targetPosePub_ = n.advertise<geometry_msgs::PoseStamped>(name_ + "/target_pose", 100);
-    infoSub_ = n.subscribe(name_ + "/info", 1, &EndEffectorInteractiveMarkerController::infoCallback, this);
-    stateSub_ = n.subscribe(name_ + "/state", 100, &EndEffectorInteractiveMarkerController::stateCallback, this);
     setRefContactClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_ref_contact");
     setNearContactClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_near_contact");
     setCaredClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_cared");
@@ -196,13 +196,11 @@ public:
       }
     return;
   }
-  void infoCallback(const multicontact_controller_msgs::EndEffectorInfo::ConstPtr& msg){
-    info_ = msg;
+  void onInfoUpdated() override{
     this->updateMarker();
     interactiveMarkerServer_->applyChanges();}
-  void stateCallback(const std_msgs::String::ConstPtr& msg){
-    if(state_ != msg->data){
-      state_ = msg->data;
+  void onStateUpdated() override{
+    if(state_ != prev_state_){
       this->updateMarker();
       interactiveMarkerServer_->applyChanges();
     }
@@ -281,19 +279,13 @@ public:
     return;
   }
 private:
-  std::string name_;
   std::shared_ptr<interactive_markers::InteractiveMarkerServer> interactiveMarkerServer_;
   std::shared_ptr<tf::TransformListener> tfListener_;
   std::shared_ptr<urdf::Model> robot_model_;
   ros::Publisher targetPosePub_;
-  ros::Subscriber infoSub_;
-  ros::Subscriber stateSub_;
   ros::ServiceClient setRefContactClient_;
   ros::ServiceClient setNearContactClient_;
   ros::ServiceClient setCaredClient_;
-
-  std::string state_;
-  multicontact_controller_msgs::EndEffectorInfo::ConstPtr info_;
 
   visualization_msgs::InteractiveMarker int_marker_;
   interactive_markers::MenuHandler menu_handler_;
@@ -315,21 +307,7 @@ int main(int argc, char** argv){
     = nh.subscribe<multicontact_controller_msgs::StringArray>
     ("end_effectors", 10,
      [&](const multicontact_controller_msgs::StringArray::ConstPtr& msg){
-      // 消滅したEndEffectorを削除
-      for(std::map<std::string,std::shared_ptr<EndEffectorInteractiveMarkerController> >::iterator it = endEffectors.begin(); it != endEffectors.end(); ) {
-        if (std::find_if(msg->strings.begin(),msg->strings.end(),[&](std::string x){return x==it->first;}) == msg->strings.end()) {
-          it = endEffectors.erase(it);
-        }
-        else {
-          ++it;
-        }
-      }
-      // 増加したEndEffectorの反映
-      for(size_t i=0;i<msg->strings.size();i++){
-        if(endEffectors.find(msg->strings[i])==endEffectors.end()){
-          endEffectors[msg->strings[i]] = std::make_shared<EndEffectorInteractiveMarkerController>(msg->strings[i],interactiveMarkerServer,tfListener,robot_model);
-        }
-      }
+      multicontact_controller::endeffectorutils::stringArrayToEndEffectors(msg, endEffectors ,interactiveMarkerServer,tfListener,robot_model);
      });
 
   int rate;

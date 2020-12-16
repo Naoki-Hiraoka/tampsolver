@@ -14,6 +14,7 @@ target_include_directories(end_effector_interactive_marker_server PUBLIC
   ${catkin_INCLUDE_DIRS}
   )
 target_link_libraries(end_effector_interactive_marker_server
+  EndEffectorUtils
   ${catkin_LIBRARIES}
   )
 install(TARGETS end_effector_interactive_marker_server

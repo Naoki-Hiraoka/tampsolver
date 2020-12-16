@@ -3,6 +3,7 @@
 #include <cnoid/MessageView>
 
 #include <multicontact_controller/ContactForceEstimator/ContactForceEstimatorROSItem.h>
+#include <multicontact_controller/MultiContactFootCoords/MultiContactFootCoordsROSItem.h>
 
 using namespace cnoid;
 
@@ -18,6 +19,7 @@ public:
     virtual bool initialize() override
     {
       ContactForceEstimatorROSItem::initializeClass(this);
+      MultiContactFootCoordsROSItem::initializeClass(this);
       return true;
     }
 

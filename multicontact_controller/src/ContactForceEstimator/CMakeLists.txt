@@ -21,6 +21,8 @@ target_include_directories(ContactForceEstimator PUBLIC
   )
 
 target_link_libraries(ContactForceEstimator PUBLIC
+  EndEffectorUtils
+  CnoidBodyUtils
   ${catkin_LIBRARIES}
   )
 

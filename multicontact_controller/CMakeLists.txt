@@ -116,6 +116,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   )
 
+add_subdirectory(src/lib/CnoidBodyUtils)
+add_subdirectory(src/lib/EndEffectorUtils)
 add_subdirectory(src/ContactForceEstimator)
 add_subdirectory(src/EndEffectorInfoPublisher)
 add_subdirectory(src/JointStatesFilter)
@@ -124,12 +126,14 @@ add_subdirectory(src/MotorTemperatureEstimator)
 add_subdirectory(src/MotorTemperatureLimiter)
 add_subdirectory(src/IdleFootCoords)
 add_subdirectory(src/EndEffectorInteractiveMarkerServer)
+add_subdirectory(src/MultiContactFootCoords)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
 target_link_libraries(CnoidMultiContactControllerPlugin
   ${catkin_LIBRARIES}
-  ContactForceEstimator)
+  ContactForceEstimator
+  MultiContactFootCoords)
 set_target_properties(CnoidMultiContactControllerPlugin PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})
 
 ## Add cmake target dependencies of the library
