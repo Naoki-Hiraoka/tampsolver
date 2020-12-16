@@ -1,10 +1,12 @@
 <launch>
   <arg name="imu_topic" default="imu/data_raw" doc="Message containing raw IMU data, including angular velocities and linear accelerations. "/>
   <arg name="output_topic" default="imu/data" doc="The fused Imu message, containing the orientation. "/>
+  <arg name="gain" default="1.0" doc="Gain of the filter. Higher values lead to faster convergence but more noise. Lower values lead to slower convergence but smoother signal. Range: 0.0 to 1.0"/>
   <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_node">
     <remap from="imu/data_raw" to="$(arg imu_topic)"/>
     <remap from="imu/data" to="$(arg output_topic)"/>
-    <rosparam>
+    <rosparam subst_value="true">
+      gain: $(arg gain)
       use_mag: false
       publish_tf: false
     </rosparam>

@@ -37,40 +37,27 @@ public:
     setRefContactClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_ref_contact");
     setNearContactClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_near_contact");
     setCaredClient_ = n.serviceClient<std_srvs::SetBool>(name_+"/set_cared");
+
+    isEnabled_ = false;
   }
   void updateMarker(){
     if(!info_) return;
     int_marker_.description = name_ + ": " + state_;
-    if(state_ == "NOT_CARED"){
+    if(!isEnabled_){
       interactiveMarkerServer_->erase(name_);
       interactiveMarkerServer_->applyChanges();
-
-      current_pose_ = geometry_msgs::Pose();
+    }else if(state_ == "NOT_CARED"){
+      interactiveMarkerServer_->erase(name_);
+      interactiveMarkerServer_->applyChanges();
     }else if(state_ == "AIR"){
-      if(current_pose_ == geometry_msgs::Pose()){
-        if (!tfListener_->waitForTransform("odom", name_, ros::Time(0), ros::Duration(1.0))) {
-          ROS_ERROR("[EndEffectorInteractiveMarkerServer::updateMarker] failed to lookup transform between %s and %s", "odom", name_.c_str());
-          int_marker_.header.frame_id = name_;
-          int_marker_.pose = geometry_msgs::Pose();
-        }else{
-          tf::StampedTransform transform;
-          tfListener_->lookupTransform("odom", name_, ros::Time(0), transform);
-          Eigen::Affine3d eigenpose;
-          tf::transformTFToEigen(transform,eigenpose);
-          tf::poseEigenToMsg(eigenpose,current_pose_);
-          int_marker_.header.frame_id = "odom";
-          int_marker_.pose = current_pose_;
+      int_marker_.header.frame_id = "odom";
+      int_marker_.pose = marker_pose_;
 
-          geometry_msgs::PoseStamped msg;
-          msg.header.frame_id = "odom";
-          msg.header.stamp = ros::Time::now();
-          msg.pose = current_pose_;
-          targetPosePub_.publish(msg);
-        }
-      }else{
-        int_marker_.header.frame_id = "odom";
-        int_marker_.pose = current_pose_;
-      }
+      // geometry_msgs::PoseStamped msg;
+      // msg.header.frame_id = "odom";
+      // msg.header.stamp = ros::Time::now();
+      // msg.pose = current_pose_;
+      // targetPosePub_.publish(msg);
 
       int_marker_.controls.clear();
 
@@ -84,30 +71,14 @@ public:
       interactiveMarkerServer_->insert(int_marker_, [&](const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){this->processFeedback(feedback);});
       menu_handler_.apply( *interactiveMarkerServer_, int_marker_.name );
     }else if(state_ == "NEAR_CONTACT"){
-      if(current_pose_ == geometry_msgs::Pose()){
-        if (!tfListener_->waitForTransform("odom", name_, ros::Time(0), ros::Duration(1.0))) {
-          ROS_ERROR("[EndEffectorInteractiveMarkerServer::updateMarker] failed to lookup transform between %s and %s", "odom", name_.c_str());
-          int_marker_.header.frame_id = name_;
-          int_marker_.pose = geometry_msgs::Pose();
-        }else{
-          tf::StampedTransform transform;
-          tfListener_->lookupTransform("odom", name_, ros::Time(0), transform);
-          Eigen::Affine3d eigenpose;
-          tf::transformTFToEigen(transform,eigenpose);
-          tf::poseEigenToMsg(eigenpose,current_pose_);
-          int_marker_.header.frame_id = "odom";
-          int_marker_.pose = current_pose_;
+      int_marker_.header.frame_id = "odom";
+      int_marker_.pose = marker_pose_;
 
-          geometry_msgs::PoseStamped msg;
-          msg.header.frame_id = "odom";
-          msg.header.stamp = ros::Time::now();
-          msg.pose = current_pose_;
-          targetPosePub_.publish(msg);
-        }
-      }else{
-        int_marker_.header.frame_id = "odom";
-        int_marker_.pose = current_pose_;
-      }
+      // geometry_msgs::PoseStamped msg;
+      // msg.header.frame_id = "odom";
+      // msg.header.stamp = ros::Time::now();
+      // msg.pose = current_pose_;
+      // targetPosePub_.publish(msg);
 
       int_marker_.controls.clear();
 
@@ -123,7 +94,6 @@ public:
     }else if(state_ == "TOWARD_MAKE_CONTACT"){
       int_marker_.header.frame_id = name_;
       int_marker_.pose = geometry_msgs::Pose();
-      current_pose_ = geometry_msgs::Pose();
 
       int_marker_.controls.clear();
 
@@ -136,7 +106,6 @@ public:
     }else if(state_ == "CONTACT"){
       int_marker_.header.frame_id = name_;
       int_marker_.pose = geometry_msgs::Pose();
-      current_pose_ = geometry_msgs::Pose();
 
       int_marker_.controls.clear();
 
@@ -149,7 +118,6 @@ public:
     }else if(state_ == "TOWARD_BREAK_CONTACT"){
       int_marker_.header.frame_id = name_;
       int_marker_.pose = geometry_msgs::Pose();
-      current_pose_ = geometry_msgs::Pose();
 
       int_marker_.controls.clear();
 
@@ -183,11 +151,11 @@ public:
     switch ( feedback->event_type ) {
       case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
         if(state_ == "AIR" || state_ == "NEAR_CONTACT"){
-          current_pose_ = feedback->pose;
+          marker_pose_ = feedback->pose;
           geometry_msgs::PoseStamped msg;
           msg.header.frame_id = "odom";
           msg.header.stamp = ros::Time::now();
-          msg.pose = current_pose_;
+          msg.pose = marker_pose_;
           targetPosePub_.publish(msg);
         }
         break;
@@ -200,7 +168,11 @@ public:
     this->updateMarker();
     interactiveMarkerServer_->applyChanges();}
   void onStateUpdated() override{
-    if(state_ != prev_state_){
+    if(state_ != prev_state_) {
+      if((state_ == "AIR" || state_ == "NEAR_CONTACT") &&
+         (prev_state_ != "AIR" && prev_state_ != "NEAR_CONTACT")){
+        this->resetMarkerPose();
+      }
       this->updateMarker();
       interactiveMarkerServer_->applyChanges();
     }
@@ -278,7 +250,23 @@ public:
     int_marker_.controls.push_back(control);
     return;
   }
+  void resetMarkerPose(){
+    if (!tfListener_->waitForTransform("odom", name_, ros::Time(0), ros::Duration(1.0))) {
+      ROS_ERROR("[EndEffectorInteractiveMarkerServer::updateMarker] failed to lookup transform between %s and %s", "odom", name_.c_str());
+    }else{
+      tf::StampedTransform transform;
+      tfListener_->lookupTransform("odom", name_, ros::Time(0), transform);
+      Eigen::Affine3d eigenpose;
+      tf::transformTFToEigen(transform,eigenpose);
+      tf::poseEigenToMsg(eigenpose,marker_pose_);
+    }
+  }
+
+  bool isEnabled() const {return isEnabled_;}
+  bool& isEnabled() {return isEnabled_;}
 private:
+  bool isEnabled_;
+
   std::shared_ptr<interactive_markers::InteractiveMarkerServer> interactiveMarkerServer_;
   std::shared_ptr<tf::TransformListener> tfListener_;
   std::shared_ptr<urdf::Model> robot_model_;
@@ -289,7 +277,7 @@ private:
 
   visualization_msgs::InteractiveMarker int_marker_;
   interactive_markers::MenuHandler menu_handler_;
-  geometry_msgs::Pose current_pose_;
+  geometry_msgs::Pose marker_pose_;
 };
 
 int main(int argc, char** argv){
@@ -302,13 +290,46 @@ int main(int argc, char** argv){
   std::shared_ptr<urdf::Model> robot_model = std::make_shared<urdf::Model>();
   robot_model->initParam("robot_description");
 
+  bool isEnabled;
+  pnh.param("start_enabled",isEnabled,false);
+
   std::map<std::string,std::shared_ptr<EndEffectorInteractiveMarkerController> > endEffectors;
   ros::Subscriber endEffectorsSub
     = nh.subscribe<multicontact_controller_msgs::StringArray>
     ("end_effectors", 10,
      [&](const multicontact_controller_msgs::StringArray::ConstPtr& msg){
       multicontact_controller::endeffectorutils::stringArrayToEndEffectors(msg, endEffectors ,interactiveMarkerServer,tfListener,robot_model);
+      for(std::map<std::string,std::shared_ptr<EndEffectorInteractiveMarkerController> >::iterator it = endEffectors.begin(); it != endEffectors.end(); it++) {
+        it->second->isEnabled() = isEnabled;
+      }
      });
+
+  ros::ServiceServer enableService
+    = pnh.advertiseService<std_srvs::SetBool::Request, std_srvs::SetBool::Response>
+    ("enable",
+     [&](std_srvs::SetBool::Request& request, std_srvs::SetBool::Response& response){
+      if(isEnabled == request.data){
+        ROS_INFO("[MultiContactFootCoords::enableService] Already %s",(isEnabled ? "Enabled" : "Disabled"));
+        response.success = true;
+        response.message = "";
+        return true;
+      } else {
+        isEnabled = request.data;
+        ROS_INFO("[MultiContactFootCoords::enableService] %s",(isEnabled ? "Enabled" : "Disabled"));
+
+        for(std::map<std::string,std::shared_ptr<EndEffectorInteractiveMarkerController> >::iterator it = endEffectors.begin(); it != endEffectors.end(); it++) {
+          it->second->isEnabled() = isEnabled;
+          if(isEnabled){
+            if(it->second->state() == "AIR" || it->second->state() == "NEAR_CONTACT") it->second->resetMarkerPose();
+          }
+          it->second->updateMarker();
+        }
+        interactiveMarkerServer->applyChanges();
+
+        response.success = true;
+        response.message = "";
+        return true;
+      }});
 
   int rate;
   pnh.param("rate", rate, 250); // 250 hz

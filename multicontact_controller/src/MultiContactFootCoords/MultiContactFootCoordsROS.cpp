@@ -158,8 +158,21 @@ namespace multicontact_controller {
   bool MultiContactFootCoordsROS::setBodyTransformCallback(multicontact_controller_msgs::SetTransformStamped::Request& request, multicontact_controller_msgs::SetTransformStamped::Response& response){
     Eigen::Affine3d bodyTransform;
     tf::transformMsgToEigen(request.transform.transform, bodyTransform);
-    response.success = this->multiContactFootCoords_.setRootOdom(robot_, bodyTransform);
+    bool success = this->multiContactFootCoords_.setRootOdom(robot_, bodyTransform);
+
+    if(success){
+      cnoid::Position originCoords = this->multiContactFootCoords_.getOriginCoords();
+      for(std::map<std::string,std::shared_ptr<EndEffectorMCFCROS> >::iterator it = endEffectors_.begin(); it != endEffectors_.end(); it++) {
+        it->second->originT() = originCoords;
+        if((it->second->state() == "CONTACT" || it->second->state() == "TOWARD_BREAK_CONTACT")){
+          it->second->contactPoint()->T_init() = it->second->originT() * it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
+        }
+      }
+    }
+
+    response.success = success;
     response.message = "";
+
     return true;
   }
 };
