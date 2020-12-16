@@ -22,27 +22,23 @@ namespace multicontact_controller {
     {
       robot_ = robot;
       linkName_ = "";
-      contactPoint_ = std::make_shared<ContactPoint>();
+      contactPoint_ = std::make_shared<ContactPointCFE>();
       contactPoint_->name() = name_;
       ros::NodeHandle n;
       contactForcePub_ = n.advertise<geometry_msgs::WrenchStamped>(name_+"/force", 10);
     }
-    std::string name() const { return name_; }
     std::string linkName() const { return linkName_; }
     std::string& linkName() {return linkName_; }
-    std::shared_ptr<ContactPoint> contactPoint() const {return contactPoint_; }
-    std::shared_ptr<ContactPoint>& contactPoint() {return contactPoint_; }
-    std::string state() const {return state_; }
-    std::string& state() {return state_; }
+    std::shared_ptr<ContactPointCFE> contactPoint() const {return contactPoint_; }
+    std::shared_ptr<ContactPointCFE>& contactPoint() {return contactPoint_; }
     ros::Publisher contactForcePub() const {return contactForcePub_; }
     ros::Publisher& contactForcePub() {return contactForcePub_; }
     void onInfoUpdated() override;
   private:
     cnoid::Body* robot_;
     std::string linkName_;
-    std::shared_ptr<ContactPoint> contactPoint_;
+    std::shared_ptr<ContactPointCFE> contactPoint_;
 
-    std::map<std::string,cnoid::Link*> jointLinkMap_;
     ros::Publisher contactForcePub_;
   };
 

@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   sensor_msgs
   eigen_conversions
+  tf2_ros
   choreonoid_cpp
   multicontact_controller_msgs)
 
@@ -19,6 +20,7 @@ target_include_directories(MultiContactFootCoords PUBLIC
   )
 
 target_link_libraries(MultiContactFootCoords PUBLIC
+  CnoidBodyUtils
   ${catkin_LIBRARIES}
   )
 

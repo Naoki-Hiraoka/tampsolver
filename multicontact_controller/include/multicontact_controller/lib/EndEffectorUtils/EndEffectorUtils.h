@@ -50,6 +50,11 @@ namespace multicontact_controller {
         onStateUpdated();
       }
       virtual void onStateUpdated() {return;}
+
+      std::string& name() {return name_;}
+      std::string name() const {return name_;}
+      std::string& state() {return state_;}
+      std::string state() const {return state_;}
     protected:
       std::string name_;
       std::string state_;

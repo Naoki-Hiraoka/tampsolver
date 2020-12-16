@@ -5,8 +5,6 @@
 #include <cnoid/ForceSensor>
 #include <cnoid/BodyLoader>
 
-#include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
-
 namespace multicontact_controller {
   void EndEffectorCFEROS::onInfoUpdated(){
     const std::string& linkname = info_->header.frame_id;

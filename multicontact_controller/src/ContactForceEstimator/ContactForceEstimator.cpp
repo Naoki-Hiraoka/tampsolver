@@ -3,104 +3,6 @@
 #include <cnoid/src/Body/InverseDynamics.h>
 
 namespace multicontact_controller {
-  const Eigen::SparseMatrix<double,Eigen::RowMajor>& ContactPoint::calcJacobian(){//world系,contactpoint周り
-    // multi thread対応
-    cnoid::Link* parent_est = parent_est_;
-    cnoid::Position T_local_est = T_local_est_;
-
-    if(path_.empty() || path_.endLink() != parent_est){
-
-      std::vector<Eigen::Triplet<double> > tripletList;
-      tripletList.reserve(100);//適当
-
-      //root 6dof
-      for(size_t j=0;j<6;j++){
-        tripletList.push_back(Eigen::Triplet<double>(j,j,1));
-      }
-      //  0     p[2] -p[1]
-      // -p[2]  0     p[0]
-      //  p[1] -p[0]  0
-      tripletList.push_back(Eigen::Triplet<double>(0,4,1));
-      tripletList.push_back(Eigen::Triplet<double>(0,5,1));
-      tripletList.push_back(Eigen::Triplet<double>(1,3,1));
-      tripletList.push_back(Eigen::Triplet<double>(1,5,1));
-      tripletList.push_back(Eigen::Triplet<double>(2,3,1));
-      tripletList.push_back(Eigen::Triplet<double>(2,4,1));
-
-      //joints
-      path_.setPath(parent_est);
-      for(size_t j=0;j<path_.numJoints();j++){
-        int col = 6+path_.joint(j)->jointId();
-        tripletList.push_back(Eigen::Triplet<double>(0,col,1));
-        tripletList.push_back(Eigen::Triplet<double>(1,col,1));
-        tripletList.push_back(Eigen::Triplet<double>(2,col,1));
-        tripletList.push_back(Eigen::Triplet<double>(3,col,1));
-        tripletList.push_back(Eigen::Triplet<double>(4,col,1));
-        tripletList.push_back(Eigen::Triplet<double>(5,col,1));
-      }
-
-      jacobian_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6+parent_est->body()->numJoints());
-      jacobian_.setFromTriplets(tripletList.begin(), tripletList.end());
-    }
-
-    const cnoid::Position target_position = parent_est->T() * T_local_est;
-    const cnoid::Vector3 target_p = target_position.translation();
-    //root 6dof
-    for(size_t j=0;j<6;j++){
-      this->jacobian_.coeffRef(j,j) = 1;
-    }
-    cnoid::Vector3 dp = target_p - parent_est->body()->rootLink()->p();
-    //  0     p[2] -p[1]
-    // -p[2]  0     p[0]
-    //  p[1] -p[0]  0
-    jacobian_.coeffRef(0,4)=dp[2];
-    jacobian_.coeffRef(0,5)=-dp[1];
-    jacobian_.coeffRef(1,3)=-dp[2];
-    jacobian_.coeffRef(1,5)=dp[0];
-    jacobian_.coeffRef(2,3)=dp[1];
-    jacobian_.coeffRef(2,4)=-dp[0];
-
-    //joints
-    for(size_t j=0;j<path_.numJoints();j++){
-      int col = 6+path_.joint(j)->jointId();
-      cnoid::Vector3 omega = path_.joint(j)->R() * path_.joint(j)->a();
-      if(!path_.isJointDownward(j)) omega = -omega;
-      if(path_.joint(j)->jointType() == cnoid::Link::JointType::PRISMATIC_JOINT ||
-         path_.joint(j)->jointType() == cnoid::Link::JointType::SLIDE_JOINT){
-        jacobian_.coeffRef(0,col)=omega[0];
-        jacobian_.coeffRef(1,col)=omega[1];
-        jacobian_.coeffRef(2,col)=omega[2];
-        jacobian_.coeffRef(3,col)=0;
-        jacobian_.coeffRef(4,col)=0;
-        jacobian_.coeffRef(5,col)=0;
-      }
-      if(path_.joint(j)->jointType() == cnoid::Link::JointType::ROTATIONAL_JOINT ||
-         path_.joint(j)->jointType() == cnoid::Link::JointType::REVOLUTE_JOINT){
-        cnoid::Vector3 dp = omega.cross(target_p - path_.joint(j)->p());
-        jacobian_.coeffRef(0,col)=dp[0];
-        jacobian_.coeffRef(1,col)=dp[1];
-        jacobian_.coeffRef(2,col)=dp[2];
-        jacobian_.coeffRef(3,col)=omega[0];
-        jacobian_.coeffRef(4,col)=omega[1];
-        jacobian_.coeffRef(5,col)=omega[2];
-      }
-    }
-
-    return jacobian_;
-  }
-
-  const Eigen::SparseMatrix<double,Eigen::RowMajor>& ContactPoint::calcRinv() {
-    Rinv_.resize(6,6);
-    cnoid::Matrix3 Rtrans = ( parent_est_->R() * T_local_est_.linear() ).transpose();
-    for(size_t j=0;j<3;j++){
-      for(size_t k=0;k<3;k++){
-        Rinv_.coeffRef(j,k) = Rtrans(j,k);
-        Rinv_.coeffRef(3+j,3+k) = Rtrans(j,k);
-      }
-    }
-
-    return Rinv_;
-  }
 
   bool ContactForceEstimator::setRobot(const cnoid::Body* robot) {
     robot_org_ = robot;
@@ -211,7 +113,7 @@ namespace multicontact_controller {
     return true;
   }
 
-  bool ContactForceEstimator::setCandidatePoint(std::shared_ptr<ContactPoint> candidatepoint) {
+  bool ContactForceEstimator::setCandidatePoint(std::shared_ptr<ContactPointCFE> candidatepoint) {
     cnoid::Link* parent_link = robot_->link(candidatepoint->parent()->name());
     cnoid::Position T_local = candidatepoint->T_local();
     if(!parent_link) return false;
@@ -228,7 +130,7 @@ namespace multicontact_controller {
     candidatepoint->parent_est() = parent_link;
     candidatepoint->T_local_est() = T_local;
 
-    std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == candidatepoint->name(); });
+    std::vector<std::shared_ptr<ContactPointCFE> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPointCFE> x) { return x->name() == candidatepoint->name(); });
     if (result != candidatePoints_.end()){
       *result = candidatepoint;
     } else {
@@ -240,8 +142,8 @@ namespace multicontact_controller {
     return true;
   }
 
-  std::shared_ptr<ContactPoint> ContactForceEstimator::getCandidatePoint(const std::string& name) {
-    std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == name; });
+  std::shared_ptr<ContactPointCFE> ContactForceEstimator::getCandidatePoint(const std::string& name) {
+    std::vector<std::shared_ptr<ContactPointCFE> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPointCFE> x) { return x->name() == name; });
 
     if (result == candidatePoints_.end()){
       return nullptr;
@@ -252,7 +154,7 @@ namespace multicontact_controller {
 
 
   bool ContactForceEstimator::deleteCandidatePoint(const std::string& name) {
-    std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::remove_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == name; });
+    std::vector<std::shared_ptr<ContactPointCFE> >::iterator result = std::remove_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPointCFE> x) { return x->name() == name; });
     candidatePoints_.erase(result, candidatePoints_.end());
 
     changed_ = true;
@@ -468,7 +370,7 @@ namespace multicontact_controller {
   }
 
   cnoid::Vector6 ContactForceEstimator::getEstimatedForce(const std::string& name) {
-    std::vector<std::shared_ptr<ContactPoint> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPoint> x) { return x->name() == name; });
+    std::vector<std::shared_ptr<ContactPointCFE> >::iterator result = std::find_if(candidatePoints_.begin(), candidatePoints_.end(), [&](std::shared_ptr<ContactPointCFE> x) { return x->name() == name; });
 
     if (result == candidatePoints_.end()){
       return cnoid::Vector6::Zero();

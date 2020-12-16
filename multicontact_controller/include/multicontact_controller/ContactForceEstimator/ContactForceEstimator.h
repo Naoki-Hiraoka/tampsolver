@@ -2,23 +2,16 @@
 #define CONTACT_FORCE_ESTIMATOR_H
 
 #include <cnoid/Body>
-#include <cnoid/JointPath>
 #include <memory>
 #include <Eigen/Sparse>
 #include <prioritized_qp/PrioritizedQPSolver.h>
 
+#include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
+
 namespace multicontact_controller {
 
-  class ContactPoint {
+  class ContactPointCFE: public cnoidbodyutils::ContactPoint {
   public:
-    std::string name() const { return name_; }
-    std::string& name() { return name_; }
-
-    cnoid::Link* const parent() const { return parent_; }
-    cnoid::Link*& parent() { return parent_; }
-
-    cnoid::Position T_local() const { return T_local_; }
-    cnoid::Position& T_local() {return T_local_; }
 
     cnoid::Vector6 F() const { return F_; }
     cnoid::Vector6& F() {return F_; }
@@ -30,22 +23,17 @@ namespace multicontact_controller {
     cnoid::Position T_local_est() const { return T_local_est_; }
     cnoid::Position& T_local_est() {return T_local_est_; }
 
-    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcJacobian();//world系,contactpoint周り
-    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcRinv();//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcJacobian() override {
+      return cnoidbodyutils::ContactPoint::calcJacobian(parent_est_, T_local_est_);
+    }
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcRinv() override {
+      return cnoidbodyutils::ContactPoint::calcRinv(parent_est_, T_local_est_);
+    }
   private:
-    std::string name_;
-
-    cnoid::Link* parent_;
-    cnoid::Position T_local_;
-
     cnoid::Vector6 F_;
 
     cnoid::Link* parent_est_;
     cnoid::Position T_local_est_;
-
-    Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> Rinv_;
-    cnoid::JointPath path_;
 
   };
 
@@ -55,8 +43,8 @@ namespace multicontact_controller {
     // robotのマスパラはsetRobotする前に編集すること
     bool setRobot(const cnoid::Body* robot);
 
-    bool setCandidatePoint(std::shared_ptr<ContactPoint> candidatepoint);
-    std::shared_ptr<ContactPoint> getCandidatePoint(const std::string& name);
+    bool setCandidatePoint(std::shared_ptr<ContactPointCFE> candidatepoint);
+    std::shared_ptr<ContactPointCFE> getCandidatePoint(const std::string& name);
     bool deleteCandidatePoint(const std::string& name);
     bool clearCandidatePoints();
 
@@ -71,7 +59,7 @@ namespace multicontact_controller {
     const cnoid::Body* robot_org_;
     std::shared_ptr<cnoid::Body> robot_;
 
-    std::vector<std::shared_ptr<ContactPoint> > candidatePoints_;
+    std::vector<std::shared_ptr<ContactPointCFE> > candidatePoints_;
     bool changed_ = true;
 
     std::vector<cnoid::Vector6> forceSensorOffsets_;

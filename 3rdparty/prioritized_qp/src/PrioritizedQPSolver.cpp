@@ -91,11 +91,11 @@ namespace prioritized_qp{
            tasks[i]->solver().workspace()->data->n != H.rows() ||
            tasks[i]->solver().workspace()->data->m != A.rows()
            ){
-          if(tasks[i]->solver().isInitialized()) {
+          //if(tasks[i]->solver().isInitialized()) {
             tasks[i]->solver().data()->clearHessianMatrix();
             tasks[i]->solver().data()->clearLinearConstraintsMatrix();
             tasks[i]->solver().clearSolver();
-          }
+            //}
 
           tasks[i]->solver().data()->setNumberOfVariables(H.cols());
           tasks[i]->solver().data()->setNumberOfConstraints(A.rows());
