@@ -1,0 +1,3 @@
+#! /bin/bash
+
+choreonoid `rospack find multicontact_controller`/src/PWTController/PWTController.cnoid "$@"

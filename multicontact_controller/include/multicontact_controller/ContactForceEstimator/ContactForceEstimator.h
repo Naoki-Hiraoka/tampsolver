@@ -13,9 +13,6 @@ namespace multicontact_controller {
   class ContactPointCFE: public cnoidbodyutils::ContactPoint {
   public:
 
-    cnoid::Vector6 F() const { return F_; }
-    cnoid::Vector6& F() {return F_; }
-
     // ContactForceEstimatorが内部で使う
     cnoid::Link* const parent_est() const { return parent_est_; }
     cnoid::Link*& parent_est() { return parent_est_; }
@@ -30,7 +27,6 @@ namespace multicontact_controller {
       return cnoidbodyutils::ContactPoint::calcRinv(parent_est_, T_local_est_);
     }
   private:
-    cnoid::Vector6 F_;
 
     cnoid::Link* parent_est_;
     cnoid::Position T_local_est_;

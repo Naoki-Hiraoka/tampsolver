@@ -4,6 +4,7 @@
 
 #include <multicontact_controller/ContactForceEstimator/ContactForceEstimatorROSItem.h>
 #include <multicontact_controller/MultiContactFootCoords/MultiContactFootCoordsROSItem.h>
+#include <multicontact_controller/PWTController/PWTControllerROSItem.h>
 
 using namespace cnoid;
 
@@ -20,6 +21,7 @@ public:
     {
       ContactForceEstimatorROSItem::initializeClass(this);
       MultiContactFootCoordsROSItem::initializeClass(this);
+      PWTControllerROSItem::initializeClass(this);
       return true;
     }
 
