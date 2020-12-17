@@ -1,6 +1,7 @@
 #include <multicontact_controller/lib/CnoidBodyUtils/Contact.h>
 
 #include <cnoid/EigenUtil>
+#include <limits>
 
 namespace multicontact_controller{
   namespace cnoidbodyutils{

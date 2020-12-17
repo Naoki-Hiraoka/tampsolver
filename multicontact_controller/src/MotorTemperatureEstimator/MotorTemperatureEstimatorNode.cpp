@@ -27,68 +27,68 @@ public:
     }
     n.getParam(ns+"/name",name_);
 
-    if(!n.hasParam(ns+"/Re")){
-      ROS_WARN("rosparam %s not found",(ns+"/Re").c_str());
+    if(!n.hasParam(ns+"/thermal_params/Re")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/Re").c_str());
       return false;
     }
-    n.getParam(ns+"/Re",estimator_.Re());
+    n.getParam(ns+"/thermal_params/Re",estimator_.Re());
 
-    if(!n.hasParam(ns+"/K")){
-      ROS_WARN("rosparam %s not found",(ns+"/K").c_str());
+    if(!n.hasParam(ns+"/thermal_params/K")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/K").c_str());
       return false;
     }
-    n.getParam(ns+"/K",estimator_.K());
+    n.getParam(ns+"/thermal_params/K",estimator_.K());
 
-    if(!n.hasParam(ns+"/Ccoil")){
-      ROS_WARN("rosparam %s not found",(ns+"/Ccoil").c_str());
+    if(!n.hasParam(ns+"/thermal_params/Ccoil")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/Ccoil").c_str());
       return false;
     }
-    n.getParam(ns+"/Ccoil",estimator_.Ccoil());
+    n.getParam(ns+"/thermal_params/Ccoil",estimator_.Ccoil());
 
-    if(!n.hasParam(ns+"/Chousing")){
-      ROS_WARN("rosparam %s not found",(ns+"/Chousing").c_str());
+    if(!n.hasParam(ns+"/thermal_params/Chousing")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/Chousing").c_str());
       return false;
     }
-    n.getParam(ns+"/Chousing",estimator_.Chousing());
+    n.getParam(ns+"/thermal_params/Chousing",estimator_.Chousing());
 
-    if(!n.hasParam(ns+"/R1")){
-      ROS_WARN("rosparam %s not found",(ns+"/R1").c_str());
+    if(!n.hasParam(ns+"/thermal_params/R1")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/R1").c_str());
       return false;
     }
-    n.getParam(ns+"/R1",estimator_.R1());
+    n.getParam(ns+"/thermal_params/R1",estimator_.R1());
 
-    if(!n.hasParam(ns+"/R2")){
-      ROS_WARN("rosparam %s not found",(ns+"/R2").c_str());
+    if(!n.hasParam(ns+"/thermal_params/R2")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/R2").c_str());
       return false;
     }
-    n.getParam(ns+"/R2",estimator_.R2());
+    n.getParam(ns+"/thermal_params/R2",estimator_.R2());
 
-    if(!n.hasParam(ns+"/Tlimit")){
-      ROS_WARN("rosparam %s not found",(ns+"/Tlimit").c_str());
+    if(!n.hasParam(ns+"/thermal_params/Tlimit")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/Tlimit").c_str());
       return false;
     }
-    n.getParam(ns+"/Tlimit",estimator_.Tlimit());
+    n.getParam(ns+"/thermal_params/Tlimit",estimator_.Tlimit());
 
-    if(!n.hasParam(ns+"/tsoft")){
-      ROS_WARN("rosparam %s not found",(ns+"/tsoft").c_str());
+    if(!n.hasParam(ns+"/thermal_params/tsoft")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/tsoft").c_str());
       return false;
     }
-    n.getParam(ns+"/tsoft",estimator_.tsoft());
+    n.getParam(ns+"/thermal_params/tsoft",estimator_.tsoft());
 
-    if(!n.hasParam(ns+"/thard")){
-      ROS_WARN("rosparam %s not found",(ns+"/thard").c_str());
+    if(!n.hasParam(ns+"/thermal_params/thard")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/thard").c_str());
       return false;
     }
-    n.getParam(ns+"/thard",estimator_.thard());
+    n.getParam(ns+"/thermal_params/thard",estimator_.thard());
 
-    if(!n.hasParam(ns+"/TempPredParams")){
-      ROS_WARN("rosparam %s not found",(ns+"/TempPredParams").c_str());
+    if(!n.hasParam(ns+"/thermal_params/TempPredParams")){
+      ROS_WARN("rosparam %s not found",(ns+"/thermal_params/TempPredParams").c_str());
       return false;
     }
-    n.getParam(ns+"/TempPredParams",estimator_.TempPredParams());
+    n.getParam(ns+"/thermal_params/TempPredParams",estimator_.TempPredParams());
 
-    n.param(ns+"/maxRemainingTime",estimator_.maxRemainingTime(),600.0);
-    n.param(ns+"/remainingTimeStep",estimator_.remainingTimeStep(),5.0);
+    n.param(ns+"/thermal_params/maxRemainingTime",estimator_.maxRemainingTime(),600.0);
+    n.param(ns+"/thermal_params/remainingTimeStep",estimator_.remainingTimeStep(),5.0);
 
     estimator_.Tcoil() = Tair;
     estimator_.Thousing() = Tair;

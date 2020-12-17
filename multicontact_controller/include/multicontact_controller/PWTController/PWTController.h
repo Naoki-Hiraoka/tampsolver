@@ -27,37 +27,34 @@ namespace multicontact_controller {
     std::shared_ptr<cnoidbodyutils::Contact> contact_;
   };
 
+  class JointInfo {
+  public:
+  protected:
+    std::string name_;
+
+    double coil_temperature_limit_;
+    double housing_temperature_;
+    double coil_temperature_;
+    double maximum_effort_soft_;
+    double maximum_effort_hard_;
+    double balance_effort_;
+    double remaining_time_;
+
+    double pgain_;
+    double dgain_;
+
+    std::shared_ptr<cnoidbodyutils::JointLimitTable> jointLimitTable_;
+  };
 
   class PWTController {
   public:
-    PWTController()
-      : originp_(cnoid::Vector3::Zero()),
-        originyaw_(0),
-        loopNum_(3){
+    PWTController(){
     }
 
-    // 各ContactPointの座標がT_initと一致するためにrobotのrootに左から掛けるべきTを,前回のoriginp, originyawをTの初期値として探索する
-    bool calcRootOdometry(cnoid::Body* robot, std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints);
-
-    // robotのrootがodomTと一致するためのrobotのrootに左から掛けるべきTを計算しrootp, rootyawに格納する
-    bool setRootOdom(cnoid::Body* robot, const cnoid::Position& odomT);
-
-    // robotのrootに左から掛けるべきT
-    cnoid::Position getOriginCoords();
-
-    size_t loopNum() const {return loopNum_;}
-    size_t& loopNum() {return loopNum_;}
+    bool calcPWTControl(cnoid::Body* robot);
   private:
-    cnoid::Vector3 originp_;
-    double originyaw_;
-
-    size_t loopNum_;
 
     // cache
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > solver_;
-    cnoid::VectorX error_ /*x,y,z,yaw,...*/;
-    Eigen::SparseMatrix<double> J_;
-    Eigen::SparseMatrix<double> W_;
   };
 
 };

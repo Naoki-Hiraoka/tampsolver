@@ -83,10 +83,10 @@ namespace multicontact_controller {
         }
 
         if(contactPoints.size() !=0){
-          if(!multiContactFootCoords_.calcRootOdometry(robot_, contactPoints)){
+          if(/*!multiContactFootCoords_.calcRootOdometry(robot_, contactPoints)*/true){
             ROS_WARN("calcRootOdometry failed");
           }else{
-            cnoid::Position originCoords = multiContactFootCoords_.getOriginCoords();
+            cnoid::Position originCoords/* = multiContactFootCoords_.getOriginCoords()*/;
             for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
               it->second->originT() = originCoords;
             }
@@ -157,10 +157,10 @@ namespace multicontact_controller {
   bool PWTControllerROS::setBodyTransformCallback(multicontact_controller_msgs::SetTransformStamped::Request& request, multicontact_controller_msgs::SetTransformStamped::Response& response){
     Eigen::Affine3d bodyTransform;
     tf::transformMsgToEigen(request.transform.transform, bodyTransform);
-    bool success = this->multiContactFootCoords_.setRootOdom(robot_, bodyTransform);
+    bool success/* = this->multiContactFootCoords_.setRootOdom(robot_, bodyTransform)*/;
 
     if(success){
-      cnoid::Position originCoords = this->multiContactFootCoords_.getOriginCoords();
+      cnoid::Position originCoords/* = this->multiContactFootCoords_.getOriginCoords()*/;
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it = endEffectors_.begin(); it != endEffectors_.end(); it++) {
         it->second->originT() = originCoords;
         if((it->second->state() == "CONTACT" || it->second->state() == "TOWARD_BREAK_CONTACT")){
