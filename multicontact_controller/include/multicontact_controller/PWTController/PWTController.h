@@ -2,50 +2,11 @@
 #define PWT_CONTROLLER_H
 
 #include <cnoid/Body>
-#include <cnoid/SceneDrawables>
 #include <memory>
 #include <Eigen/Sparse>
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
 
 namespace multicontact_controller {
-  class Contact {
-  public:
-    // local座標系，localまわり Ax = b, dl <= Cx <= du
-    virtual void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& dl, Eigen::VectorXd& du) = 0;
-    virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects(const cnoid::Position& T=cnoid::Position()) = 0;
-  protected:
-
-  };
-
-  class SurfaceContact : public Contact {
-  public:
-    SurfaceContact();
-    SurfaceContact(cnoid::SgPolygonMeshPtr surface, double mu_trans, double mu_rot, double max_fz, double min_fz);
-    // local座標系，localまわり Ax = b, dl <= Cx <= du
-    void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& dl, Eigen::VectorXd& du) override;
-
-    std::vector<cnoid::SgNodePtr> getDrawOnObjects(const cnoid::Position& T=cnoid::Position()) override;
-
-    bool setVertices(const std::vector<float>& vertices);// [x1 y1 z1 x2 y2 z2 ...]. Zは無視する
-    double mu_trans() const { return mu_trans_;}
-    double& mu_trans() { return mu_trans_;}
-    double mu_rot() const { return mu_rot_;}
-    double& mu_rot() { return mu_rot_;}
-    double max_fz() const { return max_fz_;}
-    double& max_fz() { return max_fz_;}
-    double min_fz() const { return min_fz_;}
-    double& min_fz() { return min_fz_;}
-  private:
-    cnoid::SgPolygonMeshPtr surface_;//polygonは一つまで．凸形状限定.endeffector相対.
-    double mu_trans_;
-    double mu_rot_;
-    double max_fz_;
-    double min_fz_;
-
-    cnoid::SgLineSetPtr lines_;//for visualization
-  };
-
-
   class ContactPointPWTC: public cnoidbodyutils::ContactPoint {
   public:
     // odom系の座標のref値
@@ -55,13 +16,17 @@ namespace multicontact_controller {
     cnoid::Position& prev_T_ref() {return prev_T_ref_; }
     cnoid::Position prev_prev_T_ref() const { return prev_prev_T_ref_; }
     cnoid::Position& prev_prev_T_ref() {return prev_prev_T_ref_; }
+
+    std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
+    std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
   private:
     cnoid::Position T_ref_;
     cnoid::Position prev_T_ref_;
     cnoid::Position prev_prev_T_ref_;
 
-    std::string type_;
+    std::shared_ptr<cnoidbodyutils::Contact> contact_;
   };
+
 
   class PWTController {
   public:

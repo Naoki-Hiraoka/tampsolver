@@ -4,10 +4,14 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   eigen_conversions
   choreonoid_cpp
+  multicontact_controller_msgs
   )
 
 add_library(CnoidBodyUtils
   CnoidBodyUtils.cpp
+  Contact.cpp
+  ContactPoint.cpp
+  TorqueJacobianCalculator.cpp
   )
 
 target_include_directories(CnoidBodyUtils PUBLIC
