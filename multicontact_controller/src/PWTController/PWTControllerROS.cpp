@@ -25,7 +25,6 @@ namespace multicontact_controller {
     if(prev_state_ != state_ &&
        (state_ == "CONTACT" || state_ == "TOWARD_BREAK_CONTACT") &&
        (prev_state_ != "CONTACT" && prev_state_ != "TOWARD_BREAK_CONTACT")){
-      this->contactPoint()->T_init() = this->originT() * this->contactPoint()->parent()->T() * this->contactPoint()->T_local();
     }
   }
 
@@ -165,7 +164,7 @@ namespace multicontact_controller {
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it = endEffectors_.begin(); it != endEffectors_.end(); it++) {
         it->second->originT() = originCoords;
         if((it->second->state() == "CONTACT" || it->second->state() == "TOWARD_BREAK_CONTACT")){
-          it->second->contactPoint()->T_init() = it->second->originT() * it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
+
         }
       }
     }
