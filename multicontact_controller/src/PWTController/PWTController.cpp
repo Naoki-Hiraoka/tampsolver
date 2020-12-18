@@ -22,7 +22,7 @@ namespace multicontact_controller {
   }
 
   // 位置の目標値を返す。主に遊脚用
-  void ContactPointPWTC::calcDesiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+  void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     return;
   }
 
@@ -90,6 +90,8 @@ namespace multicontact_controller {
                            contactPoints,
                            Dwas,
                            Dtaua,
+                           w_scale1_,
+                           tau_scale1_,
                            k1_,
                            dt,
                            w1_,
@@ -100,6 +102,25 @@ namespace multicontact_controller {
         return false;
       }
       tasks.push_back(task1);
+    }
+
+    {
+      // priority 2
+      std::shared_ptr<prioritized_qp::Task> task2;
+      if(!this->setupTask2(task2,
+                           robot_,
+                           jointInfos_,
+                           contactPoints,
+                           Dqa,
+                           dt,
+                           w2_,
+                           we2_,
+                           0,
+                           1)){
+        std::cerr << "setupTask2 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task2);
     }
 
     return true;
@@ -308,6 +329,8 @@ namespace multicontact_controller {
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                  const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                                 double w_scale,
+                                 double tau_scale,
                                  double k,
                                  double dt,
                                  double w,
@@ -317,7 +340,7 @@ namespace multicontact_controller {
       if(!this->task1_) {
         this->task1_ = std::make_shared<prioritized_qp::Task>();
         task = this->task1_;
-        task->name() = "Task0: Joint Limit, Self Collision";
+        task->name() = "Task1: Contact Force, Joint Torque";
         task->solver().settings()->resetDefaultSettings();
         task->solver().settings()->setVerbosity(false);
         task->solver().settings()->setWarmStart(true);
@@ -355,13 +378,13 @@ namespace multicontact_controller {
           cnoid::VectorX du;
           cnoid::VectorX wc;
           contactPoints[i]->contactForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
-          As.push_back(A*Dwas[i]);
-          bs.push_back(b);
-          was.push_back(wa);
-          Cs.push_back(C*Dwas[i]);
-          dls.push_back(dl);
-          dus.push_back(du);
-          wcs.push_back(wc);
+          As.push_back(A*Dwas[i] / w_scale);
+          bs.push_back(b / w_scale);
+          was.push_back(wa * std::pow(w_scale,2));
+          Cs.push_back(C*Dwas[i] / w_scale);
+          dls.push_back(dl / w_scale);
+          dus.push_back(du / w_scale);
+          wcs.push_back(wc * std::pow(w_scale,2));
           idx++;
         }
       }
@@ -378,13 +401,13 @@ namespace multicontact_controller {
           cnoid::VectorX wc;
           jointInfos[i]->JointTorqueConstraint(A,b,wa,C,dl,du,wc);
           const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
-          As.push_back(A*S*Dtaua);
-          bs.push_back(b);
-          was.push_back(wa);
-          Cs.push_back(C*S*Dtaua);
-          dls.push_back(dl);
-          dus.push_back(du);
-          wcs.push_back(wc);
+          As.push_back(A*S*Dtaua / tau_scale);
+          bs.push_back(b / tau_scale);
+          was.push_back(wa * std::pow(tau_scale,2));
+          Cs.push_back(C*S*Dtaua / tau_scale);
+          dls.push_back(dl / tau_scale);
+          dus.push_back(du / tau_scale);
+          wcs.push_back(wc * std::pow(tau_scale,2));
         }
       }
 
@@ -407,6 +430,98 @@ namespace multicontact_controller {
       // velocity damper
       task->A() *= k / dt;
       task->C() *= k / dt;
+
+      // damping factor
+      double damping_factor = this->dampingFactor(w,
+                                                  we,
+                                                  task->b(),
+                                                  task->wa(),
+                                                  task->dl(),
+                                                  task->du(),
+                                                  task->wc());
+      task->w().resize(realcols);
+      for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+
+      return true;
+  }
+
+  bool PWTController::setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                                 cnoid::Body* robot,
+                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                                 const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
+                                 double dt,
+                                 double w,
+                                 double we,
+                                 size_t additional_cols_before,
+                                 size_t additional_cols_after){
+      if(!this->task2_) {
+        this->task2_ = std::make_shared<prioritized_qp::Task>();
+        task = this->task2_;
+        task->name() = "Task2: Interacting EndEffector";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        task->solver().settings()->setMaxIteration(4000);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
+      }else{
+        task = this->task2_;
+      }
+
+      size_t cols = 0;
+      for(size_t i=0;i<jointInfos.size();i++){
+        if(jointInfos[i]->controllable()) cols++;
+      }
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
+      std::vector<cnoid::VectorXd> bs;
+      std::vector<cnoid::VectorXd> was;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
+      std::vector<cnoid::VectorXd> dls;
+      std::vector<cnoid::VectorXd> dus;
+      std::vector<cnoid::VectorXd> wcs;
+
+      {
+        // interaction end_effector
+        size_t idx = 0;
+        for(size_t i=0;i<contactPoints.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          contactPoints[i]->desiredPositionConstraint(A,b,wa,C,dl,du,wc);
+          As.push_back(A*Dqa);
+          bs.push_back(b);
+          was.push_back(wa);
+          Cs.push_back(C*Dqa);
+          dls.push_back(dl);
+          dus.push_back(du);
+          wcs.push_back(wc);
+          idx++;
+        }
+      }
+
+      size_t realcols = cols + additional_cols_before + additional_cols_after;
+      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
+      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
+
+      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
+      cnoidbodyutils::appendRow(As, A);
+      task->A() = A * S;
+      cnoidbodyutils::appendRow(bs, task->b());
+      cnoidbodyutils::appendRow(was, task->wa());
+      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
+      cnoidbodyutils::appendRow(Cs, C);
+      task->C() = C * S;
+      cnoidbodyutils::appendRow(dls, task->dl());
+      cnoidbodyutils::appendRow(dus, task->du());
+      cnoidbodyutils::appendRow(wcs, task->wc());
 
       // damping factor
       double damping_factor = this->dampingFactor(w,

@@ -20,7 +20,7 @@ namespace multicontact_controller {
     void bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     // 位置の目標値を返す。主に遊脚用
-    void calcDesiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+    void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     // odom系の座標のref値
     cnoid::Position T_ref() const { return T_ref_; }
@@ -133,6 +133,10 @@ namespace multicontact_controller {
         k1_(5.0),
         w1_(1e-2),
         we1_(1e-8),
+        w_scale1_(1e12),
+        tau_scale1_(1e12),
+        w2_(1e-2),
+        we2_(1e4),
         //cache
         Ka_(6+robot_->numJoints(),6+robot_->numJoints())
     {
@@ -175,7 +179,21 @@ namespace multicontact_controller {
                     std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                     const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                     const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                    double w_scale,//次元の大きさを揃え、計算を安定化する
+                    double tau_scale,//次元の大きさを揃え、計算を安定化する
                     double k,
+                    double dt,
+                    double w,
+                    double we,
+                    size_t additional_cols_before = 0,
+                    size_t additional_cols_after = 0);
+
+    // メンバ変数はTask2_しか使わない
+    bool setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                    cnoid::Body* robot,
+                    std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                    std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                    const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                     double dt,
                     double w,
                     double we,
@@ -203,12 +221,18 @@ namespace multicontact_controller {
     double k1_;
     double w1_;
     double we1_;
+    double w_scale1_;
+    double tau_scale1_;
+    //   setupTask2
+    double w2_;
+    double we2_;
 
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
     std::vector<std::shared_ptr<prioritized_qp::Task> > tasks_; // calcPWTControl
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
+    std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
   };
 
 };
