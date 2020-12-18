@@ -36,18 +36,27 @@ namespace multicontact_controller {
     return;
   }
 
+  // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
+  const Eigen::SparseMatrix<double,Eigen::RowMajor>& JointInfo::torqueSelectMatrix(){
+    return torqueSelectMatrix_;
+  }
 
-  bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints){
+  // 関節トルク上下限に関する制約を返す.破損防止
+  void JointInfo::JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+    return;
+  }
+
+  bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt){
 
     std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > > Js;Js.reserve(contactPoints.size());
     for(size_t i=0;i<contactPoints.size();i++) Js.emplace_back(contactPoints[i]->calcJacobian());
 
     // calc PWT Jacobian
     Eigen::SparseMatrix<double,Eigen::RowMajor> Dqa;
-    Eigen::SparseMatrix<double,Eigen::RowMajor> Dwa;
+    std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Dwas;
     Eigen::SparseMatrix<double,Eigen::RowMajor> Dtaua;
     if(!this->calcPWTJacobian(Dqa,
-                              Dwa,
+                              Dwas,
                               Dtaua,
                               robot_,
                               jointInfos_,
@@ -65,7 +74,7 @@ namespace multicontact_controller {
     {
       // priority 0
       std::shared_ptr<prioritized_qp::Task> task0;
-      if(!this->setupTask0(task0, robot_, jointInfos_, 0, 1)){
+      if(!this->setupTask0(task0, robot_, jointInfos_, k0_, dt, 0, 1)){
         std::cerr << "setupTask0 failed" << std::endl;
         return false;
       }
@@ -75,13 +84,29 @@ namespace multicontact_controller {
     {
       // priority 1
       std::shared_ptr<prioritized_qp::Task> task1;
+      if(!this->setupTask1(task1,
+                           robot_,
+                           jointInfos_,
+                           contactPoints,
+                           Dwas,
+                           Dtaua,
+                           k1_,
+                           dt,
+                           w1_,
+                           we1_,
+                           0,
+                           1)){
+        std::cerr << "setupTask1 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task1);
     }
 
     return true;
   }
 
   bool PWTController::calcPWTJacobian(Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,//返り値
-                                      Eigen::SparseMatrix<double,Eigen::RowMajor>& Dwa,//返り値
+                                      std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,//返り値
                                       Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,//返り値
                                       cnoid::Body* robot,
                                       std::vector<std::shared_ptr<JointInfo> >& jointInfos,
@@ -97,13 +122,11 @@ namespace multicontact_controller {
     }
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> Jbal(0,6+robot->numJoints());
-    {
-      std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Jbals;
-      for(size_t i=0;i<contactPoints.size();i++) {
-        Jbals.push_back(contactPoints[i]->selectMatrixForKinematicsConstraint() * Js[i].get());
-      }
-      cnoidbodyutils::appendRow(Jbals, Jbal);
+    std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Jbals;
+    for(size_t i=0;i<contactPoints.size();i++) {
+      Jbals.push_back(contactPoints[i]->selectMatrixForKinematicsConstraint() * Js[i].get());
     }
+    cnoidbodyutils::appendRow(Jbals, Jbal);
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> X(6+robot->numJoints()+Jbal.rows(),6+robot->numJoints()+Jbal.rows());
     {
@@ -149,7 +172,15 @@ namespace multicontact_controller {
     }
 
     Dqa = Yu * Kc;
-    Dwa = Yl * Kc;
+    {
+      Eigen::SparseMatrix<double, Eigen::RowMajor> Dwa = Yl * Kc;
+      Dwas.resize(contactPoints.size());
+      size_t idx = 0;
+      for(size_t i=0;i<contactPoints.size();i++){
+        Dwas[i] = Dwa.middleRows(idx,Jbals[i].rows());
+        idx += Jbals[i].rows();
+      }
+    }
     Dtaua = (Kc - Eigen::SparseMatrix<double,Eigen::RowMajor>(Ka_ * Dqa)).bottomRows(robot->numJoints());
     return true;
   }
@@ -157,6 +188,8 @@ namespace multicontact_controller {
   bool PWTController::setupTask0(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,
                                  std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 double k,
+                                 double dt,
                                  size_t additional_cols_before,
                                  size_t additional_cols_after){
       if(!this->task0_) {
@@ -179,9 +212,6 @@ namespace multicontact_controller {
       for(size_t i=0;i<jointInfos.size();i++){
         if(jointInfos[i]->controllable()) cols++;
       }
-      cols += additional_cols_before;
-      cols += 0;
-      cols += additional_cols_after;
 
       std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
       std::vector<cnoid::VectorXd> bs;
@@ -247,17 +277,173 @@ namespace multicontact_controller {
         // self collision TODO
       }
 
-      cnoidbodyutils::appendRow(As, task->A());
+      size_t realcols = cols + additional_cols_before + additional_cols_after;
+      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
+      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
+
+      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
+      cnoidbodyutils::appendRow(As, A);
+      task->A() = A * S;
       cnoidbodyutils::appendRow(bs, task->b());
       cnoidbodyutils::appendRow(was, task->wa());
-      cnoidbodyutils::appendRow(Cs, task->C());
+      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
+      cnoidbodyutils::appendRow(Cs, C);
+      task->C() = C * S;
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
 
-      task->w().resize(cols);//解かないので使わない
+      // velocity damper
+      task->A() *= k / dt;
+      task->C() *= k / dt;
+
+      task->w().resize(realcols);//解かないので使わない
 
       return true;
+  }
+
+  bool PWTController::setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                                 cnoid::Body* robot,
+                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                                 const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                                 const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                                 double k,
+                                 double dt,
+                                 double w,
+                                 double we,
+                                 size_t additional_cols_before,
+                                 size_t additional_cols_after){
+      if(!this->task1_) {
+        this->task1_ = std::make_shared<prioritized_qp::Task>();
+        task = this->task1_;
+        task->name() = "Task0: Joint Limit, Self Collision";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        task->solver().settings()->setMaxIteration(4000);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
+      }else{
+        task = this->task1_;
+      }
+
+      size_t cols = 0;
+      for(size_t i=0;i<jointInfos.size();i++){
+        if(jointInfos[i]->controllable()) cols++;
+      }
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
+      std::vector<cnoid::VectorXd> bs;
+      std::vector<cnoid::VectorXd> was;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
+      std::vector<cnoid::VectorXd> dls;
+      std::vector<cnoid::VectorXd> dus;
+      std::vector<cnoid::VectorXd> wcs;
+
+      {
+        // contact force constraint
+        size_t idx = 0;
+        for(size_t i=0;i<contactPoints.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          contactPoints[i]->contactForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
+          As.push_back(A*Dwas[i]);
+          bs.push_back(b);
+          was.push_back(wa);
+          Cs.push_back(C*Dwas[i]);
+          dls.push_back(dl);
+          dus.push_back(du);
+          wcs.push_back(wc);
+          idx++;
+        }
+      }
+
+      {
+        // joint torque limit
+        for(size_t i=0;i<jointInfos.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          jointInfos[i]->JointTorqueConstraint(A,b,wa,C,dl,du,wc);
+          const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
+          As.push_back(A*S*Dtaua);
+          bs.push_back(b);
+          was.push_back(wa);
+          Cs.push_back(C*S*Dtaua);
+          dls.push_back(dl);
+          dus.push_back(du);
+          wcs.push_back(wc);
+        }
+      }
+
+      size_t realcols = cols + additional_cols_before + additional_cols_after;
+      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
+      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
+
+      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
+      cnoidbodyutils::appendRow(As, A);
+      task->A() = A * S;
+      cnoidbodyutils::appendRow(bs, task->b());
+      cnoidbodyutils::appendRow(was, task->wa());
+      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
+      cnoidbodyutils::appendRow(Cs, C);
+      task->C() = C * S;
+      cnoidbodyutils::appendRow(dls, task->dl());
+      cnoidbodyutils::appendRow(dus, task->du());
+      cnoidbodyutils::appendRow(wcs, task->wc());
+
+      // velocity damper
+      task->A() *= k / dt;
+      task->C() *= k / dt;
+
+      // damping factor
+      double damping_factor = this->dampingFactor(w,
+                                                  we,
+                                                  task->b(),
+                                                  task->wa(),
+                                                  task->dl(),
+                                                  task->du(),
+                                                  task->wc());
+      task->w().resize(realcols);
+      for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+
+      return true;
+  }
+
+  double PWTController::dampingFactor(double w,
+                                      double we,
+                                      const cnoid::VectorX& b,
+                                      const cnoid::VectorX& wa,
+                                      const cnoid::VectorX& dl,
+                                      const cnoid::VectorX& du,
+                                      const cnoid::VectorX& wc){
+    double e = 0;
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> Wa(wa.size(),wa.size());
+    for(size_t i=0;i<wa.size();i++) Wa.insert(i,i) = wa[i];
+    e += b.transpose() * Wa * b;
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> Wc(wc.size(),wc.size());
+    for(size_t i=0;i<wc.size();i++) Wc.insert(i,i) = wc[i];
+    cnoid::VectorX dl_e = dl;
+    for(size_t i=0;i<dl_e.size();i++) if(dl_e[i]<0) dl_e[i] = 0.0;
+    cnoid::VectorX du_e = du;
+    for(size_t i=0;i<du_e.size();i++) if(du_e[i]>0) du_e[i] = 0.0;
+    e += dl_e.transpose() * Wc * dl_e;
+    e += du_e.transpose() * Wc * du_e;
+    return w + we * e;
   }
 
 };

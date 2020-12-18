@@ -50,6 +50,7 @@ namespace multicontact_controller {
 
   class JointInfo {
   public:
+
     // 指令関節角度上下限に関する制約を返す.破損防止
     void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
 
@@ -57,10 +58,10 @@ namespace multicontact_controller {
     void JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
 
     // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
-    const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcSelectMatrix();
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& torqueSelectMatrix();
 
     // 関節トルク上下限に関する制約を返す.破損防止
-    void calcJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
+    void JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
     // 関節トルクのベストエフォートタスクを返す。主に負荷低減用
     void calcBestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
@@ -113,6 +114,9 @@ namespace multicontact_controller {
     double dgain_;
 
     std::shared_ptr<cnoidbodyutils::JointLimitTable> jointLimitTable_;
+
+    //cache
+    Eigen::SparseMatrix<double,Eigen::RowMajor> torqueSelectMatrix_;
   };
 
   class PWTController {
@@ -125,21 +129,28 @@ namespace multicontact_controller {
         torqueJacobianCalculator_(robot_),
         //params
         sv_ratio_(1e-12),
+        k0_(0.1),
+        k1_(5.0),
+        w1_(1e-2),
+        we1_(1e-8),
         //cache
         Ka_(6+robot_->numJoints(),6+robot_->numJoints())
     {
     }
 
     //calcForwardKinematics()とcalcCM()が事前に必要
-    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints);
+    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt);
 
     double& sv_ratio() { return sv_ratio_;}
     double sv_ratio() const { return sv_ratio_;}
 
+    double& k0() { return k0_;}
+    double k0() const { return k0_;}
+
   protected:
     // メンバ変数はKa_しか使わない
     bool calcPWTJacobian(Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,//返り値
-                         Eigen::SparseMatrix<double,Eigen::RowMajor>& Dwa,//返り値
+                         std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,//返り値
                          Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,//返り値
                          cnoid::Body* robot,
                          std::vector<std::shared_ptr<JointInfo> >& jointInfos,
@@ -149,23 +160,55 @@ namespace multicontact_controller {
                          double sv_ratio);
 
     // メンバ変数はTask0_しか使わない
-    bool setupTask0(std::shared_ptr<prioritized_qp::Task>& task0, //返り値
+    bool setupTask0(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                    double k,
+                    double dt,
                     size_t additional_cols_before = 0,
                     size_t additional_cols_after = 0);
 
+    // メンバ変数はTask1_しか使わない
+    bool setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                    cnoid::Body* robot,
+                    std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                    std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                    const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                    const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                    double k,
+                    double dt,
+                    double w,
+                    double we,
+                    size_t additional_cols_before = 0,
+                    size_t additional_cols_after = 0);
+
+    double dampingFactor(double w,
+                         double we,
+                         const cnoid::VectorX& b,
+                         const cnoid::VectorX& wa,
+                         const cnoid::VectorX& dl,
+                         const cnoid::VectorX& du,
+                         const cnoid::VectorX& wc);
   private:
     cnoid::Body* robot_;
     std::vector<std::shared_ptr<JointInfo> >& jointInfos_;
     cnoidbodyutils::TorqueJacobianCalculator torqueJacobianCalculator_;
 
+    // params
+    //   calcPWTJacobian
     double sv_ratio_;
+    //   setupTask0
+    double k0_;
+    //   setupTask1
+    double k1_;
+    double w1_;
+    double we1_;
 
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
     std::vector<std::shared_ptr<prioritized_qp::Task> > tasks_; // calcPWTControl
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
+    std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
   };
 
 };
