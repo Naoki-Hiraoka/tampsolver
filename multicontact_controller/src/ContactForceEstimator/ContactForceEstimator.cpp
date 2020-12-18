@@ -215,7 +215,7 @@ namespace multicontact_controller {
         //task->solver().settings()->setRho(1e-6);
         //task->solver().settings()->setAlpha(0.1);
         task->solver().settings()->setMaxIteration(4000);
-        task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setRho(1e-6);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         //settings->eps_abs = 1e-05;
@@ -264,7 +264,7 @@ namespace multicontact_controller {
         //task->solver().settings()->setRho(1e-6);
         //task->solver().settings()->setAlpha(0.1);
         task->solver().settings()->setMaxIteration(4000);
-        task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setRho(1e-6);//いらない?
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         //settings->eps_abs = 1e-05;
@@ -310,7 +310,7 @@ namespace multicontact_controller {
         //task->solver().settings()->setRho(1e-6);
         //task->solver().settings()->setAlpha(0.1);
         task->solver().settings()->setMaxIteration(4000);
-        task->solver().settings()->setRho(1e-6);
+        //task->solver().settings()->setRho(1e-6);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
         //settings->eps_abs = 1e-05;
