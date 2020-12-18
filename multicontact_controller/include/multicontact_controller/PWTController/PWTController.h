@@ -63,7 +63,7 @@ namespace multicontact_controller {
     // 関節トルク上下限に関する制約を返す.破損防止
     void JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
     // 関節トルクのベストエフォートタスクを返す。主に負荷低減用
-    void calcBestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+    void bestEffortJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     std::string& name() { return name_;}
     std::string name() const { return name_;}
@@ -133,10 +133,16 @@ namespace multicontact_controller {
         k1_(5.0),
         w1_(1e-2),
         we1_(1e-8),
-        w_scale1_(1e12),
-        tau_scale1_(1e12),
+        w_scale1_(1e6),//hessianが大きい気がする
+        tau_scale1_(1e6),
         w2_(1e-2),
         we2_(1e4),
+        k3_(5.0),//TODO
+        w3_(1e-2),//TODO
+        w_scale3_(1e6),//TODO
+        tau_scale3_(1e6),//TODO
+        taumax_weight3_(1e2),//TODO
+
         //cache
         Ka_(6+robot_->numJoints(),6+robot_->numJoints())
     {
@@ -200,6 +206,22 @@ namespace multicontact_controller {
                     size_t additional_cols_before = 0,
                     size_t additional_cols_after = 0);
 
+    // メンバ変数はTask3_しか使わない
+    bool setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                    cnoid::Body* robot,
+                    std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                    std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                    const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                    const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                    double w_scale,//次元の大きさを揃え、計算を安定化する
+                    double tau_scale,//次元の大きさを揃え、計算を安定化する
+                    double taumax_weight,//tauに比したtaumaxの重み
+                    double k,
+                    double dt,
+                    double w,
+                    size_t additional_cols_before = 0,
+                    size_t additional_cols_after = 0);
+
     double dampingFactor(double w,
                          double we,
                          const cnoid::VectorX& b,
@@ -226,6 +248,12 @@ namespace multicontact_controller {
     //   setupTask2
     double w2_;
     double we2_;
+    //   setupTask3
+    double k3_;
+    double w3_;
+    double w_scale3_;
+    double tau_scale3_;
+    double taumax_weight3_;
 
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
@@ -233,6 +261,7 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
+    std::shared_ptr<prioritized_qp::Task> task3_; // setupTask3
   };
 
 };

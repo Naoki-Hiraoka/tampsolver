@@ -46,6 +46,10 @@ namespace multicontact_controller {
     return;
   }
 
+  void JointInfo::bestEffortJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    return;
+  }
+
   bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt){
 
     std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > > Js;Js.reserve(contactPoints.size());
@@ -121,6 +125,29 @@ namespace multicontact_controller {
         return false;
       }
       tasks.push_back(task2);
+    }
+
+    {
+      // priority 3
+      std::shared_ptr<prioritized_qp::Task> task3;
+      if(!this->setupTask3(task3,
+                           robot_,
+                           jointInfos_,
+                           contactPoints,
+                           Dwas,
+                           Dtaua,
+                           w_scale3_,
+                           tau_scale3_,
+                           taumax_weight3_,
+                           k3_,
+                           dt,
+                           w3_,
+                           0,
+                           1)){
+        std::cerr << "setupTask3 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task3);
     }
 
     return true;
@@ -380,11 +407,11 @@ namespace multicontact_controller {
           contactPoints[i]->contactForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
           As.push_back(A*Dwas[i] / w_scale);
           bs.push_back(b / w_scale);
-          was.push_back(wa * std::pow(w_scale,2));
+          was.push_back(wa);
           Cs.push_back(C*Dwas[i] / w_scale);
           dls.push_back(dl / w_scale);
           dus.push_back(du / w_scale);
-          wcs.push_back(wc * std::pow(w_scale,2));
+          wcs.push_back(wc);
           idx++;
         }
       }
@@ -403,11 +430,11 @@ namespace multicontact_controller {
           const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
           As.push_back(A*S*Dtaua / tau_scale);
           bs.push_back(b / tau_scale);
-          was.push_back(wa * std::pow(tau_scale,2));
+          was.push_back(wa);
           Cs.push_back(C*S*Dtaua / tau_scale);
           dls.push_back(dl / tau_scale);
           dus.push_back(du / tau_scale);
-          wcs.push_back(wc * std::pow(tau_scale,2));
+          wcs.push_back(wc);
         }
       }
 
@@ -533,6 +560,125 @@ namespace multicontact_controller {
                                                   task->wc());
       task->w().resize(realcols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+
+      return true;
+  }
+
+  bool PWTController::setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                                 cnoid::Body* robot,
+                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                                 const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                                 const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
+                                 double w_scale,//次元の大きさを揃え、計算を安定化する
+                                 double tau_scale,//次元の大きさを揃え、計算を安定化する
+                                 double taumax_weight,//tauに比したtaumaxの重み
+                                 double k,
+                                 double dt,
+                                 double w,
+                                 size_t additional_cols_before,
+                                 size_t additional_cols_after){
+      if(!this->task3_) {
+        this->task3_ = std::make_shared<prioritized_qp::Task>();
+        task = this->task3_;
+        task->name() = "Task3: Contact Force, Joint Torque Reduction";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setWarmStart(true);
+        task->solver().settings()->setMaxIteration(4000);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
+      }else{
+        task = this->task3_;
+      }
+
+      size_t cols = 0;
+      for(size_t i=0;i<jointInfos.size();i++){
+        if(jointInfos[i]->controllable()) cols++;
+      }
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
+      std::vector<cnoid::VectorXd> bs;
+      std::vector<cnoid::VectorXd> was;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
+      std::vector<cnoid::VectorXd> dls;
+      std::vector<cnoid::VectorXd> dus;
+      std::vector<cnoid::VectorXd> wcs;
+
+      {
+        // contact force reduction
+        size_t idx = 0;
+        for(size_t i=0;i<contactPoints.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          contactPoints[i]->bestEffortForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
+          As.push_back(A*Dwas[i] / w_scale);
+          bs.push_back(b / w_scale);
+          was.push_back(wa);
+          Cs.push_back(C*Dwas[i] / w_scale);
+          dls.push_back(dl / w_scale);
+          dus.push_back(du / w_scale);
+          wcs.push_back(wc);
+          idx++;
+        }
+      }
+
+      {
+        // joint torque reduction
+        for(size_t i=0;i<jointInfos.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          jointInfos[i]->bestEffortJointTorqueConstraint(A,b,wa,C,dl,du,wc);
+          const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
+          As.push_back(A*S*Dtaua / tau_scale);
+          bs.push_back(b / tau_scale);
+          was.push_back(wa);
+          Cs.push_back(C*S*Dtaua / tau_scale);
+          dls.push_back(dl / tau_scale);
+          dus.push_back(du / tau_scale);
+          wcs.push_back(wc);
+        }
+      }
+
+      {
+        // taumax reduction TODO
+      }
+
+      size_t realcols = cols + additional_cols_before + 1 + additional_cols_after;
+      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
+      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
+
+      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
+      cnoidbodyutils::appendRow(As, A);
+      task->A() = A * S;
+      cnoidbodyutils::appendRow(bs, task->b());
+      cnoidbodyutils::appendRow(was, task->wa());
+      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
+      cnoidbodyutils::appendRow(Cs, C);
+      task->C() = C * S;
+      cnoidbodyutils::appendRow(dls, task->dl());
+      cnoidbodyutils::appendRow(dus, task->du());
+      cnoidbodyutils::appendRow(wcs, task->wc());
+
+      // velocity damper
+      task->A() *= k / dt;
+      task->C() *= k / dt;
+
+      // damping factor
+      task->w().resize(realcols);
+      for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
 
       return true;
   }
