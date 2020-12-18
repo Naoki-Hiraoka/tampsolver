@@ -17,9 +17,15 @@ namespace multicontact_controller{
       // 事前にcalcForWardKinematics(false,false)とcalcCM()が必要
       const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcDg(const cnoid::Vector3 g = cnoid::Vector3(0, 0, 9.80665));
       // 事前にcalcForWardKinematics(false,false)が必要。contactPointsのFを用いる.FはContactPointに固定されており、worldに固定されているのではない
-      const Eigen::SparseMatrix<double,Eigen::RowMajor>&  calcDJw(std::vector<std::shared_ptr<ContactPoint> > contactPoints);
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>&  calcDJw(std::vector<std::shared_ptr<ContactPoint> >& contactPoints);
+      template <typename T>
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>&  calcDJw(std::vector<std::shared_ptr<T> >& contactPoints){
+        std::vector<std::shared_ptr<ContactPoint> > casted_contactPoints;
+        for(size_t i=0;i<contactPoints.size();i++) casted_contactPoints.push_back(contactPoints[i]);
+        return this->calcDJw(casted_contactPoints);
+      }
 
-      // 最初に一回呼ばれる
+      // コンストラクタに一回呼ばれる
       bool generateRelationMap();
 
       // calcDg中に一回呼ばれる

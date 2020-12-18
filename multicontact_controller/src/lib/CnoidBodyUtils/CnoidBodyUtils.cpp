@@ -5,6 +5,7 @@
 #include <cnoid/EigenUtil>
 #include <ros/package.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <Eigen/SVD>
 
 namespace multicontact_controller {
   namespace cnoidbodyutils {
@@ -80,6 +81,33 @@ namespace multicontact_controller {
         double cos = (coords*axis).dot(target_axis);
         double angle = std::atan2(sin,cos);
         return Eigen::AngleAxisd(angle,rotate_axis.normalized()).toRotationMatrix() * coords;
+      }
+    }
+
+    size_t calcPseudoInverse(const cnoid::MatrixXd &M, cnoid::MatrixXd &Minv, double sv_ratio){
+      {
+        Eigen::BDCSVD< cnoid::MatrixXd > svd(M, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+        cnoid::VectorX s = svd.singularValues();
+        cnoid::MatrixXd U = svd.matrixU();
+        cnoid::MatrixXd V = svd.matrixV();
+
+        double threshold=0.0;
+        if(s.size() != 0) threshold = s[0] * sv_ratio;//Singular values are always sorted in decreasing order
+        cnoid::VectorX sinv(s.size());
+        size_t nonzeros = 0;
+        for (size_t i=0; i<s.size(); i++){
+          if (s[i] < threshold || s[i] == 0.0){
+            sinv[i] = 0.0;
+          } else {
+            sinv[i] = 1.0 / s[i];
+            nonzeros++;
+          }
+        }
+
+        Minv = V * sinv.diagonal() * U.transpose();
+
+        return nonzeros;
       }
     }
 

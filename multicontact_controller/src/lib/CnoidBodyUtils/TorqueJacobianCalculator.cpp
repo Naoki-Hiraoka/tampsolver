@@ -79,7 +79,7 @@ namespace multicontact_controller{
       return Dg_;
     }
 
-    const Eigen::SparseMatrix<double,Eigen::RowMajor>&  TorqueJacobianCalculator::calcDJw(std::vector<std::shared_ptr<ContactPoint> > contactPoints){
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>&  TorqueJacobianCalculator::calcDJw(std::vector<std::shared_ptr<ContactPoint> >& contactPoints){
       std::vector<cnoid::Vector3> f_worlds;//world系
       std::vector<cnoid::Vector3> n_worlds;//world系,contactpointまわり
       std::vector<cnoid::Position> T_worlds;//world系

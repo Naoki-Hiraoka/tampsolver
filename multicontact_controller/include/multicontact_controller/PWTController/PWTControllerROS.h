@@ -52,7 +52,7 @@ namespace multicontact_controller {
 
     cnoid::Body* robot_;
     std::map<std::string, std::shared_ptr<EndEffectorPWTCROS> > endEffectors_;
-    PWTController multiContactFootCoords_;
+    //PWTController multiContactFootCoords_;
   };
 
 };
