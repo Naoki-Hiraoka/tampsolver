@@ -31,6 +31,9 @@ namespace multicontact_controller {
 
     size_t calcPseudoInverse(const cnoid::MatrixXd &M, cnoid::MatrixXd &Minv, double sv_ratio=1.0e-3);
 
+    bool appendRow(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Ms, Eigen::SparseMatrix<double, Eigen::RowMajor>& Mout);
+    bool appendRow(const std::vector<cnoid::VectorX>& vs, cnoid::VectorX& vout);
+
   };
 };
 

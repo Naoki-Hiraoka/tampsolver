@@ -5,6 +5,7 @@
 #include <memory>
 #include <Eigen/Sparse>
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
+#include <prioritized_qp/PrioritizedQPSolver.h>
 
 namespace multicontact_controller {
   class ContactPointPWTC: public cnoidbodyutils::ContactPoint {
@@ -49,6 +50,12 @@ namespace multicontact_controller {
 
   class JointInfo {
   public:
+    // 指令関節角度上下限に関する制約を返す.破損防止
+    void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
+
+    // 指令関節角速度上下限に関する制約を返す.破損防止
+    void JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
+
     // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcSelectMatrix();
 
@@ -124,18 +131,29 @@ namespace multicontact_controller {
     }
 
     //calcForwardKinematics()とcalcCM()が事前に必要
-    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints
-                        );
+    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints);
 
     double& sv_ratio() { return sv_ratio_;}
     double sv_ratio() const { return sv_ratio_;}
 
   protected:
+    // メンバ変数はKa_しか使わない
     bool calcPWTJacobian(Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,//返り値
                          Eigen::SparseMatrix<double,Eigen::RowMajor>& Dwa,//返り値
                          Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,//返り値
+                         cnoid::Body* robot,
+                         std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                         cnoidbodyutils::TorqueJacobianCalculator& torqueJacobianCalculator,
                          std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
-                         std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js);
+                         std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
+                         double sv_ratio);
+
+    // メンバ変数はTask0_しか使わない
+    bool setupTask0(std::shared_ptr<prioritized_qp::Task>& task0, //返り値
+                    cnoid::Body* robot,
+                    std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                    size_t additional_cols_before = 0,
+                    size_t additional_cols_after = 0);
 
   private:
     cnoid::Body* robot_;
@@ -145,7 +163,9 @@ namespace multicontact_controller {
     double sv_ratio_;
 
     // cache
-    Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
+    std::vector<std::shared_ptr<prioritized_qp::Task> > tasks_; // calcPWTControl
+    std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
   };
 
 };

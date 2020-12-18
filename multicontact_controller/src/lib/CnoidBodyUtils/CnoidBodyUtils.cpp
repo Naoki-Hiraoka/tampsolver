@@ -111,5 +111,43 @@ namespace multicontact_controller {
       }
     }
 
+    bool appendRow(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Ms, Eigen::SparseMatrix<double, Eigen::RowMajor >& Mout){
+      if(Ms.size() == 0) {
+        Mout.resize(0,Mout.cols());//もとのMoutのcolを用いる
+        return true;
+      }
+      size_t cols = Ms[0].cols();
+      size_t rows = 0;
+      for(size_t i=0;i<Ms.size();i++){
+        rows += Ms[i].rows();
+        if(Ms[i].cols() != cols){
+          std::cerr << "[appendRow] Ms[i].cols() " << Ms[i].cols() << " != cols " << cols << std::endl;
+          return false;
+        }
+      }
+      Mout.resize(rows,cols);
+      size_t idx = 0;
+      for(size_t i=0;i<Ms.size();i++){
+        Mout.middleRows(idx,Ms[i].rows()) = Ms[i];
+        idx += Ms[i].rows();
+      }
+
+      return true;
+    }
+    bool appendRow(const std::vector<cnoid::VectorX>& vs, cnoid::VectorX& vout){
+      size_t rows = 0;
+      for(size_t i=0;i<vs.size();i++){
+        rows += vs[i].size();
+      }
+      vout.resize(rows);
+      size_t idx = 0;
+      for(size_t i=0;i<vs.size();i++){
+        vout.segment(idx,vs[i].size()) = vs[i];
+        idx += vs[i].size();
+      }
+
+      return true;
+    }
+
   };
 };

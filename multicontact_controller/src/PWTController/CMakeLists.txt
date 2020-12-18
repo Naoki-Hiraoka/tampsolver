@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   tf2_ros
   choreonoid_cpp
+  OsqpEigen
+  prioritized_qp
   multicontact_controller_msgs)
 
 add_library(PWTController
