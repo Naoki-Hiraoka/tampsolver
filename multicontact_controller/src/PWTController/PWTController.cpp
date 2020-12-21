@@ -210,6 +210,28 @@ namespace multicontact_controller {
   }
 
   void JointInfo::bestEffortJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(care_torque_){
+      A.resize(1,1); A.coeffRef(0,0) = 1.0;
+      b.resize(1);
+      wa.resize(1);
+      C.resize(0,1);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+
+      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
+      b[0] = 0 - joint_->u();
+      wa[0] = 1.0 / std::pow(std::min(maximum_effort_soft_, max_torque),2);
+    }else{
+      A.resize(0,1);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,1);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
     return;
   }
 
@@ -241,7 +263,7 @@ namespace multicontact_controller {
     {
       // priority 0
       std::shared_ptr<prioritized_qp::Task> task0;
-      if(!this->setupTask0(task0, robot_, jointInfos_, k0_, dt, 0, 1)){
+      if(!this->setupTask0(task0, robot_, jointInfos_, k0_, dt)){
         std::cerr << "setupTask0 failed" << std::endl;
         return false;
       }
@@ -262,9 +284,7 @@ namespace multicontact_controller {
                            k1_,
                            dt,
                            w1_,
-                           we1_,
-                           0,
-                           1)){
+                           we1_)){
         std::cerr << "setupTask1 failed" << std::endl;
         return false;
       }
@@ -281,9 +301,7 @@ namespace multicontact_controller {
                            Dqa,
                            dt,
                            w2_,
-                           we2_,
-                           0,
-                           1)){
+                           we2_)){
         std::cerr << "setupTask2 failed" << std::endl;
         return false;
       }
@@ -304,9 +322,7 @@ namespace multicontact_controller {
                            taumax_weight3_,
                            k3_,
                            dt,
-                           w3_,
-                           0,
-                           1)){
+                           w3_)){
         std::cerr << "setupTask3 failed" << std::endl;
         return false;
       }
@@ -425,9 +441,7 @@ namespace multicontact_controller {
                                  cnoid::Body* robot,
                                  std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                                  double k,
-                                 double dt,
-                                 size_t additional_cols_before,
-                                 size_t additional_cols_after){
+                                 double dt){
       if(!this->task0_) {
         this->task0_ = std::make_shared<prioritized_qp::Task>();
         task = this->task0_;
@@ -487,18 +501,12 @@ namespace multicontact_controller {
         // self collision TODO
       }
 
-      size_t realcols = cols + additional_cols_before + additional_cols_after;
-      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
-      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
-
-      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
-      cnoidbodyutils::appendRow(As, A);
-      task->A() = A * S;
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
       cnoidbodyutils::appendRow(bs, task->b());
       cnoidbodyutils::appendRow(was, task->wa());
-      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
-      cnoidbodyutils::appendRow(Cs, C);
-      task->C() = C * S;
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
@@ -507,7 +515,7 @@ namespace multicontact_controller {
       task->A() *= k / dt;
       task->C() *= k / dt;
 
-      task->w().resize(realcols);//解かないので使わない
+      task->w().resize(cols);//解かないので使わない
 
       return true;
   }
@@ -523,9 +531,7 @@ namespace multicontact_controller {
                                  double k,
                                  double dt,
                                  double w,
-                                 double we,
-                                 size_t additional_cols_before,
-                                 size_t additional_cols_after){
+                                 double we){
       if(!this->task1_) {
         this->task1_ = std::make_shared<prioritized_qp::Task>();
         task = this->task1_;
@@ -600,18 +606,12 @@ namespace multicontact_controller {
         }
       }
 
-      size_t realcols = cols + additional_cols_before + additional_cols_after;
-      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
-      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
-
-      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
-      cnoidbodyutils::appendRow(As, A);
-      task->A() = A * S;
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
       cnoidbodyutils::appendRow(bs, task->b());
       cnoidbodyutils::appendRow(was, task->wa());
-      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
-      cnoidbodyutils::appendRow(Cs, C);
-      task->C() = C * S;
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
@@ -628,7 +628,7 @@ namespace multicontact_controller {
                                                   task->dl(),
                                                   task->du(),
                                                   task->wc());
-      task->w().resize(realcols);
+      task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
       return true;
@@ -641,9 +641,7 @@ namespace multicontact_controller {
                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                                  double dt,
                                  double w,
-                                 double we,
-                                 size_t additional_cols_before,
-                                 size_t additional_cols_after){
+                                 double we){
       if(!this->task2_) {
         this->task2_ = std::make_shared<prioritized_qp::Task>();
         task = this->task2_;
@@ -696,18 +694,12 @@ namespace multicontact_controller {
         }
       }
 
-      size_t realcols = cols + additional_cols_before + additional_cols_after;
-      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
-      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
-
-      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
-      cnoidbodyutils::appendRow(As, A);
-      task->A() = A * S;
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
       cnoidbodyutils::appendRow(bs, task->b());
       cnoidbodyutils::appendRow(was, task->wa());
-      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
-      cnoidbodyutils::appendRow(Cs, C);
-      task->C() = C * S;
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
@@ -720,7 +712,7 @@ namespace multicontact_controller {
                                                   task->dl(),
                                                   task->du(),
                                                   task->wc());
-      task->w().resize(realcols);
+      task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
       return true;
@@ -737,9 +729,7 @@ namespace multicontact_controller {
                                  double taumax_weight,//tauに比したtaumaxの重み
                                  double k,
                                  double dt,
-                                 double w,
-                                 size_t additional_cols_before,
-                                 size_t additional_cols_after){
+                                 double w){
       if(!this->task3_) {
         this->task3_ = std::make_shared<prioritized_qp::Task>();
         task = this->task3_;
@@ -818,18 +808,12 @@ namespace multicontact_controller {
         // taumax reduction TODO
       }
 
-      size_t realcols = cols + additional_cols_before + 1 + additional_cols_after;
-      Eigen::SparseMatrix<double, Eigen::RowMajor> S(cols, realcols);
-      for(size_t i=0;i<cols;i++)S.insert(i,i) = 1.0;
-
-      Eigen::SparseMatrix<double, Eigen::RowMajor> A(0,cols);
-      cnoidbodyutils::appendRow(As, A);
-      task->A() = A * S;
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
       cnoidbodyutils::appendRow(bs, task->b());
       cnoidbodyutils::appendRow(was, task->wa());
-      Eigen::SparseMatrix<double, Eigen::RowMajor> C(0,cols);
-      cnoidbodyutils::appendRow(Cs, C);
-      task->C() = C * S;
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
@@ -839,7 +823,7 @@ namespace multicontact_controller {
       task->C() *= k / dt;
 
       // damping factor
-      task->w().resize(realcols);
+      task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
 
       return true;

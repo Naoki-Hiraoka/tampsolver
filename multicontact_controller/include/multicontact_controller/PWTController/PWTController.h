@@ -190,9 +190,7 @@ namespace multicontact_controller {
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                     double k,
-                    double dt,
-                    size_t additional_cols_before = 0,
-                    size_t additional_cols_after = 0);
+                    double dt);
 
     // メンバ変数はTask1_しか使わない
     bool setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -206,9 +204,7 @@ namespace multicontact_controller {
                     double k,
                     double dt,
                     double w,
-                    double we,
-                    size_t additional_cols_before = 0,
-                    size_t additional_cols_after = 0);
+                    double we);
 
     // メンバ変数はTask2_しか使わない
     bool setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -218,9 +214,7 @@ namespace multicontact_controller {
                     const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                     double dt,
                     double w,
-                    double we,
-                    size_t additional_cols_before = 0,
-                    size_t additional_cols_after = 0);
+                    double we);
 
     // メンバ変数はTask3_しか使わない
     bool setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -234,9 +228,7 @@ namespace multicontact_controller {
                     double taumax_weight,//tauに比したtaumaxの重み
                     double k,
                     double dt,
-                    double w,
-                    size_t additional_cols_before = 0,
-                    size_t additional_cols_after = 0);
+                    double w);
 
     double dampingFactor(double w,
                          double we,

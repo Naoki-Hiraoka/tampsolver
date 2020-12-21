@@ -37,6 +37,18 @@ namespace prioritized_qp{
         std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
         return false;
       }
+      if(tasks[i]->A_ext().cols() != tasks[i]->C_ext().cols()){
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+      }
+      if(tasks[i]->A_ext().cols() != 0 && tasks[i]->A_ext().rows() != tasks[i]->A().rows()){
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+      }
+      if(tasks[i]->C_ext().cols() != 0 && tasks[i]->C_ext().rows() != tasks[i]->C().rows()){
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+      }
+      if(tasks[i]->toSolve() && tasks[i]->A_ext().cols() != tasks[i]->w_ext().size()){
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+      }
     }
 
     if (dim==0){
@@ -48,17 +60,32 @@ namespace prioritized_qp{
     Eigen::SparseMatrix<double,Eigen::RowMajor> As(0,dim);
     Eigen::VectorXd lBs(0);
     Eigen::VectorXd uBs(0);
+    Eigen::VectorXd w_exts(0);
 
     for(size_t i=0;i<tasks.size();i++){
+      Eigen::SparseMatrix<double,Eigen::RowMajor> taskA = tasks[i]->A();
+      Eigen::SparseMatrix<double,Eigen::RowMajor> taskC = tasks[i]->C();
+      if(tasks[i]->A_ext().cols() != 0){
+        Eigen::SparseMatrix<double,Eigen::ColMajor> taskA_ColMajor(taskA.rows(), As.cols() + tasks[i]->A_ext().cols());
+        taskA_ColMajor.leftCols(taskA.cols()) = taskA;
+        taskA_ColMajor.rightCols(tasks[i]->A_ext().cols()) = tasks[i]->A_ext();
+        taskA = taskA_ColMajor;
+        Eigen::SparseMatrix<double,Eigen::ColMajor> taskC_ColMajor(taskC.rows(), As.cols() + tasks[i]->C_ext().cols());
+        taskC_ColMajor.leftCols(taskC.cols()) = taskC;
+        taskC_ColMajor.rightCols(tasks[i]->C_ext().cols()) = tasks[i]->C_ext();
+        taskC = taskC_ColMajor;
+        w_exts.resize(w_exts.size() + tasks[i]->w_ext().size());
+        w_exts.tail(tasks[i]->w_ext().size()) = tasks[i]->w_ext();
+      }
 
-      As.conservativeResize(As.rows()+tasks[i]->A().rows(),dim);
-      As.bottomRows(tasks[i]->A().rows()) = tasks[i]->A();
+      As.conservativeResize(As.rows()+taskA.rows(),taskA.cols());
+      As.bottomRows(taskA.rows()) = taskA;
       lBs.conservativeResize(lBs.size()+tasks[i]->b().size());
       uBs.conservativeResize(uBs.size()+tasks[i]->b().size());
       lBs.tail(tasks[i]->b().size()) = tasks[i]->b();
       uBs.tail(tasks[i]->b().size()) = tasks[i]->b();
-      As.conservativeResize(As.rows()+tasks[i]->C().rows(),dim);
-      As.bottomRows(tasks[i]->C().rows()) = tasks[i]->C();
+      As.conservativeResize(As.rows()+taskC.rows(),taskC.cols());
+      As.bottomRows(taskC.rows()) = taskC;
       lBs.conservativeResize(lBs.size()+tasks[i]->dl().size());
       uBs.conservativeResize(uBs.size()+tasks[i]->du().size());
       lBs.tail(tasks[i]->dl().size()) = tasks[i]->dl();
@@ -67,7 +94,7 @@ namespace prioritized_qp{
       if(tasks[i]->toSolve()){
         if(tasks[i]->A().rows()==0 && tasks[i]->C().rows()==0)continue;
 
-        int num = dim + tasks[i]->A().rows() + tasks[i]->C().rows();
+        int num = As.cols() + tasks[i]->A().rows() + tasks[i]->C().rows();
 
         /*
           min 0.5 xHx + gx
@@ -80,22 +107,21 @@ namespace prioritized_qp{
         Eigen::VectorXd lowerBound = lBs;
 
         for(size_t j=0;j<dim;j++) H.insert(j,j) = tasks[i]->w()(j);
-        for(size_t j=0;j<tasks[i]->wa().size();j++) H.insert(dim+j,dim+j) = tasks[i]->wa()(j);
-        for(size_t j=0;j<tasks[i]->wc().size();j++) H.insert(dim+tasks[i]->wa().size()+j,dim+tasks[i]->wa().size()+j) = tasks[i]->wc()(j);
+        for(size_t j=0;j<w_exts.size();j++) H.insert(dim+j,dim+j) = w_exts(j);
+        for(size_t j=0;j<tasks[i]->wa().size();j++) H.insert(As.cols()+j,As.cols()+j) = tasks[i]->wa()(j);
+        for(size_t j=0;j<tasks[i]->wc().size();j++) H.insert(As.cols()+tasks[i]->wa().size()+j,As.cols()+tasks[i]->wa().size()+j) = tasks[i]->wc()(j);
         A.leftCols(As.cols()) = Eigen::SparseMatrix<double,Eigen::ColMajor>(As);
         for(size_t j=0;j<tasks[i]->A().rows() + tasks[i]->C().rows();j++){
-          A.insert(As.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j, dim + j) = 1;
+          A.insert(As.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j, As.cols() + j) = 1;
         }
 
         if(!tasks[i]->solver().isInitialized() ||
            tasks[i]->solver().workspace()->data->n != H.rows() ||
            tasks[i]->solver().workspace()->data->m != A.rows()
            ){
-          //if(tasks[i]->solver().isInitialized()) {
-            tasks[i]->solver().data()->clearHessianMatrix();
-            tasks[i]->solver().data()->clearLinearConstraintsMatrix();
-            tasks[i]->solver().clearSolver();
-            //}
+          tasks[i]->solver().data()->clearHessianMatrix();
+          tasks[i]->solver().data()->clearLinearConstraintsMatrix();
+          tasks[i]->solver().clearSolver();
 
           tasks[i]->solver().data()->setNumberOfVariables(H.cols());
           tasks[i]->solver().data()->setNumberOfConstraints(A.rows());
@@ -119,9 +145,9 @@ namespace prioritized_qp{
         }
         if(!solved) return false;
 
-        solution = tasks[i]->solver().getSolution().head(dim);
-        Eigen::VectorXd this_b = tasks[i]->A() * solution;
-        Eigen::VectorXd this_d = tasks[i]->C() * solution;
+        solution = tasks[i]->solver().getSolution().head(As.cols());
+        Eigen::VectorXd this_b = taskA * solution;
+        Eigen::VectorXd this_d = taskC * solution;
         for(size_t j=0;j<tasks[i]->A().rows();j++){
           if(this_b(j)>tasks[i]->b()(j)) uBs(uBs.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j) = this_b(j);
           if(this_b(j)<tasks[i]->b()(j)) lBs(lBs.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j) = this_b(j);
@@ -133,7 +159,7 @@ namespace prioritized_qp{
       }
     }
 
-    result = solution;
+    result = solution.head(dim);
     return true;
   }
 

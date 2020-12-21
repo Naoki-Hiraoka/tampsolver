@@ -15,6 +15,8 @@ namespace prioritized_qp{
     std::string name() const { return name_; }
     std::string& name() { return name_; }
 
+    // A, C のcol数は全タスクで共通であるべき
+    // w, wa, wcは正であること
     Eigen::SparseMatrix<double,Eigen::RowMajor> A() const { return A_; }
     Eigen::SparseMatrix<double,Eigen::RowMajor>& A() { return A_; }
 
@@ -38,6 +40,16 @@ namespace prioritized_qp{
     Eigen::VectorXd w() const { return w_; }
     Eigen::VectorXd& w() { return w_; }
 
+    // 追加の変数に対応. 最大値最小化等で用いる
+    Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext() const { return A_ext_; }
+    Eigen::SparseMatrix<double,Eigen::RowMajor>& A_ext() { return A_ext_; }
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext() const { return C_ext_; }
+    Eigen::SparseMatrix<double,Eigen::RowMajor>& C_ext() { return C_ext_; }
+
+    Eigen::VectorXd w_ext() const { return w_ext_; }
+    Eigen::VectorXd& w_ext() { return w_ext_; }
+
     // settingsの設定はユーザーが行うこと
     OsqpEigen::Solver& solver() { return solver_; }
 
@@ -56,6 +68,10 @@ namespace prioritized_qp{
     Eigen::VectorXd wc_;
 
     Eigen::VectorXd w_;
+
+    Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext_;
+    Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext_;
+    Eigen::VectorXd w_ext_;
 
     OsqpEigen::Solver solver_;
     bool toSolve_;
