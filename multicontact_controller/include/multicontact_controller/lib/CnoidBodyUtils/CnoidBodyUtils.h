@@ -12,6 +12,7 @@
 #include <multicontact_controller/lib/CnoidBodyUtils/ContactPoint.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/TorqueJacobianCalculator.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/JointLimitTable.h>
+#include <multicontact_controller/lib/CnoidBodyUtils/Interaction.h>
 
 namespace multicontact_controller {
   namespace cnoidbodyutils {

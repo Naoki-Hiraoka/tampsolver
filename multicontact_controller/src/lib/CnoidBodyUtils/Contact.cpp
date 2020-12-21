@@ -9,7 +9,16 @@ namespace multicontact_controller{
       : mu_trans_(0.1),
         mu_rot_(0.1),
         max_fz_(200),
-        min_fz_(50){
+        min_fz_(50),
+        weight_fz_constraint_(1e0),
+        weight_fxy_constraint_(1e1),
+        weight_nxy_constraint_(2e2),
+        weight_nz_constraint_(1e4),
+        weight_fz_reduction_(1e-6),
+        weight_fxy_reduction_(1e-4),
+        weight_nxy_reduction_(1e-3),
+        weight_nz_reduction_(1e-3)
+    {
       type_ = "Surface";
 
       surface_ = new cnoid::SgPolygonMesh;
@@ -45,16 +54,26 @@ namespace multicontact_controller{
       return true;
     }
 
+    const Eigen::SparseMatrix<double,Eigen::RowMajor>& SurfaceContact::selectMatrix(){
+      if(selectMatrix_.cols() != 6 || selectMatrix_.rows() != 6){
+        selectMatrix_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6);
+        for(size_t i=0;i<6;i++)selectMatrix_.insert(i,i) = 1.0;
+      }
+      return selectMatrix_;
+    }
+
     //Ax = b, dl <= Cx <= du
-    void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& dl, Eigen::VectorXd& du){
+    void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       // A,bはゼロ．
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
       b = Eigen::VectorXd(0);
+      wa = Eigen::VectorXd(0);
 
       int dim = 7 + this->surface_->polygonVertices().size();
       C = Eigen::SparseMatrix<double,Eigen::RowMajor>(dim,6);
       dl = Eigen::VectorXd::Zero(dim);
       du = Eigen::VectorXd::Zero(dim);
+      wc = Eigen::VectorXd::Zero(dim);
 
       std::vector<Eigen::Triplet<double> > tripletList;
       tripletList.reserve(dim*2);
@@ -64,6 +83,7 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,1));
       dl[idx] = std::max(this->min_fz_,0.0);
       du[idx] = this->max_fz_;
+      wc[idx] = this->weight_fz_constraint_;
       idx++;
 
       //x摩擦
@@ -71,11 +91,13 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_fxy_constraint_;
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,0,1));
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_fxy_constraint_;
       idx++;
 
       //y摩擦
@@ -83,11 +105,13 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_fxy_constraint_;
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,1,1));
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_fxy_constraint_;
       idx++;
 
       //回転摩擦
@@ -95,11 +119,13 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_nz_constraint_;
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,5,1));
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
+      wc[idx] = this->weight_nz_constraint_;
       idx++;
 
       //COP
@@ -112,10 +138,35 @@ namespace multicontact_controller{
         tripletList.push_back(Eigen::Triplet<double>(idx,4,-v1[0]+v2[0]));
         dl[idx] = 0;
         du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = this->weight_nxy_constraint_;
         idx++;
       }
 
       C.setFromTriplets(tripletList.begin(), tripletList.end());
+    }
+
+        //Ax = b, dl <= Cx <= du
+    void SurfaceContact::getStabilityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+      // TODO もっとよい実装ができる
+
+      A = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6);
+      for(size_t i=0;i<6;i++) A.insert(i,i) = 1.0;
+      b = Eigen::VectorXd::Zero(6);
+      wa = Eigen::VectorXd(6);
+      wa[0] = this->weight_fz_reduction_;
+      wa[1] = this->weight_fxy_reduction_;
+      wa[2] = this->weight_fxy_reduction_;
+      wa[3] = this->weight_nxy_reduction_;
+      wa[4] = this->weight_nxy_reduction_;
+      wa[5] = this->weight_nz_reduction_;
+
+      // Cはゼロ．
+      C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+      dl = Eigen::VectorXd::Zero(0);
+      du = Eigen::VectorXd::Zero(0);
+      wc = Eigen::VectorXd::Zero(0);
+
+      return;
     }
 
     std::vector<cnoid::SgNodePtr> SurfaceContact::getDrawOnObjects(const cnoid::Position& T){

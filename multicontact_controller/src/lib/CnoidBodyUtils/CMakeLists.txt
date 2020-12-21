@@ -13,6 +13,7 @@ add_library(CnoidBodyUtils
   ContactPoint.cpp
   TorqueJacobianCalculator.cpp
   JointLimitTable.cpp
+  Interaction.cpp
   )
 
 target_include_directories(CnoidBodyUtils PUBLIC

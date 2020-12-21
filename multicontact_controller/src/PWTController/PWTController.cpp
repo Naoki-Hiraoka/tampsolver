@@ -6,23 +6,102 @@
 namespace multicontact_controller {
   // S J dqa = 0 となるSを返す. ? x 6
   const Eigen::SparseMatrix<double,Eigen::RowMajor>& ContactPointPWTC::selectMatrixForKinematicsConstraint(){
-    return selectMatrixForKinematicsConstraint_;
+    if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
+      return this->contact()->selectMatrix();
+    }else{
+      selectMatrixForKinematicsConstraint_.resize(0,6);
+      return selectMatrixForKinematicsConstraint_;
+    }
   }
+
   // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
   void ContactPointPWTC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    return;
-  }
-  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
-  void ContactPointPWTC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-    return;
-  }
-  // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
-  void ContactPointPWTC::bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
+      this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
+    }else{
+      A.resize(0,0);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,0);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
     return;
   }
 
-  // 位置の目標値を返す。主に遊脚用
+  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用 TODO
+  void ContactPointPWTC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(this->state() == "TOWARD_BREAK_CONTACT"){
+      // TODO
+    }else{
+      A.resize(0,0);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,0);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
+    return;
+  }
+
+  // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
+  void ContactPointPWTC::bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
+      this->contact()->getStabilityConstraint(A,b,wa,C,dl,du,wc);
+    }else{
+      A.resize(0,0);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,0);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
+    return;
+  }
+
+  // 位置の目標値を返す。主に遊脚->支持脚遷移用. colは[root6dof + numJoint]
+  void ContactPointPWTC::makeContactPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(this->state() == "TOWARD_MAKE_CONTACT"){
+      // TODO
+    }else{
+      A.resize(0,0);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,0);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
+    return;
+  }
+
+  // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
   void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    if(this->state() == "AIR" || this->state() == "NEAR_CONTACT" || this->state() == "TOWARD_MAKE_CONTACT"){
+      // TODO
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
+      this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
+      Eigen::SparseMatrix<double,Eigen::RowMajor> J = this->calcJacobian();
+      A = A_local * J;
+      C = C_local * J;
+    }else{
+      A.resize(0,6+this->parent()->body()->numJoints());
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,6+this->parent()->body()->numJoints());
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
+
     return;
   }
 
@@ -148,6 +227,25 @@ namespace multicontact_controller {
         return false;
       }
       tasks.push_back(task3);
+    }
+
+    // Solve
+    cnoid::VectorX result;
+    bool solved = prioritized_qp::solve(tasks_,result);
+    if(!solved) {
+      std::cerr << "prioritized_qp::solve failed" << std::endl;
+      return false;
+    }
+
+    // reflect result
+    {
+      size_t idx = 0;
+      for(size_t i=0;i<jointInfos_.size();i++){
+        if(jointInfos_[i]->controllable()){
+          jointInfos_[i]->command_angle() = result[idx];
+          idx++;
+        }
+      }
     }
 
     return true;

@@ -19,28 +19,23 @@ namespace multicontact_controller {
     // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
     void bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
-    // 位置の目標値を返す。主に遊脚用
-    void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+    // 位置の目標値を返す。主に遊脚->支持脚遷移用. colは[root6dof + numJoint]
+    void makeContactPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
-    // odom系の座標のref値
-    cnoid::Position T_ref() const { return T_ref_; }
-    cnoid::Position& T_ref() {return T_ref_; }
-    cnoid::Position prev_T_ref() const { return prev_T_ref_; }
-    cnoid::Position& prev_T_ref() {return prev_T_ref_; }
-    cnoid::Position prev_prev_T_ref() const { return prev_prev_T_ref_; }
-    cnoid::Position& prev_prev_T_ref() {return prev_prev_T_ref_; }
+    // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
+    void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
     std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
+    std::shared_ptr<cnoidbodyutils::Interaction> interaction() const { return interaction_;}
+    std::shared_ptr<cnoidbodyutils::Interaction>& interaction() { return interaction_;}
 
     std::string& state() { return state_;}
     std::string state() const { return state_;}
   private:
-    cnoid::Position T_ref_;
-    cnoid::Position prev_T_ref_;
-    cnoid::Position prev_prev_T_ref_;
 
     std::shared_ptr<cnoidbodyutils::Contact> contact_;
+    std::shared_ptr<cnoidbodyutils::Interaction> interaction_;
 
     std::string state_;
 
@@ -73,6 +68,8 @@ namespace multicontact_controller {
     // 指令関節角度を変えてよいか
     bool& controllable() { return controllable_;}
     bool controllable() const { return controllable_;}
+    double& command_angle() {return command_angle_;}
+    double command_angle() const {return command_angle_;}
 
     double& coil_temperature_limit() { return coil_temperature_limit_;}
     double coil_temperature_limit() const { return coil_temperature_limit_;}
@@ -101,6 +98,7 @@ namespace multicontact_controller {
     cnoid::Link* joint_;
 
     bool controllable_;
+    double command_angle_;
 
     double coil_temperature_limit_;
     double housing_temperature_;
