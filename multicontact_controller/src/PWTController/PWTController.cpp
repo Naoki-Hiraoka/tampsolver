@@ -18,6 +18,9 @@ namespace multicontact_controller {
   void ContactPointPWTC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
     if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
       this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
+      b -= A * selectMatrixForKinematicsConstraint() * F_;
+      dl -= C * selectMatrixForKinematicsConstraint() * F_;
+      du -= C * selectMatrixForKinematicsConstraint() * F_;
     }else{
       A.resize(0,0);
       b.resize(0);
@@ -35,6 +38,9 @@ namespace multicontact_controller {
   void ContactPointPWTC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(this->state() == "TOWARD_BREAK_CONTACT"){
       // TODO
+      b -= A * selectMatrixForKinematicsConstraint() * F_;
+      dl -= C * selectMatrixForKinematicsConstraint() * F_;
+      du -= C * selectMatrixForKinematicsConstraint() * F_;
     }else{
       A.resize(0,0);
       b.resize(0);
@@ -52,6 +58,9 @@ namespace multicontact_controller {
   void ContactPointPWTC::bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
       this->contact()->getStabilityConstraint(A,b,wa,C,dl,du,wc);
+      b -= A * selectMatrixForKinematicsConstraint() * F_;
+      dl -= C * selectMatrixForKinematicsConstraint() * F_;
+      du -= C * selectMatrixForKinematicsConstraint() * F_;
     }else{
       A.resize(0,0);
       b.resize(0);
@@ -105,23 +114,98 @@ namespace multicontact_controller {
     return;
   }
 
-  // 指令関節角度上下限に関する制約を返す.破損防止
-  void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    return;
+  JointInfo::JointInfo()
+    : name_(),
+      joint_(nullptr),
+      controllable_(false),
+      care_torque_(true),
+      command_angle_(0.0),
+      dt_(0.02),
+      coil_temperature_limit_(150.0),
+      housing_temperature_(25.0),
+      coil_temperature_(25.0),
+      maximum_effort_soft_(std::numeric_limits<double>::max()),
+      maximum_effort_hard_(std::numeric_limits<double>::max()),
+      balance_effort_(std::numeric_limits<double>::max()),
+      remaining_time_(std::numeric_limits<double>::max()),
+      pgain_(1e4),
+      dgain_(1e2),
+      ulimit_(std::numeric_limits<double>::max()),
+      llimit_(-std::numeric_limits<double>::max()),
+      uvlimit_(std::numeric_limits<double>::max()),
+      lvlimit_(std::numeric_limits<double>::max())
+  {
   }
 
-  // 指令関節角速度上下限に関する制約を返す.破損防止
-  void JointInfo::JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+  // 指令関節角度上下限 指令関節角速度上下限に関する制約を返す.破損防止
+  void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+    double ulimit = 0;
+    double llimit = 0;
+
+    // velocity
+    ulimit = joint_->q_upper() * dt_;
+    llimit = joint_->q_lower() * dt_;
+    ulimit = std::max(llimit, std::min(ulimit, joint_->dq_upper() * dt_ - 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
+    llimit = std::min(ulimit, std::max(llimit, joint_->dq_lower() * dt_ + 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
+    ulimit = std::max(llimit, std::min(ulimit, uvlimit_));
+    llimit = std::min(ulimit, std::max(llimit, lvlimit_));
+
+    // angle
+    if(jointLimitTable_){
+      double min_angle = jointLimitTable_->getLlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
+      double max_angle = jointLimitTable_->getUlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
+      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_));
+      llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
+    }else{
+      double min_angle = joint_->q_lower() + 0.0001;//少しマージン
+      double max_angle = joint_->q_upper() - 0.0001;//少しマージン
+      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_));
+      llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
+    }
+
+    A.resize(0,1);
+    b.resize(0);
+    wa.resize(0);
+    C.resize(1,1);C.coeffRef(0,0) = 1.0;
+    dl.resize(1);dl[0] = llimit;
+    du.resize(1);du[0] = ulimit;
+    wc.resize(1);wc[0] = 1.0;
     return;
   }
 
   // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
   const Eigen::SparseMatrix<double,Eigen::RowMajor>& JointInfo::torqueSelectMatrix(){
+    if(torqueSelectMatrix_.cols() != joint_->body()->numJoints() || torqueSelectMatrix_.rows() != 1){
+      torqueSelectMatrix_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,joint_->body()->numJoints());
+      torqueSelectMatrix_.insert(0,joint_->jointId()) = 1.0;
+    }
     return torqueSelectMatrix_;
   }
 
   // 関節トルク上下限に関する制約を返す.破損防止
   void JointInfo::JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+    if(care_torque_){
+      A.resize(0,1);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(1,1); C.coeffRef(0,0) = 1.0;
+      dl.resize(1);
+      du.resize(1);
+      wc.resize(1);
+
+      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
+      du[0] = std::min(maximum_effort_hard_, max_torque) - joint_->u();
+      dl[0] = std::max(-maximum_effort_hard_, -max_torque) - joint_->u();
+      wc[0] = 1.0;
+    }else{
+      A.resize(0,1);
+      b.resize(0);
+      wa.resize(0);
+      C.resize(0,1);
+      dl.resize(0);
+      du.resize(0);
+      wc.resize(0);
+    }
     return;
   }
 
@@ -239,6 +323,10 @@ namespace multicontact_controller {
 
     // reflect result
     {
+      cnoid::VectorX dqa = Dqa * result.head(Dqa.cols());
+      for(size_t i=0;i<contactPoints.size();i++) contactPoints[i]->update(dqa);
+    }
+    {
       size_t idx = 0;
       for(size_t i=0;i<jointInfos_.size();i++){
         if(jointInfos_[i]->controllable()){
@@ -246,7 +334,9 @@ namespace multicontact_controller {
           idx++;
         }
       }
+
     }
+
 
     return true;
   }
@@ -368,7 +458,7 @@ namespace multicontact_controller {
       std::vector<cnoid::VectorXd> wcs;
 
       {
-        // joint angle limit
+        // joint angle, velocity limit
         size_t idx = 0;
         for(size_t i=0;i<jointInfos.size();i++){
           if(jointInfos[i]->controllable()) {
@@ -381,32 +471,6 @@ namespace multicontact_controller {
             cnoid::VectorX du;
             cnoid::VectorX wc;
             jointInfos[i]->JointAngleConstraint(A,b,wa,C,dl,du,wc);
-            As.push_back(A*S);
-            bs.push_back(b);
-            was.push_back(wa);
-            Cs.push_back(C*S);
-            dls.push_back(dl);
-            dus.push_back(du);
-            wcs.push_back(wc);
-            idx++;
-          }
-        }
-      }
-
-      {
-        // joint velocity limit
-        size_t idx = 0;
-        for(size_t i=0;i<jointInfos.size();i++){
-          if(jointInfos[i]->controllable()) {
-            Eigen::SparseMatrix<double, Eigen::RowMajor> S(1,cols); S.insert(0,idx) = 1.0;
-            Eigen::SparseMatrix<double,Eigen::RowMajor> A;
-            cnoid::VectorX b;
-            cnoid::VectorX wa;
-            Eigen::SparseMatrix<double,Eigen::RowMajor> C;
-            cnoid::VectorX dl;
-            cnoid::VectorX du;
-            cnoid::VectorX wc;
-            jointInfos[i]->JointVelocityConstraint(A,b,wa,C,dl,du,wc);
             As.push_back(A*S);
             bs.push_back(b);
             was.push_back(wa);

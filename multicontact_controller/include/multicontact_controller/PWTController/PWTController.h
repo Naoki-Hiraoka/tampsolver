@@ -25,6 +25,11 @@ namespace multicontact_controller {
     // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
     void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
+    void update(const cnoid::VectorX& dqa){
+      cnoid::Vector6 vel = this->calcJacobian() * dqa;
+      this->interaction_->update(vel.head<3>(), vel.tail<3>());
+    }
+
     std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
     std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
     std::shared_ptr<cnoidbodyutils::Interaction> interaction() const { return interaction_;}
@@ -45,12 +50,10 @@ namespace multicontact_controller {
 
   class JointInfo {
   public:
+    JointInfo();
 
     // 指令関節角度上下限に関する制約を返す.破損防止
     void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
-
-    // 指令関節角速度上下限に関する制約を返す.破損防止
-    void JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
 
     // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& torqueSelectMatrix();
@@ -68,8 +71,13 @@ namespace multicontact_controller {
     // 指令関節角度を変えてよいか
     bool& controllable() { return controllable_;}
     bool controllable() const { return controllable_;}
+    // 関節トルク低減を考慮するか
+    bool& care_torque() { return care_torque_;}
+    bool care_torque() const { return care_torque_;}
     double& command_angle() {return command_angle_;}
     double command_angle() const {return command_angle_;}
+    double dt() const { return dt_;}
+    double& dt() { return dt_;}
 
     double& coil_temperature_limit() { return coil_temperature_limit_;}
     double coil_temperature_limit() const { return coil_temperature_limit_;}
@@ -93,12 +101,16 @@ namespace multicontact_controller {
 
     std::shared_ptr<cnoidbodyutils::JointLimitTable>& jointLimitTable() { return jointLimitTable_;}
     std::shared_ptr<cnoidbodyutils::JointLimitTable> jointLimitTable() const { return jointLimitTable_;}
+    std::weak_ptr<JointInfo> jointLimitTableTargetJointInfo() const { return jointLimitTableTargetJointInfo_;}
+    std::weak_ptr<JointInfo>& jointLimitTableTargetJointInfo() { return jointLimitTableTargetJointInfo_;}
   protected:
     std::string name_;
     cnoid::Link* joint_;
 
     bool controllable_;
+    bool care_torque_;
     double command_angle_;
+    double dt_;
 
     double coil_temperature_limit_;
     double housing_temperature_;
@@ -111,7 +123,13 @@ namespace multicontact_controller {
     double pgain_;
     double dgain_;
 
+    double ulimit_;
+    double llimit_;
+    double uvlimit_;
+    double lvlimit_;
+
     std::shared_ptr<cnoidbodyutils::JointLimitTable> jointLimitTable_;
+    std::weak_ptr<JointInfo> jointLimitTableTargetJointInfo_;
 
     //cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> torqueSelectMatrix_;

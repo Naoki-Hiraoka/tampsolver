@@ -24,14 +24,22 @@ namespace multicontact_controller{
       };
       const cnoid::Link* getSelfJoint () const { return self_joint_; };
       const cnoid::Link* getTargetJoint () const { return target_joint_; };
-      double getLlimit () const // [rad]
+      double getLlimit (double target_joint_angle) const // [rad]
       {
-        return getInterpolatedLimitAngle(target_joint_->q(), true); // [rad]
+        return getInterpolatedLimitAngle(target_joint_angle, true); // [rad]
       };
-      double getUlimit () const // [rad]
+      double getLlimit () const
       {
-        return getInterpolatedLimitAngle(target_joint_->q(), false); // [rad]
+        return getLlimit(target_joint_->q());
+      }
+      double getUlimit (double target_joint_angle) const // [rad]
+      {
+        return getInterpolatedLimitAngle(target_joint_angle, false); // [rad]
       };
+      double getUlimit () const
+      {
+        return getUlimit(target_joint_->q());
+      }
     private:
       const cnoid::Link* self_joint_;
       const cnoid::Link* target_joint_;

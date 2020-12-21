@@ -17,7 +17,7 @@ namespace multicontact_controller{
     };
 
     std::shared_ptr<JointLimitTable> readJointLimitTableFromParam (const cnoid::Body* robot,
-                                                                                const std::string& ns) {
+                                                                   const std::string& ns) {
       ros::NodeHandle n;
       if(!n.hasParam(ns+"/limit_table")) return nullptr;
 
