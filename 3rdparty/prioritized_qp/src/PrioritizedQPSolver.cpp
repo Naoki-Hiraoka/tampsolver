@@ -2,7 +2,10 @@
 
 namespace prioritized_qp{
   bool solve(std::vector< std::shared_ptr<Task> >& tasks, Eigen::VectorXd& result, int debuglevel){
-    if(tasks.size()==0) return false;
+    if(tasks.size()==0) {
+      std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] no task is provided" << std::endl;
+      return false;
+    }
 
     // 次元をチェック
     int dim = -1;
@@ -39,15 +42,19 @@ namespace prioritized_qp{
       }
       if(tasks[i]->A_ext().cols() != tasks[i]->C_ext().cols()){
         std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        return false;
       }
       if(tasks[i]->A_ext().cols() != 0 && tasks[i]->A_ext().rows() != tasks[i]->A().rows()){
         std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        return false;
       }
       if(tasks[i]->C_ext().cols() != 0 && tasks[i]->C_ext().rows() != tasks[i]->C().rows()){
         std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        return false;
       }
       if(tasks[i]->toSolve() && tasks[i]->A_ext().cols() != tasks[i]->w_ext().size()){
         std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        return false;
       }
     }
 

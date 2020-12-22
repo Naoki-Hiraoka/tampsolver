@@ -356,7 +356,7 @@ namespace multicontact_controller {
 
     // Solve
     cnoid::VectorX result;
-    bool solved = prioritized_qp::solve(tasks_,result);
+    bool solved = prioritized_qp::solve(tasks,result);
     if(!solved) {
       std::cerr << "prioritized_qp::solve failed" << std::endl;
       return false;
@@ -545,6 +545,7 @@ namespace multicontact_controller {
       task->C() *= k / dt;
 
       task->w().resize(cols);//解かないので使わない
+      for(size_t i=0;i<task->w().size();i++) task->w()[i] = 1.0;
 
       return true;
   }

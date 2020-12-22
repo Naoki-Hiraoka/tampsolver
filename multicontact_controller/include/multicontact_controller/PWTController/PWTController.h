@@ -280,7 +280,6 @@ namespace multicontact_controller {
 
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
-    std::vector<std::shared_ptr<prioritized_qp::Task> > tasks_; // calcPWTControl
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
