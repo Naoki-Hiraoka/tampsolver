@@ -61,6 +61,9 @@ namespace multicontact_controller {
     // 指令関節角度上下限に関する制約を返す.破損防止
     void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
 
+    // 指令関節角速度上下限に関する制約を返す.破損防止
+    void JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
+
     // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& torqueSelectMatrix();
 

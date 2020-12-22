@@ -146,20 +146,20 @@ namespace multicontact_controller {
 
     // main loop
     int rate;
-    pnh.param("rate", rate, 50); // 250 hz
+    pnh.param("rate", rate, 50); // 50 hz
     ros::Rate r(rate);
 
     unsigned int seq = 0;
     ros::Time stamp = ros::Time::now();
     while (ros::ok()) {
       ros::Time now = ros::Time::now();
-      double dt = (now - stamp).toSec();
+      double dt = std::min(10.0/rate, std::max(1.0/rate, (now - stamp).toSec())); //rosは厳密はdtは無理。dtが想定より小さすぎたり大きすぎると計算が不安定になるので。
 
       // spin
       ros::spinOnce();
 
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-        if(it->second->contactPoint()->parent() && it->second->contactPoint()->interaction()){
+        if(it->second->isValid()){
           it->second->contactPoint()->interaction()->T() = it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
           it->second->contactPoint()->interaction()->dt() = dt;
         }
@@ -206,8 +206,7 @@ namespace multicontact_controller {
             goal.trajectory.points[0].positions.push_back(jointInfos_[i]->command_angle());
           }
         }
-        //controllerClient.sendGoal(goal); temporary
-        exit(0); //temporary
+        controllerClient.sendGoal(goal);
       }
 
       seq++;

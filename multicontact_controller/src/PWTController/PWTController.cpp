@@ -154,31 +154,43 @@ namespace multicontact_controller {
   {
   }
 
-  // 指令関節角度上下限 指令関節角速度上下限に関する制約を返す.破損防止
+  // 指令関節角度上下限に関する制約を返す.破損防止
   void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    double ulimit = 0;
-    double llimit = 0;
-
-    // velocity
-    ulimit = joint_->q_upper() * dt_;
-    llimit = joint_->q_lower() * dt_;
-    ulimit = std::max(llimit, std::min(ulimit, joint_->dq_upper() * dt_ - 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
-    llimit = std::min(ulimit, std::max(llimit, joint_->dq_lower() * dt_ + 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
-    ulimit = std::max(llimit, std::min(ulimit, uvlimit_));
-    llimit = std::min(ulimit, std::max(llimit, lvlimit_));
+    double ulimit = joint_->q_upper();
+    double llimit = joint_->q_lower();
 
     // angle
     if(jointLimitTable_){
       double min_angle = jointLimitTable_->getLlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
       double max_angle = jointLimitTable_->getUlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
-      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_));
+      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
       llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
     }else{
       double min_angle = joint_->q_lower() + 0.0001;//少しマージン
       double max_angle = joint_->q_upper() - 0.0001;//少しマージン
-      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_));
+      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
       llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
     }
+
+    A.resize(0,1);
+    b.resize(0);
+    wa.resize(0);
+    C.resize(1,1);C.coeffRef(0,0) = 1.0;
+    dl.resize(1);dl[0] = llimit;
+    du.resize(1);du[0] = ulimit;
+    wc.resize(1);wc[0] = 1.0;
+    return;
+  }
+
+  // 指令関節角速度上下限に関する制約を返す.破損防止
+  void JointInfo::JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+    // velocity
+    double ulimit = joint_->q_upper() * dt_;
+    double llimit = joint_->q_lower() * dt_;
+    ulimit = std::max(llimit, std::min(ulimit, joint_->dq_upper() * dt_ - 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
+    llimit = std::min(ulimit, std::max(llimit, joint_->dq_lower() * dt_ + 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
+    ulimit = std::max(llimit, std::min(ulimit, uvlimit_)); //上限が下限を下回ることを防ぐ
+    llimit = std::min(ulimit, std::max(llimit, lvlimit_));
 
     A.resize(0,1);
     b.resize(0);
@@ -273,14 +285,14 @@ namespace multicontact_controller {
       std::cerr << "calcPWTJacobian failed" << std::endl;
       return false;
     }
-    std::cerr << "Dqa" << std::endl;
-    std::cerr << Dqa << std::endl;
-    std::cerr << "Dwas" << std::endl;
-    for(size_t i=0;i<Dwas.size();i++){
-      std::cerr << Dwas[i] << std::endl;
-    }
-    std::cerr << "Dtaua" << std::endl;
-    std::cerr << Dtaua << std::endl;
+    // std::cerr << "Dqa" << std::endl;
+    // std::cerr << Dqa << std::endl;
+    // std::cerr << "Dwas" << std::endl;
+    // for(size_t i=0;i<Dwas.size();i++){
+    //   std::cerr << Dwas[i] << std::endl;
+    // }
+    // std::cerr << "Dtaua" << std::endl;
+    // std::cerr << Dtaua << std::endl;
 
     // setup tasks
     std::vector<std::shared_ptr<prioritized_qp::Task> > tasks;
@@ -500,8 +512,36 @@ namespace multicontact_controller {
       std::vector<cnoid::VectorXd> dus;
       std::vector<cnoid::VectorXd> wcs;
 
+      // 以下の制約を同時に満たす解が存在しないことは想定していない。
+      // すなわち、関節角度上下限の外での動作や、自己干渉中の動作は現在不可能
       {
-        // joint angle, velocity limit
+        // joint angle limit. command angleに対して
+        size_t idx = 0;
+        for(size_t i=0;i<jointInfos.size();i++){
+          if(jointInfos[i]->controllable()) {
+            Eigen::SparseMatrix<double, Eigen::RowMajor> S(1,cols); S.insert(0,idx) = k / dt; // velocity damper
+            Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+            cnoid::VectorX b;
+            cnoid::VectorX wa;
+            Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+            cnoid::VectorX dl;
+            cnoid::VectorX du;
+            cnoid::VectorX wc;
+            jointInfos[i]->JointAngleConstraint(A,b,wa,C,dl,du,wc);
+            As.push_back(A*S);
+            bs.push_back(b);
+            was.push_back(wa);
+            Cs.push_back(C*S);
+            dls.push_back(dl);
+            dus.push_back(du);
+            wcs.push_back(wc);
+            idx++;
+          }
+        }
+      }
+
+      {
+        // joint velocity limit. command angleに対して
         size_t idx = 0;
         for(size_t i=0;i<jointInfos.size();i++){
           if(jointInfos[i]->controllable()) {
@@ -513,7 +553,7 @@ namespace multicontact_controller {
             cnoid::VectorX dl;
             cnoid::VectorX du;
             cnoid::VectorX wc;
-            jointInfos[i]->JointAngleConstraint(A,b,wa,C,dl,du,wc);
+            jointInfos[i]->JointVelocityConstraint(A,b,wa,C,dl,du,wc);
             As.push_back(A*S);
             bs.push_back(b);
             was.push_back(wa);
@@ -540,12 +580,25 @@ namespace multicontact_controller {
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
 
-      // velocity damper
-      task->A() *= k / dt;
-      task->C() *= k / dt;
-
       task->w().resize(cols);//解かないので使わない
       for(size_t i=0;i<task->w().size();i++) task->w()[i] = 1.0;
+
+      std::cerr << "A" << std::endl;
+      std::cerr << task->A() << std::endl;
+      std::cerr << "b" << std::endl;
+      std::cerr << task->b() << std::endl;
+      std::cerr << "C" << std::endl;
+      std::cerr << task->C() << std::endl;
+      std::cerr << "dl" << std::endl;
+      std::cerr << task->dl() << std::endl;
+      std::cerr << "du" << std::endl;
+      std::cerr << task->du() << std::endl;
+      std::cerr << "wa" << std::endl;
+      std::cerr << task->wa() << std::endl;
+      std::cerr << "wc" << std::endl;
+      std::cerr << task->wc() << std::endl;
+      std::cerr << "w" << std::endl;
+      std::cerr << task->w() << std::endl;
 
       return true;
   }
@@ -567,7 +620,7 @@ namespace multicontact_controller {
         task = this->task1_;
         task->name() = "Task1: Contact Force, Joint Torque";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setVerbosity(true);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -661,6 +714,23 @@ namespace multicontact_controller {
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
+      std::cerr << "A" << std::endl;
+      std::cerr << task->A() << std::endl;
+      std::cerr << "b" << std::endl;
+      std::cerr << task->b() << std::endl;
+      std::cerr << "C" << std::endl;
+      std::cerr << task->C() << std::endl;
+      std::cerr << "dl" << std::endl;
+      std::cerr << task->dl() << std::endl;
+      std::cerr << "du" << std::endl;
+      std::cerr << task->du() << std::endl;
+      std::cerr << "wa" << std::endl;
+      std::cerr << task->wa() << std::endl;
+      std::cerr << "wc" << std::endl;
+      std::cerr << task->wc() << std::endl;
+      std::cerr << "w" << std::endl;
+      std::cerr << task->w() << std::endl;
+
       return true;
   }
 
@@ -677,7 +747,7 @@ namespace multicontact_controller {
         task = this->task2_;
         task->name() = "Task2: Interacting EndEffector";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setVerbosity(true);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -745,6 +815,23 @@ namespace multicontact_controller {
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
+      std::cerr << "A" << std::endl;
+      std::cerr << task->A() << std::endl;
+      std::cerr << "b" << std::endl;
+      std::cerr << task->b() << std::endl;
+      std::cerr << "C" << std::endl;
+      std::cerr << task->C() << std::endl;
+      std::cerr << "dl" << std::endl;
+      std::cerr << task->dl() << std::endl;
+      std::cerr << "du" << std::endl;
+      std::cerr << task->du() << std::endl;
+      std::cerr << "wa" << std::endl;
+      std::cerr << task->wa() << std::endl;
+      std::cerr << "wc" << std::endl;
+      std::cerr << task->wc() << std::endl;
+      std::cerr << "w" << std::endl;
+      std::cerr << task->w() << std::endl;
+
       return true;
   }
 
@@ -765,7 +852,7 @@ namespace multicontact_controller {
         task = this->task3_;
         task->name() = "Task3: Contact Force, Joint Torque Reduction";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(false);
+        task->solver().settings()->setVerbosity(true);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -855,6 +942,23 @@ namespace multicontact_controller {
       // damping factor
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
+
+      std::cerr << "A" << std::endl;
+      std::cerr << task->A() << std::endl;
+      std::cerr << "b" << std::endl;
+      std::cerr << task->b() << std::endl;
+      std::cerr << "C" << std::endl;
+      std::cerr << task->C() << std::endl;
+      std::cerr << "dl" << std::endl;
+      std::cerr << task->dl() << std::endl;
+      std::cerr << "du" << std::endl;
+      std::cerr << task->du() << std::endl;
+      std::cerr << "wa" << std::endl;
+      std::cerr << task->wa() << std::endl;
+      std::cerr << "wc" << std::endl;
+      std::cerr << task->wc() << std::endl;
+      std::cerr << "w" << std::endl;
+      std::cerr << task->w() << std::endl;
 
       return true;
   }
