@@ -6,25 +6,16 @@
 
 namespace multicontact_controller {
   void EndEffectorPWTCROS::onInfoUpdated(){
-    const std::string& linkname = info_->header.frame_id;
-    cnoid::Link* link = cnoidbodyutils::getLinkFromURDFlinkName(robot_,linkname);
-    if(!link) {
-      ROS_WARN("Link '%s' is not found in %s",linkname.c_str(),robot_->name().c_str());
-    }
-
-    this->contactPoint()->parent() = link;
-    cnoid::Vector3 p;
-    tf::vectorMsgToEigen(info_->transform.translation,p);
-    this->contactPoint()->T_local().translation() = p;
-    Eigen::Quaterniond q;
-    tf::quaternionMsgToEigen(info_->transform.rotation,q);
-    this->contactPoint()->T_local().linear() = q.normalized().toRotationMatrix();
+    endeffectorutils::updateContactPointFromInfo(robot_, contactPoint_, *info_);
+    cnoidbodyutils::loadContactFromInfo(info_->contact, contactPoint_->contact());
   }
 
   void EndEffectorPWTCROS::onStateUpdated(){
+    contactPoint_->state() = state_;
     if(prev_state_ != state_ &&
-       (state_ == "CONTACT" || state_ == "TOWARD_BREAK_CONTACT") &&
-       (prev_state_ != "CONTACT" && prev_state_ != "TOWARD_BREAK_CONTACT")){
+       (state_ == "AIR" || state_ == "NEAR_CONTACT" || state_ == "TOWARD_MAKE_CONTACT") &&
+       (prev_state_ != "AIR" && prev_state_ != "NEAR_CONTACT" && prev_state_ != "TOWARD_MAKE_CONTACT")){
+      if(contactPoint_->interaction()) contactPoint_->interaction()->reset_T_ref();
     }
   }
 
@@ -88,7 +79,7 @@ namespace multicontact_controller {
           }else{
             cnoid::Position originCoords/* = multiContactFootCoords_.getOriginCoords()*/;
             for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-              it->second->originT() = originCoords;
+              //it->second->originT() = originCoords;
             }
             Eigen::Affine3d odom = originCoords * robot_->rootLink()->T();
             nav_msgs::Odometry msg;
@@ -162,7 +153,7 @@ namespace multicontact_controller {
     if(success){
       cnoid::Position originCoords/* = this->multiContactFootCoords_.getOriginCoords()*/;
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it = endEffectors_.begin(); it != endEffectors_.end(); it++) {
-        it->second->originT() = originCoords;
+        //it->second->originT() = originCoords;
         if((it->second->state() == "CONTACT" || it->second->state() == "TOWARD_BREAK_CONTACT")){
 
         }

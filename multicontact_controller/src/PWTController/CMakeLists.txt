@@ -23,6 +23,7 @@ target_include_directories(PWTController PUBLIC
 
 target_link_libraries(PWTController PUBLIC
   CnoidBodyUtils
+  EndEffectorUtils
   ${catkin_LIBRARIES}
   )
 

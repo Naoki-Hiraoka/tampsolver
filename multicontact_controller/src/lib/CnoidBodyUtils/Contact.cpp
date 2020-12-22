@@ -7,17 +7,8 @@ namespace multicontact_controller{
   namespace cnoidbodyutils{
     SurfaceContact::SurfaceContact()
       : mu_trans_(0.1),
-        mu_rot_(0.1),
         max_fz_(200),
-        min_fz_(50),
-        weight_fz_constraint_(1e0),
-        weight_fxy_constraint_(1e1),
-        weight_nxy_constraint_(2e2),
-        weight_nz_constraint_(1e4),
-        weight_fz_reduction_(1e-6),
-        weight_fxy_reduction_(1e-4),
-        weight_nxy_reduction_(1e-3),
-        weight_nz_reduction_(1e-3)
+        min_fz_(50)
     {
       type_ = "Surface";
 
@@ -75,6 +66,8 @@ namespace multicontact_controller{
       du = Eigen::VectorXd::Zero(dim);
       wc = Eigen::VectorXd::Zero(dim);
 
+      double maximum_distance = this->calcFarthestVertexDistance(this->surface_);
+
       std::vector<Eigen::Triplet<double> > tripletList;
       tripletList.reserve(dim*2);
       int idx=0;
@@ -83,7 +76,7 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,1));
       dl[idx] = std::max(this->min_fz_,0.0);
       du[idx] = this->max_fz_;
-      wc[idx] = this->weight_fz_constraint_;
+      wc[idx] = 1.0;
       idx++;
 
       //x摩擦
@@ -91,13 +84,13 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_fxy_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,0,1));
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_fxy_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
       idx++;
 
       //y摩擦
@@ -105,27 +98,27 @@ namespace multicontact_controller{
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_fxy_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,1,1));
       tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_fxy_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
       idx++;
 
       //回転摩擦
       tripletList.push_back(Eigen::Triplet<double>(idx,5,-1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot_));
+      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_nz_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
       idx++;
       tripletList.push_back(Eigen::Triplet<double>(idx,5,1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_rot_));
+      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance));
       dl[idx] = 0;
       du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = this->weight_nz_constraint_;
+      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
       idx++;
 
       //COP
@@ -138,7 +131,7 @@ namespace multicontact_controller{
         tripletList.push_back(Eigen::Triplet<double>(idx,4,-v1[0]+v2[0]));
         dl[idx] = 0;
         du[idx] = std::numeric_limits<double>::max();
-        wc[idx] = this->weight_nxy_constraint_;
+        wc[idx] = std::min(1e4, 1.0/std::pow(maximum_distance,2));
         idx++;
       }
 
@@ -147,18 +140,17 @@ namespace multicontact_controller{
 
         //Ax = b, dl <= Cx <= du
     void SurfaceContact::getStabilityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-      // TODO もっとよい実装ができる
-
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6);
       for(size_t i=0;i<6;i++) A.insert(i,i) = 1.0;
       b = Eigen::VectorXd::Zero(6);
       wa = Eigen::VectorXd(6);
-      wa[0] = this->weight_fz_reduction_;
-      wa[1] = this->weight_fxy_reduction_;
-      wa[2] = this->weight_fxy_reduction_;
-      wa[3] = this->weight_nxy_reduction_;
-      wa[4] = this->weight_nxy_reduction_;
-      wa[5] = this->weight_nz_reduction_;
+      double maximum_distance = this->calcFarthestVertexDistance(this->surface_);
+      wa[0] = 1.0/std::pow(this->max_fz_,2);
+      wa[1] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
+      wa[2] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
+      wa[3] = wa[0] * std::min(1e4, 1.0/std::pow(maximum_distance,2));
+      wa[4] = wa[0] * std::min(1e4, 1.0/std::pow(maximum_distance,2));
+      wa[5] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
 
       // Cはゼロ．
       C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
@@ -202,20 +194,28 @@ namespace multicontact_controller{
       return std::vector<cnoid::SgNodePtr>{this->lines_};
     }
 
-    bool loadContactFromInfo(const multicontact_controller_msgs::ContactInfo::ConstPtr& info, std::shared_ptr<Contact>& contact){
-      if(info->type == "Surface"){
+    double SurfaceContact::calcFarthestVertexDistance(cnoid::SgPolygonMeshPtr surface){
+      double maximum = 0.0;
+      for(size_t i=0;i<surface->polygonVertices().size();i++){
+        double distance = surface->vertices()->at(surface->polygonVertices()[i]).norm();
+        if(distance > maximum) maximum = distance;
+      }
+      return maximum;
+    }
+
+    bool loadContactFromInfo(const multicontact_controller_msgs::ContactInfo& info, std::shared_ptr<Contact>& contact){
+      if(info.type == "Surface"){
         if(!contact || contact->type() != "Surface") contact = std::shared_ptr<SurfaceContact>();
         std::shared_ptr<SurfaceContact> surface_contact = std::dynamic_pointer_cast<SurfaceContact>(contact);
         std::vector<cnoid::Vector3f> vertices;
-        for(size_t i=0;i<info->vertices.points.size();i++){
-          const geometry_msgs::Point32& point = info->vertices.points[i];
+        for(size_t i=0;i<info.vertices.points.size();i++){
+          const geometry_msgs::Point32& point = info.vertices.points[i];
           vertices.push_back(cnoid::Vector3f(point.x, point.y, point.z));
         }
         surface_contact->setVertices(vertices);
-        surface_contact->mu_trans() = info->mu_trans;
-        surface_contact->mu_rot() = info->mu_rot;
-        surface_contact->max_fz() = info->max_fz;
-        surface_contact->min_fz() = info->min_fz;
+        surface_contact->mu_trans() = info.mu_trans;
+        surface_contact->max_fz() = info.max_fz;
+        surface_contact->min_fz() = info.min_fz;
       }
       return true;
     }

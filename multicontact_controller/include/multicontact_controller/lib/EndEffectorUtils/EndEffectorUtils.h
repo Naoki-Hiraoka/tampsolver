@@ -5,6 +5,9 @@
 #include <std_msgs/String.h>
 #include <multicontact_controller_msgs/StringArray.h>
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
+#include <cnoid/Body>
+#include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
+#include <eigen_conversions/eigen_msg.h>
 
 namespace multicontact_controller {
   namespace endeffectorutils {
@@ -64,6 +67,9 @@ namespace multicontact_controller {
       ros::Subscriber infoSub_;
       ros::Subscriber stateSub_;
     };
+
+    void updateContactPointFromInfo(cnoid::Body* robot, std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint, const multicontact_controller_msgs::EndEffectorInfo& info);
+
   };
 };
 

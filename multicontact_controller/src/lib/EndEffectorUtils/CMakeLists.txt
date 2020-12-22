@@ -2,6 +2,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   multicontact_controller_msgs
+  eigen_conversions
   )
 
 add_library(EndEffectorUtils
@@ -13,5 +14,6 @@ target_include_directories(EndEffectorUtils PUBLIC
   )
 
 target_link_libraries(EndEffectorUtils PUBLIC
+  CnoidBodyUtils
   ${catkin_LIBRARIES}
   )

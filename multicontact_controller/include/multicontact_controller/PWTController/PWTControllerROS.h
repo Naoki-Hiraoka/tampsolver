@@ -23,19 +23,15 @@ namespace multicontact_controller {
       robot_ = robot;
       contactPoint_ = std::make_shared<ContactPointPWTC>();
       contactPoint_->name() = name_;
-      originT_.setIdentity();
+      contactPoint_->state() = "NOT_CARED";
     }
     std::shared_ptr<ContactPointPWTC> contactPoint() const {return contactPoint_; }
     std::shared_ptr<ContactPointPWTC>& contactPoint() {return contactPoint_; }
-    cnoid::Position& originT() {return originT_;}
-    cnoid::Position originT() const {return originT_;}
     void onInfoUpdated() override;
     void onStateUpdated() override;
   private:
     cnoid::Body* robot_;
-    std::string linkName_;
     std::shared_ptr<ContactPointPWTC> contactPoint_;
-    cnoid::Position originT_;
   };
 
   class PWTControllerROS : public choreonoid_cpp::ChoreonoidCpp {

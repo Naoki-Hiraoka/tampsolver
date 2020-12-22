@@ -72,13 +72,6 @@ bool loadEndEffectorInfoParam(ros::NodeHandle& n, std::string& name, std::shared
       n.getParam(contact_ns+"/mu_trans",endEffectorInfo->contact.mu_trans);
     }
 
-    if(!n.hasParam(contact_ns+"/mu_rot")){
-      ROS_WARN("rosparam %s not found",(ns+"/mu_rot").c_str());
-      endEffectorInfo->contact.mu_rot=0.1;
-    }else{
-      n.getParam(contact_ns+"/mu_rot",endEffectorInfo->contact.mu_rot);
-    }
-
     if(!n.hasParam(contact_ns+"/max_fz")){
       ROS_WARN("rosparam %s not found",(ns+"/max_fz").c_str());
       endEffectorInfo->contact.max_fz=200.0;
