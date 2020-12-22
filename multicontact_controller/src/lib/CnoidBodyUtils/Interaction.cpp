@@ -84,7 +84,7 @@ namespace multicontact_controller{
     }
 
     bool loadInteractionFromInfo(const multicontact_controller_msgs::InteractionInfo& info, std::shared_ptr<Interaction>& interaction){
-      if(!interaction) interaction = std::shared_ptr<Interaction>();
+      if(!interaction) interaction = std::make_shared<Interaction>();
 
       interaction->M_p() = info.M_p;
       interaction->D_p() = info.D_p;

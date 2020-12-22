@@ -17,6 +17,7 @@ namespace multicontact_controller {
        (prev_state_ != "AIR" && prev_state_ != "NEAR_CONTACT" && prev_state_ != "TOWARD_MAKE_CONTACT")){
       if(contactPoint_->interaction()) contactPoint_->interaction()->reset_ref();
     }
+
   }
 
   void setupJointInfoFromParam(const std::string& ns, std::shared_ptr<JointInfo>& jointInfo, std::map<std::string, std::shared_ptr<JointInfo> >& jointInfoMap){
@@ -36,25 +37,26 @@ namespace multicontact_controller {
       ROS_WARN("rosparam %s not found",(ns+"/hardware_pgain").c_str());
     }else{
       nh.getParam(ns+"/hardware_pgain",jointInfo->hardware_pgain());
+      jointInfo->pgain() = jointInfo->hardware_pgain();
     }
 
 
     std::string limits_ns = ns + "/limits";
 
     if(nh.hasParam(limits_ns+"/ulimit")){
-      ROS_WARN("rosparam %s found",(ns+"/ulimit").c_str());
+      ROS_INFO("rosparam %s found",(ns+"/ulimit").c_str());
       nh.getParam(limits_ns+"/ulimit",jointInfo->ulimit());
     }
     if(nh.hasParam(limits_ns+"/llimit")){
-      ROS_WARN("rosparam %s found",(ns+"/llimit").c_str());
+      ROS_INFO("rosparam %s found",(ns+"/llimit").c_str());
       nh.getParam(limits_ns+"/llimit",jointInfo->llimit());
     }
     if(nh.hasParam(limits_ns+"/uvlimit")){
-      ROS_WARN("rosparam %s found",(ns+"/uvlimit").c_str());
+      ROS_INFO("rosparam %s found",(ns+"/uvlimit").c_str());
       nh.getParam(limits_ns+"/uvlimit",jointInfo->uvlimit());
     }
     if(nh.hasParam(limits_ns+"/lvlimit")){
-      ROS_WARN("rosparam %s found",(ns+"/lvlimit").c_str());
+      ROS_INFO("rosparam %s found",(ns+"/lvlimit").c_str());
       nh.getParam(limits_ns+"/lvlimit",jointInfo->lvlimit());
     }
 
@@ -77,7 +79,7 @@ namespace multicontact_controller {
       cnoid::Link* self_joint = jointInfo->joint();
       cnoid::Link* target_joint = jointInfo->joint()->body()->link(target_joint_name);
       std::shared_ptr<JointInfo> target_joint_info = jointInfoMap[target_joint_name];
-      if(!target_joint || target_joint_info){
+      if(!target_joint || !target_joint_info){
         ROS_ERROR("target_joint %s not found", target_joint_name.c_str());
       }else{
         jointInfo->jointLimitTable() = std::make_shared<cnoidbodyutils::JointLimitTable>(self_joint,
@@ -117,6 +119,8 @@ namespace multicontact_controller {
       setupJointInfoFromParam("joint_config/"+jointInfos_[i]->name(), jointInfos_[i], jointInfoMap_);
     }
 
+    PWTController_ = std::make_shared<PWTController>(robot_, jointInfos_);
+
     // setup subscribers
     ros::Subscriber jointStateSub = nh.subscribe("joint_states", 100, &PWTControllerROS::jointStateCallback, this); // 一部しか含まないjoint_statesにも対応するため、バッファは1(最新のみ)では不可
 
@@ -126,7 +130,18 @@ namespace multicontact_controller {
 
     ros::Subscriber motorStatesSub = nh.subscribe("motor_states", 1, &PWTControllerROS::motorStatesCallback, this);
 
+    ros::Subscriber motorTemperatureStateSub = nh.subscribe("motor_temperature_states", 1, &PWTControllerROS::motorTemperatureStateCallback, this);
+
+    ros::Subscriber controllerStateSub = nh.subscribe("fullbody_controller/state", 1, &PWTControllerROS::controllerStateCallback, this);
+
     ros::ServiceServer enableService = pnh.advertiseService("enable",&PWTControllerROS::enableCallback,this);
+
+    actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction > controllerClient("fullbody_controller/follow_joint_trajectory_action", true);
+    ROS_INFO("Waiting for fullbody_controller to start.");
+    controllerClient.waitForServer();
+    ROS_INFO("Action fullbody_controller started.");
+
+    isEnabled_ = false;
 
     // main loop
     int rate;
@@ -141,20 +156,45 @@ namespace multicontact_controller {
 
       // spin
       ros::spinOnce();
+
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-        if(it->second->contactPoint()->parent()){
+        if(it->second->contactPoint()->parent() && it->second->contactPoint()->interaction()){
           it->second->contactPoint()->interaction()->T() = it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
         }
+      }
+
+      for(size_t i=0;i<jointInfos_.size();i++){
+        jointInfos_[i]->dt() = dt;
       }
 
       if( this->isEnabled_ ){
         std::vector<std::shared_ptr<ContactPointPWTC> > contactPoints;
         for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-          if((it->second->state() == "CONTACT" || it->second->state() == "TOWARD_BREAK_CONTACT") &&
-             it->second->contactPoint()->parent()){
+          if(it->second->state() != "NOT_CARED" &&
+             it->second->contactPoint()->parent() &&
+             it->second->contactPoint()->contact() &&
+             it->second->contactPoint()->interaction()){
             contactPoints.push_back(it->second->contactPoint());
           }
         }
+
+        // solve
+        robot_->calcCenterOfMass();
+        PWTController_->calcPWTControl(contactPoints, dt);
+
+        // send command
+        control_msgs::FollowJointTrajectoryGoal goal;
+        goal.trajectory.header.seq = seq;
+        goal.trajectory.header.stamp = now;
+        goal.trajectory.points.resize(1);
+        goal.trajectory.points[0].time_from_start = ros::Duration(dt * 1.1); // ちょっと長く
+        for(size_t i=0;i<jointInfos_.size();i++){
+          if(jointInfos_[i]->controllable()){
+            goal.trajectory.joint_names.push_back(jointInfos_[i]->name());
+            goal.trajectory.points[0].positions.push_back(jointInfos_[i]->command_angle());
+          }
+        }
+        //controllerClient.sendGoal(goal); temporary
       }
 
       seq++;
@@ -206,6 +246,10 @@ namespace multicontact_controller {
     }
   }
 
+  void PWTControllerROS::controllerStateCallback(const pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr& msg){
+    controllerState_ = msg;
+  }
+
   void PWTControllerROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
     endeffectorutils::stringArrayToEndEffectors(msg,endEffectors_,this->robot_);
   }
@@ -217,8 +261,15 @@ namespace multicontact_controller {
       response.message = "";
       return true;
     } else {
-      if(request.data){
-        
+      if(request.data && controllerState_){
+        // 指令関節角度を初期化
+        for(size_t i=0;i<controllerState_->joint_names.size();i++){
+          std::string name = controllerState_->joint_names[i];
+          double command_angle = controllerState_->desired.positions[i];
+          if(jointInfoMap_.find(name) != jointInfoMap_.end()){
+            jointInfoMap_[name]->command_angle() = command_angle;
+          }
+        }
       }
       this->isEnabled_ = request.data;
       ROS_INFO("[PWTController::enableService] %s",(this->isEnabled_ ? "Enabled" : "Disabled"));

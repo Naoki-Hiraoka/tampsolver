@@ -2,6 +2,7 @@
 
 #include <cnoid/EigenUtil>
 #include <limits>
+#include <ros/ros.h>
 
 namespace multicontact_controller{
   namespace cnoidbodyutils{
@@ -10,7 +11,7 @@ namespace multicontact_controller{
         max_fz_(200),
         min_fz_(50)
     {
-      type_ = "Surface";
+      type_ = "SURFACE";
 
       surface_ = new cnoid::SgPolygonMesh;
       surface_->getOrCreateVertices()->push_back(cnoid::Vector3f(0.1,0.1,0.0));
@@ -24,7 +25,6 @@ namespace multicontact_controller{
     }
 
     bool SurfaceContact::setVertices(const std::vector<cnoid::Vector3f>& vertices){
-
       if(surface_->polygonVertices().size() != vertices.size()){
         surface_->polygonVertices().resize(vertices.size());
         for(size_t i=0;i<vertices.size(); i++){
@@ -204,8 +204,8 @@ namespace multicontact_controller{
     }
 
     bool loadContactFromInfo(const multicontact_controller_msgs::ContactInfo& info, std::shared_ptr<Contact>& contact){
-      if(info.type == "Surface"){
-        if(!contact || contact->type() != "Surface") contact = std::shared_ptr<SurfaceContact>();
+      if(info.type == "SURFACE"){
+        if(!contact || contact->type() != "SURFACE") contact = std::make_shared<SurfaceContact>();
         std::shared_ptr<SurfaceContact> surface_contact = std::dynamic_pointer_cast<SurfaceContact>(contact);
         std::vector<cnoid::Vector3f> vertices;
         for(size_t i=0;i<info.vertices.points.size();i++){
@@ -216,6 +216,8 @@ namespace multicontact_controller{
         surface_contact->mu_trans() = info.mu_trans;
         surface_contact->max_fz() = info.max_fz;
         surface_contact->min_fz() = info.min_fz;
+      }else{
+        ROS_ERROR("%s is not defined", info.type.c_str());
       }
       return true;
     }

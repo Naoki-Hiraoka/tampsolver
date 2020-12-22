@@ -346,13 +346,14 @@ namespace multicontact_controller {
       size_t idx = 0;
       for(size_t i=0;i<jointInfos_.size();i++){
         if(jointInfos_[i]->controllable()){
-          jointInfos_[i]->command_angle() = result[idx];
+          jointInfos_[i]->command_angle() += result[idx];
           idx++;
         }
       }
 
     }
 
+    std::cerr << "result" << result << std::endl;
 
     return true;
   }
@@ -366,7 +367,9 @@ namespace multicontact_controller {
                                       std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                       std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
                                       double sv_ratio){
+
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dg = torqueJacobianCalculator.calcDg();
+
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& DJw = torqueJacobianCalculator.calcDJw(contactPoints); // F = 0 のcontactpointをここで入れるのは計算コストの無駄かもしれない
 
     for(size_t i=0;i<robot->numJoints();i++){
@@ -387,7 +390,7 @@ namespace multicontact_controller {
       Xupper.leftCols(6+robot->numJoints()) = Eigen::SparseMatrix<double,Eigen::ColMajor>(Xleftupper);
       Xupper.rightCols(Jbal.rows()) = Eigen::SparseMatrix<double,Eigen::ColMajor>(-Jbal.transpose());
       Eigen::SparseMatrix<double,Eigen::ColMajor> Xlower(Jbal.rows(),6+robot->numJoints()+Jbal.rows());
-      Xlower.leftCols(6+robot->numJoints()) = Eigen::SparseMatrix<double,Eigen::ColMajor>(Jbal.transpose());
+      Xlower.leftCols(6+robot->numJoints()) = Eigen::SparseMatrix<double,Eigen::ColMajor>(Jbal);
       X.topRows(Xupper.rows()) = Eigen::SparseMatrix<double,Eigen::RowMajor>(Xupper);
       X.bottomRows(Xlower.rows()) = Eigen::SparseMatrix<double,Eigen::RowMajor>(Xlower);
     }

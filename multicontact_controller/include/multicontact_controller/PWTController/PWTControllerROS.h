@@ -14,6 +14,9 @@
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
 #include <multicontact_controller_msgs/MotorTemperatureState.h>
 #include <ros/ros.h>
+#include <control_msgs/FollowJointTrajectoryAction.h>
+#include <pr2_controllers_msgs/JointTrajectoryControllerState.h>
+#include <actionlib/client/simple_action_client.h>
 
 #include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
 
@@ -39,16 +42,22 @@ namespace multicontact_controller {
     void onStateUpdated() override;
 
     void forceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
-      tf::wrenchMsgToEigen(msg->wrench,contactPoint_->F());
-      contactPoint_->interaction()->F() = contactPoint_->F();
+      if(contactPoint_->interaction()){
+        tf::wrenchMsgToEigen(msg->wrench,contactPoint_->F());
+        contactPoint_->interaction()->F() = contactPoint_->F();
+      }
     };
     void refForceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
-      tf::wrenchMsgToEigen(msg->wrench,contactPoint_->interaction()->F_ref());
+      if(contactPoint_->interaction()){
+        tf::wrenchMsgToEigen(msg->wrench,contactPoint_->interaction()->F_ref());
+      }
     };
     void targetPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-      Eigen::Affine3d pose;
-      tf::poseMsgToEigen(msg->pose,pose);
-      contactPoint_->interaction()->T_ref() = pose;
+      if(contactPoint_->interaction()){
+        Eigen::Affine3d pose;
+        tf::poseMsgToEigen(msg->pose,pose);
+        contactPoint_->interaction()->T_ref() = pose;
+      }
     };
 
   private:
@@ -70,6 +79,7 @@ namespace multicontact_controller {
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void motorStatesCallback(const hrpsys_ros_bridge::MotorStates::ConstPtr& msg);
     void motorTemperatureStateCallback(const multicontact_controller_msgs::MotorTemperatureState::ConstPtr& msg);
+    void controllerStateCallback(const pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
@@ -79,7 +89,10 @@ namespace multicontact_controller {
     std::map<std::string, std::shared_ptr<EndEffectorPWTCROS> > endEffectors_;
     std::map<std::string, std::shared_ptr<JointInfo> > jointInfoMap_;
     std::vector<std::shared_ptr<JointInfo> > jointInfos_;
-    //PWTController multiContactFootCoords_;
+    std::shared_ptr<PWTController> PWTController_;
+
+    pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr controllerState_;
+
   };
 
 };

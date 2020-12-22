@@ -7,6 +7,14 @@
 
 (ros::roseus "multicontact_mode_switcher" :anonymous nil)
 
+(if (and (ros::has-param "euslisp_file") (ros::has-param "robot"))
+    (progn
+      (load (ros::get-param "euslisp_file"))
+      (eval (read-from-string (format nil "(~A-init)" (ros::get-param "robot")))))
+    (progn
+     (load "package://hrpsys_ros_bridge/euslisp/rtm-ros-robot-interface.l")
+     (setq *ri* (instance rtm-ros-robot-interface :define-all-ROSBridge-srv-methods))))
+
 (if (ros::has-param "base_frame")
     (setq *base-frame* (ros::get-param "base_frame"))
     (setq *base-frame* "BODY"))
@@ -70,6 +78,7 @@
     (let ((req (instance std_srvs::SetBoolRequest :init)))
       (send req :data t)
       (ros::service-call "/end_effector_interactive_marker_server/enable" req))
+    (send *ri* :set-interpolation-mode :linear)
     ;; (send *ri* :start-st)
     t))
 
@@ -87,6 +96,7 @@
                       (set-difference *end-effectors* (list "rleg" "lleg") :test #'equal)))
     (return-from disable-multicontact-mode nil))
   ;; (send *ri* :stop-st)
+  (send *ri* :set-interpolation-mode :hoffarbib)
   (let ((req (instance std_srvs::SetBoolRequest :init)))
     (send req :data nil)
     (ros::service-call "/end_effector_interactive_marker_server/enable" req))
