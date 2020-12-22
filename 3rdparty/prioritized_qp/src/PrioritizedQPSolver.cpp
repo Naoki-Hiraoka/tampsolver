@@ -99,6 +99,15 @@ namespace prioritized_qp{
       uBs.tail(tasks[i]->du().size()) = tasks[i]->du();
 
       if(tasks[i]->toSolve()){
+        // std::cerr << "As" << std::endl;
+        // std::cerr << As << std::endl;
+        // std::cerr << "lBs" << std::endl;
+        // std::cerr << lBs << std::endl;
+        // std::cerr << "uBs" << std::endl;
+        // std::cerr << uBs << std::endl;
+        // std::cerr << "w_exts" << std::endl;
+        // std::cerr << w_exts << std::endl;
+
         if(tasks[i]->A().rows()==0 && tasks[i]->C().rows()==0)continue;
 
         int num = As.cols() + tasks[i]->A().rows() + tasks[i]->C().rows();
@@ -153,6 +162,7 @@ namespace prioritized_qp{
         if(!solved) return false;
 
         solution = tasks[i]->solver().getSolution().head(As.cols());
+
         Eigen::VectorXd this_b = taskA * solution;
         Eigen::VectorXd this_d = taskC * solution;
         for(size_t j=0;j<tasks[i]->A().rows();j++){
@@ -161,7 +171,7 @@ namespace prioritized_qp{
         }
         for(size_t j=0;j<tasks[i]->C().rows();j++){
           if(this_d(j)>tasks[i]->du()(j)) uBs(uBs.rows() - tasks[i]->C().rows() + j) = this_d(j);
-          if(this_b(j)<tasks[i]->dl()(j)) lBs(lBs.rows() - tasks[i]->C().rows() + j) = this_d(j);
+          if(this_d(j)<tasks[i]->dl()(j)) lBs(lBs.rows() - tasks[i]->C().rows() + j) = this_d(j);
         }
       }
     }
