@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Imu.h>
+#include <nav_msgs/Odometry.h>
 #include <Eigen/Sparse>
 
 #include <multicontact_controller/lib/CnoidBodyUtils/Contact.h>
@@ -26,6 +27,8 @@ namespace multicontact_controller {
     void jointStateToBody(const sensor_msgs::JointState::ConstPtr& msg, cnoid::Body* robot);
 
     void imuToBody(const sensor_msgs::Imu::ConstPtr& msg, cnoid::Body* robot);
+
+    void odomToBody(const nav_msgs::Odometry::ConstPtr& msg, cnoid::Body* robot);
 
     // EusLispと同じ
     cnoid::Matrix3 orientCoordsToAxis(const cnoid::Matrix3& coords, const cnoid::Vector3& axis/*local 系*/ = cnoid::Vector3::UnitZ(), const cnoid::Vector3& target_axis/*world系*/ = cnoid::Vector3::UnitZ());

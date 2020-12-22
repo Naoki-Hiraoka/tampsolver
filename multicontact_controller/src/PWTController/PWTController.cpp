@@ -118,7 +118,7 @@ namespace multicontact_controller {
     : name_(),
       joint_(nullptr),
       controllable_(false),
-      care_torque_(true),
+      care_torque_(false),
       command_angle_(0.0),
       dt_(0.02),
       coil_temperature_limit_(150.0),
@@ -129,11 +129,11 @@ namespace multicontact_controller {
       balance_effort_(std::numeric_limits<double>::max()),
       remaining_time_(std::numeric_limits<double>::max()),
       pgain_(1e4),
-      dgain_(1e2),
+      hardware_pgain_(1e0),
       ulimit_(std::numeric_limits<double>::max()),
       llimit_(-std::numeric_limits<double>::max()),
       uvlimit_(std::numeric_limits<double>::max()),
-      lvlimit_(std::numeric_limits<double>::max())
+      lvlimit_(-std::numeric_limits<double>::max())
   {
   }
 

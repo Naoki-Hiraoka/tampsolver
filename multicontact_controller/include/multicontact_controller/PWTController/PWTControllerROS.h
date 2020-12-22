@@ -6,10 +6,13 @@
 #include <std_msgs/String.h>
 #include <std_srvs/SetBool.h>
 #include <sensor_msgs/JointState.h>
-#include <sensor_msgs/Imu.h>
+#include <hrpsys_ros_bridge/MotorStates.h>
+#include <geometry_msgs/WrenchStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <multicontact_controller_msgs/StringArray.h>
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
-#include <multicontact_controller_msgs/SetTransformStamped.h>
+#include <multicontact_controller_msgs/MotorTemperatureState.h>
 #include <ros/ros.h>
 
 #include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
@@ -23,31 +26,59 @@ namespace multicontact_controller {
       robot_ = robot;
       contactPoint_ = std::make_shared<ContactPointPWTC>();
       contactPoint_->name() = name_;
-      contactPoint_->state() = "NOT_CARED";
+      contactPoint_->state() = state_;
+
+      ros::NodeHandle nh;
+      forceSub_ = nh.subscribe(name_ + "/force", 1, &EndEffectorPWTCROS::forceCallback, this);
+      refForceSub_ = nh.subscribe(name_ + "/ref_force", 1, &EndEffectorPWTCROS::refForceCallback, this);
+      targetPoseSub_ = nh.subscribe(name_ + "/target_pose", 1, &EndEffectorPWTCROS::targetPoseCallback, this);
     }
     std::shared_ptr<ContactPointPWTC> contactPoint() const {return contactPoint_; }
     std::shared_ptr<ContactPointPWTC>& contactPoint() {return contactPoint_; }
     void onInfoUpdated() override;
     void onStateUpdated() override;
+
+    void forceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
+      tf::wrenchMsgToEigen(msg->wrench,contactPoint_->F());
+      contactPoint_->interaction()->F() = contactPoint_->F();
+    };
+    void refForceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
+      tf::wrenchMsgToEigen(msg->wrench,contactPoint_->interaction()->F_ref());
+    };
+    void targetPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+      Eigen::Affine3d pose;
+      tf::poseMsgToEigen(msg->pose,pose);
+      contactPoint_->interaction()->T_ref() = pose;
+    };
+
   private:
     cnoid::Body* robot_;
     std::shared_ptr<ContactPointPWTC> contactPoint_;
+
+    ros::Subscriber forceSub_;
+    ros::Subscriber refForceSub_;
+    ros::Subscriber targetPoseSub_;
   };
+
+  void setupJointInfoFromParam(const std::string& ns, std::shared_ptr<JointInfo>& jointinfo, std::map<std::string, std::shared_ptr<JointInfo> >& jointInfoMap);
 
   class PWTControllerROS : public choreonoid_cpp::ChoreonoidCpp {
   public:
     virtual void main(int argc, char** argv) override;
   private:
     void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg);
-    void imuCallback(const sensor_msgs::Imu::ConstPtr& msg);
+    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
+    void motorStatesCallback(const hrpsys_ros_bridge::MotorStates::ConstPtr& msg);
+    void motorTemperatureStateCallback(const multicontact_controller_msgs::MotorTemperatureState::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
-    bool setBodyTransformCallback(multicontact_controller_msgs::SetTransformStamped::Request& request, multicontact_controller_msgs::SetTransformStamped::Response& response);
 
     bool isEnabled_;
 
     cnoid::Body* robot_;
     std::map<std::string, std::shared_ptr<EndEffectorPWTCROS> > endEffectors_;
+    std::map<std::string, std::shared_ptr<JointInfo> > jointInfoMap_;
+    std::vector<std::shared_ptr<JointInfo> > jointInfos_;
     //PWTController multiContactFootCoords_;
   };
 

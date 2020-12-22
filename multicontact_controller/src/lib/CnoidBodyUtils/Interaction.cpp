@@ -19,9 +19,9 @@ namespace multicontact_controller{
         prev_w_(cnoid::Vector3::Zero()),
         M_p_(100.0),
         D_p_(2000.0),
-        K_p_(2000.0),
+        K_p_(4000.0),
         M_r_(50.0),
-        D_r_(2000.0),
+        D_r_(1000.0),
         K_r_(2000.0),
         force_gain_(1,1,1),
         moment_gain_(1,1,1),
@@ -81,6 +81,21 @@ namespace multicontact_controller{
       prev_v_ref_ = v_ref_;
       prev_w_ref_ = w_ref_;
       prev_T_ref_ = T_ref_;
+    }
+
+    bool loadInteractionFromInfo(const multicontact_controller_msgs::InteractionInfo& info, std::shared_ptr<Interaction>& interaction){
+      if(!interaction) interaction = std::shared_ptr<Interaction>();
+
+      interaction->M_p() = info.M_p;
+      interaction->D_p() = info.D_p;
+      interaction->K_p() = info.K_p;
+      interaction->M_r() = info.M_r;
+      interaction->D_r() = info.D_r;
+      interaction->K_r() = info.K_r;
+      interaction->force_gain() = cnoid::Vector3(info.force_gain.x,info.force_gain.y,info.force_gain.z);
+      interaction->moment_gain() = cnoid::Vector3(info.moment_gain.x,info.moment_gain.y,info.moment_gain.z);
+
+      return true;
     }
   }
 }

@@ -96,8 +96,17 @@ namespace multicontact_controller {
 
     double& pgain() { return pgain_;}
     double pgain() const { return pgain_;}
-    double& dgain() { return dgain_;}
-    double dgain() const { return dgain_;}
+    double& hardware_pgain() { return hardware_pgain_;}
+    double hardware_pgain() const { return hardware_pgain_;}
+
+    double& llimit() { return llimit_;}
+    double llimit() const { return llimit_;}
+    double& ulimit() { return ulimit_;}
+    double ulimit() const { return ulimit_;}
+    double& lvlimit() { return lvlimit_;}
+    double lvlimit() const { return lvlimit_;}
+    double& uvlimit() { return uvlimit_;}
+    double uvlimit() const { return uvlimit_;}
 
     std::shared_ptr<cnoidbodyutils::JointLimitTable>& jointLimitTable() { return jointLimitTable_;}
     std::shared_ptr<cnoidbodyutils::JointLimitTable> jointLimitTable() const { return jointLimitTable_;}
@@ -121,8 +130,8 @@ namespace multicontact_controller {
     double remaining_time_;
 
     double pgain_;
-    double dgain_;
 
+    double hardware_pgain_;
     double ulimit_;
     double llimit_;
     double uvlimit_;
@@ -146,7 +155,7 @@ namespace multicontact_controller {
         //params
         sv_ratio_(1e-12),
         k0_(0.1),
-        k1_(5.0),
+        k1_(3.0),
         w1_(1e-2),
         we1_(1e-8),
         w_scale1_(1e6),//hessianが大きい気がする

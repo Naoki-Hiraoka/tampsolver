@@ -4,6 +4,7 @@
 #include <cnoid/Body>
 #include <cnoid/SceneDrawables>
 #include <Eigen/Sparse>
+#include <multicontact_controller_msgs/InteractionInfo.h>
 
 namespace multicontact_controller{
   namespace cnoidbodyutils{
@@ -16,8 +17,9 @@ namespace multicontact_controller{
       // odom系の座標のref値
       cnoid::Position T_ref() const { return T_ref_; }
       cnoid::Position& T_ref() {return T_ref_; }
-      void reset_T_ref() {
-        prev_T_ref_ = T_ref_;
+      void reset_ref() {
+        F_ref_ = F_;
+        prev_T_ref_ = T_ref_ = T_;
         v_ref_ = w_ref_ = cnoid::Vector3::Zero();
         prev_v_ref_ = prev_w_ref_ = cnoid::Vector3::Zero();
         prev_v_ = prev_w_ = cnoid::Vector3::Zero();
@@ -88,6 +90,8 @@ namespace multicontact_controller{
       double w_limit_;
 
     };
+
+    bool loadInteractionFromInfo(const multicontact_controller_msgs::InteractionInfo& msg, std::shared_ptr<Interaction>& contact);
   }
 }
 

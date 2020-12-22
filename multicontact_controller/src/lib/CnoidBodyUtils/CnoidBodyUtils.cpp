@@ -72,6 +72,17 @@ namespace multicontact_controller {
       }
     }
 
+    void odomToBody(const nav_msgs::Odometry::ConstPtr& msg, cnoid::Body* robot){
+      if(robot){
+        // rootのvel, accがない TODO
+        // Rootという前提あり TODO
+        Eigen::Affine3d pose;
+        tf::poseMsgToEigen(msg->pose.pose,pose);
+        robot->rootLink()->T() = pose;
+        robot->calcForwardKinematics(false,false);
+      }
+    }
+
     cnoid::Matrix3 orientCoordsToAxis(const cnoid::Matrix3& coords, const cnoid::Vector3& axis/*local 系*/, const cnoid::Vector3& target_axis/*world系*/){
       Eigen::Vector3d rotate_axis = (coords*axis).cross(target_axis);
       if(rotate_axis.norm()==0){

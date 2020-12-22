@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   eigen_conversions
   tf2_ros
+  hrpsys_ros_bridge
   choreonoid_cpp
   OsqpEigen
   prioritized_qp

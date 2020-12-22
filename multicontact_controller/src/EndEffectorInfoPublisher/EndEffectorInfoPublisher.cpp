@@ -102,6 +102,68 @@ bool loadEndEffectorInfoParam(ros::NodeHandle& n, std::string& name, std::shared
 
   }
 
+  {
+    std::string interaction_ns = ns + "/interaction";
+
+    if(!n.hasParam(interaction_ns+"/force_gain")){
+      ROS_WARN("rosparam %s not found",(ns+"/force_gain").c_str());
+      endEffectorInfo->interaction.force_gain.x = 1.0;
+      endEffectorInfo->interaction.force_gain.y = 1.0;
+      endEffectorInfo->interaction.force_gain.z = 1.0;
+    }else{
+      std::vector<double> param;
+      n.getParam(interaction_ns+"/force_gain",param);
+      if(param.size() !=3){
+        ROS_WARN("rosparam %s size mismatch %lu",(ns+"/force_gain").c_str(), param.size());
+        endEffectorInfo->interaction.force_gain.x = 1.0;
+        endEffectorInfo->interaction.force_gain.y = 1.0;
+        endEffectorInfo->interaction.force_gain.z = 1.0;
+      }else{
+        endEffectorInfo->interaction.force_gain.x = param[0];
+        endEffectorInfo->interaction.force_gain.y = param[1];
+        endEffectorInfo->interaction.force_gain.z = param[2];
+      }
+    }
+
+    if(!n.hasParam(interaction_ns+"/M_p")){
+      ROS_WARN("rosparam %s not found",(ns+"/M_p").c_str());
+      endEffectorInfo->interaction.M_p=100.0;
+    }else{
+      n.getParam(interaction_ns+"/M_p",endEffectorInfo->interaction.M_p);
+    }
+    if(!n.hasParam(interaction_ns+"/D_p")){
+      ROS_WARN("rosparam %s not found",(ns+"/D_p").c_str());
+      endEffectorInfo->interaction.D_p=2000.0;
+    }else{
+      n.getParam(interaction_ns+"/D_p",endEffectorInfo->interaction.D_p);
+    }
+    if(!n.hasParam(interaction_ns+"/K_p")){
+      ROS_WARN("rosparam %s not found",(ns+"/K_p").c_str());
+      endEffectorInfo->interaction.K_p=2000.0;
+    }else{
+      n.getParam(interaction_ns+"/K_p",endEffectorInfo->interaction.K_p);
+    }
+    if(!n.hasParam(interaction_ns+"/M_r")){
+      ROS_WARN("rosparam %s not found",(ns+"/M_r").c_str());
+      endEffectorInfo->interaction.M_r=50.0;
+    }else{
+      n.getParam(interaction_ns+"/M_r",endEffectorInfo->interaction.M_r);
+    }
+    if(!n.hasParam(interaction_ns+"/D_r")){
+      ROS_WARN("rosparam %s not found",(ns+"/D_r").c_str());
+      endEffectorInfo->interaction.D_r=2000.0;
+    }else{
+      n.getParam(interaction_ns+"/D_r",endEffectorInfo->interaction.D_r);
+    }
+    if(!n.hasParam(interaction_ns+"/K_r")){
+      ROS_WARN("rosparam %s not found",(ns+"/K_r").c_str());
+      endEffectorInfo->interaction.K_r=2000.0;
+    }else{
+      n.getParam(interaction_ns+"/K_r",endEffectorInfo->interaction.K_r);
+    }
+
+  }
+
   return true;
 }
 
