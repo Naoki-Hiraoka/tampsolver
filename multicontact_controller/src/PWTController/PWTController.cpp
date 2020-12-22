@@ -273,6 +273,14 @@ namespace multicontact_controller {
       std::cerr << "calcPWTJacobian failed" << std::endl;
       return false;
     }
+    std::cerr << "Dqa" << std::endl;
+    std::cerr << Dqa << std::endl;
+    std::cerr << "Dwas" << std::endl;
+    for(size_t i=0;i<Dwas.size();i++){
+      std::cerr << Dwas[i] << std::endl;
+    }
+    std::cerr << "Dtaua" << std::endl;
+    std::cerr << Dtaua << std::endl;
 
     // setup tasks
     std::vector<std::shared_ptr<prioritized_qp::Task> > tasks;
@@ -414,6 +422,7 @@ namespace multicontact_controller {
 
     cnoid::MatrixXd Xinv;
     cnoidbodyutils::calcPseudoInverse(X,Xinv,sv_ratio);
+
     Eigen::SparseMatrix<double,Eigen::RowMajor> Yu(6+robot->numJoints(),Xinv.cols());
     Eigen::SparseMatrix<double,Eigen::RowMajor> Yl(Jbal.rows(),Xinv.cols());
     for(size_t i=0;i<Yu.rows();i++){

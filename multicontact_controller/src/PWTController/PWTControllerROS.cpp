@@ -206,6 +206,7 @@ namespace multicontact_controller {
           }
         }
         //controllerClient.sendGoal(goal); temporary
+        exit(0); //temporary
       }
 
       seq++;

@@ -116,7 +116,7 @@ namespace multicontact_controller {
           }
         }
 
-        Minv = V * sinv.diagonal() * U.transpose();
+        Minv = V * sinv.asDiagonal() * U.transpose();
 
         return nonzeros;
       }

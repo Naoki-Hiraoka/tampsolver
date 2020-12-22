@@ -7,7 +7,6 @@ namespace multicontact_controller{
     TorqueJacobianCalculator::TorqueJacobianCalculator(cnoid::Body* robot)
       : robot_(robot),
         Dg_(6+robot_->numJoints(),6+robot_->numJoints()),
-        DJw_(6+robot_->numJoints(),6+robot_->numJoints()),
         subMasses_(robot_->numLinks())
     {
       // construct rootaxis
@@ -79,7 +78,9 @@ namespace multicontact_controller{
       return Dg_;
     }
 
-    const Eigen::SparseMatrix<double,Eigen::RowMajor>&  TorqueJacobianCalculator::calcDJw(std::vector<std::shared_ptr<ContactPoint> >& contactPoints){
+    Eigen::SparseMatrix<double,Eigen::RowMajor> TorqueJacobianCalculator::calcDJw(std::vector<std::shared_ptr<ContactPoint> >& contactPoints){
+      Eigen::SparseMatrix<double,Eigen::RowMajor> DJw(6+robot_->numJoints(),6+robot_->numJoints());
+
       std::vector<cnoid::Vector3> f_worlds;//world系
       std::vector<cnoid::Vector3> n_worlds;//world系,contactpointまわり
       std::vector<cnoid::Position> T_worlds;//world系
@@ -98,7 +99,7 @@ namespace multicontact_controller{
           for(size_t m = 0; m < contactPoints.size(); m++){
             value += f_worlds[m].dot(cnoid::hat(rootAxis_[i]) * rootAxis_[j]);
           }
-          DJw_.coeffRef(i,j) = value;
+          DJw.coeffRef(i,j) = value;
         }
       }
 
@@ -108,7 +109,7 @@ namespace multicontact_controller{
             for(size_t m = 0; m < contactPoints.size(); m++){
               value += f_worlds[m].dot(cnoid::hat(rootAxis_[i]) * cnoid::hat(rootAxis_[j]) * (T_worlds[m].translation() - robot_->rootLink()->p()));
             }
-            DJw_.coeffRef(i,j) = value;
+            DJw.coeffRef(i,j) = value;
         }
       }
 
@@ -133,15 +134,14 @@ namespace multicontact_controller{
               break;
             }
           }
-          if(changed)DJw_.coeffRef(i,6+j) = value;
+          if(changed)DJw.coeffRef(i,6+j) = value;
         }
       }
 
       for(size_t i = 0 ; i < robot_->numJoints(); i++){//i = i+6
         for(size_t j = 3 ; j < 6; j++){
           cnoid::Link* joint_i = robot_->joint(i);
-          const SubMass& sub_i = subMasses_[joint_i->index()];
-          double value;
+          double value = 0;
           bool changed = false;
           for(size_t m = 0; m < contactPoints.size(); m++){
             cnoid::Link* joint_m = contactPoints[m]->parent();
@@ -160,16 +160,14 @@ namespace multicontact_controller{
               break;
             }
           }
-          if(changed)DJw_.coeffRef(6+i,j) = value;
+          if(changed)DJw.coeffRef(6+i,j) = value;
         }
       }
 
       for(size_t i = 0; i < robot_->numJoints(); i++){
         for(size_t j = 0; j < robot_->numJoints(); j++){
           cnoid::Link* joint_i = robot_->joint(i);
-          const SubMass& sub_i = subMasses_[joint_i->index()];
           cnoid::Link* joint_j = robot_->joint(j);
-          const SubMass& sub_j = subMasses_[joint_j->index()];
 
           double value = 0;
           bool changed = false;
@@ -218,11 +216,11 @@ namespace multicontact_controller{
             break;
           }
 
-          if(changed) DJw_.coeffRef(6+i,6+j) = value;
+          if(changed) DJw.coeffRef(6+i,6+j) = value;
         }
       }
 
-      return DJw_;
+      return DJw;
     }
 
     // copied from Choreonoid/Body/Jacobian.cpp
