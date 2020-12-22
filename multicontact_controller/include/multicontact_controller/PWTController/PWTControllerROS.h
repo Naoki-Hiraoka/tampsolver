@@ -42,23 +42,27 @@ namespace multicontact_controller {
     void onStateUpdated() override;
 
     void forceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
-      if(contactPoint_->interaction()){
+      if(this->isValid()){
         tf::wrenchMsgToEigen(msg->wrench,contactPoint_->F());
         contactPoint_->interaction()->F() = contactPoint_->F();
       }
     };
     void refForceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
-      if(contactPoint_->interaction()){
+      if(this->isValid()){
         tf::wrenchMsgToEigen(msg->wrench,contactPoint_->interaction()->F_ref());
       }
     };
     void targetPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-      if(contactPoint_->interaction()){
+      if(this->isValid()){
         Eigen::Affine3d pose;
         tf::poseMsgToEigen(msg->pose,pose);
         contactPoint_->interaction()->T_ref() = pose;
       }
     };
+
+    bool isValid() override{
+      return endeffectorutils::EndEffectorClient::isValid() && contactPoint_->isValid();
+    }
 
   private:
     cnoid::Body* robot_;

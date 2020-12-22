@@ -54,6 +54,9 @@ namespace multicontact_controller {
       }
       virtual void onStateUpdated() {return;}
 
+      // infoがしっかり届いているか
+      virtual bool isValid() {return bool(info_);}
+
       std::string& name() {return name_;}
       std::string name() const {return name_;}
       std::string& state() {return state_;}

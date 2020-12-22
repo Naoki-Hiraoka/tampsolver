@@ -32,6 +32,10 @@ namespace multicontact_controller {
 
     std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
+    bool isValid() override {
+      return cnoidbodyutils::ContactPoint::isValid() && contact_ && interaction_;
+    }
+
     std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
     std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
     std::shared_ptr<cnoidbodyutils::Interaction> interaction() const { return interaction_;}

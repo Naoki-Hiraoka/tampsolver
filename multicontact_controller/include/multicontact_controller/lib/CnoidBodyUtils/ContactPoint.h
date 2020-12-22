@@ -32,6 +32,8 @@ namespace multicontact_controller{
       }
       const Eigen::SparseMatrix<double,Eigen::RowMajor>& calcRinv(cnoid::Link* parent, cnoid::Position& T_local);//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
 
+      virtual bool isValid() {return parent_;}
+
     protected:
       std::string name_;
 

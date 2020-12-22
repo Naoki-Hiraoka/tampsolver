@@ -11,13 +11,14 @@ namespace multicontact_controller {
   }
 
   void EndEffectorPWTCROS::onStateUpdated(){
-    contactPoint_->state() = state_;
-    if(prev_state_ != state_ &&
-       (state_ == "AIR" || state_ == "NEAR_CONTACT" || state_ == "TOWARD_MAKE_CONTACT") &&
-       (prev_state_ != "AIR" && prev_state_ != "NEAR_CONTACT" && prev_state_ != "TOWARD_MAKE_CONTACT")){
-      if(contactPoint_->interaction()) contactPoint_->interaction()->reset_ref();
+    if(this->isValid()){
+      contactPoint_->state() = state_;
+      if(prev_state_ != state_ &&
+         (state_ == "AIR" || state_ == "NEAR_CONTACT" || state_ == "TOWARD_MAKE_CONTACT") &&
+         (prev_state_ != "AIR" && prev_state_ != "NEAR_CONTACT" && prev_state_ != "TOWARD_MAKE_CONTACT")){
+        contactPoint_->interaction()->reset_ref();
+      }
     }
-
   }
 
   void setupJointInfoFromParam(const std::string& ns, std::shared_ptr<JointInfo>& jointInfo, std::map<std::string, std::shared_ptr<JointInfo> >& jointInfoMap){
@@ -173,9 +174,7 @@ namespace multicontact_controller {
         std::vector<std::shared_ptr<ContactPointPWTC> > contactPoints;
         for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
           if(it->second->state() != "NOT_CARED" &&
-             it->second->contactPoint()->parent() &&
-             it->second->contactPoint()->contact() &&
-             it->second->contactPoint()->interaction()){
+             it->second->isValid()){
             contactPoints.push_back(it->second->contactPoint());
           }
         }
@@ -283,7 +282,7 @@ namespace multicontact_controller {
 
         // 目標エンドエフェクタ位置を初期化
         for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-          if(it->second->contactPoint()->parent() && it->second->contactPoint()->interaction()){
+          if(it->second->isValid()){
             it->second->contactPoint()->interaction()->reset_ref();
           }
         }
