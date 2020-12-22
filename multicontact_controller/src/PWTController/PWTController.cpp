@@ -114,6 +114,23 @@ namespace multicontact_controller {
     return;
   }
 
+  std::vector<cnoid::SgNodePtr> ContactPointPWTC::getDrawOnObjects(){
+    std::vector<cnoid::SgNodePtr> drawOnObjects;
+    if(state_ == "CONTACT" || state_ == "TOWARD_BREAK_CONTACT"){
+      if(contact_ && parent_){
+        std::vector<cnoid::SgNodePtr> objects = contact_->getDrawOnObjects(parent_->T() * T_local_);
+        std::copy(objects.begin(), objects.end(), std::back_inserter(drawOnObjects));
+      }
+    }
+    if(state_ == "TOWARD_MAKE_CONTACT" || state_ == "NEAR_CONTACT" || state_ == "AIR"){
+      if(interaction_ && parent_){
+        std::vector<cnoid::SgNodePtr> objects = interaction_->getDrawOnObjects();
+        std::copy(objects.begin(), objects.end(), std::back_inserter(drawOnObjects));
+      }
+    }
+    return drawOnObjects;
+  }
+
   JointInfo::JointInfo()
     : name_(),
       joint_(nullptr),

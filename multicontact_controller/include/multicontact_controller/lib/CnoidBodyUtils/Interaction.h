@@ -27,6 +27,8 @@ namespace multicontact_controller{
 
       void update(const cnoid::Vector3& v, const cnoid::Vector3& w);
 
+      std::vector<cnoid::SgNodePtr> getDrawOnObjects();
+
       cnoid::Vector6 F() const { return F_;}
       cnoid::Vector6& F() { return F_;}
       cnoid::Vector6 F_ref() const { return F_ref_;}
@@ -88,6 +90,8 @@ namespace multicontact_controller{
       double weight_rot_;
       double v_limit_;
       double w_limit_;
+
+      cnoid::SgLineSetPtr lines_;//for visualization
 
     };
 

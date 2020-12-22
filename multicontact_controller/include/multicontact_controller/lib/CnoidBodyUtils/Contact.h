@@ -30,7 +30,7 @@ namespace multicontact_controller{
       }
 
 
-      virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects(const cnoid::Position& T=cnoid::Position()) = 0;
+      virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects(const cnoid::Position& T=cnoid::Position::Identity()) = 0;
 
       std::string type() const { return type_;}
       std::string& type() { return type_;}

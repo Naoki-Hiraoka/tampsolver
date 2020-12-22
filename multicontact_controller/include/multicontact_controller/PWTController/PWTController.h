@@ -30,6 +30,8 @@ namespace multicontact_controller {
       this->interaction_->update(vel.head<3>(), vel.tail<3>());
     }
 
+    std::vector<cnoid::SgNodePtr> getDrawOnObjects();
+
     std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
     std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
     std::shared_ptr<cnoidbodyutils::Interaction> interaction() const { return interaction_;}

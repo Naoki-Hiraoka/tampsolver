@@ -167,7 +167,9 @@ namespace multicontact_controller {
         jointInfos_[i]->dt() = dt;
       }
 
-      if( this->isEnabled_ ){
+      if( !this->isEnabled_ ){
+        this->drawObjects();
+      } else {
         std::vector<std::shared_ptr<ContactPointPWTC> > contactPoints;
         for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
           if(it->second->state() != "NOT_CARED" &&
@@ -177,6 +179,16 @@ namespace multicontact_controller {
             contactPoints.push_back(it->second->contactPoint());
           }
         }
+
+        // draw
+        this->drawObjects(false);
+        for(size_t i=0;i<contactPoints.size();i++){
+          std::vector<cnoid::SgNodePtr> objects = contactPoints[i]->getDrawOnObjects();
+          for(size_t j=0;j<objects.size();j++){
+            this->drawOn(objects[j]);
+          }
+        }
+        this->flush();
 
         // solve
         robot_->calcCenterOfMass();
@@ -199,8 +211,6 @@ namespace multicontact_controller {
 
       seq++;
       stamp = now;
-
-      drawObjects();
 
       r.sleep();
     }
@@ -268,6 +278,13 @@ namespace multicontact_controller {
           double command_angle = controllerState_->desired.positions[i];
           if(jointInfoMap_.find(name) != jointInfoMap_.end()){
             jointInfoMap_[name]->command_angle() = command_angle;
+          }
+        }
+
+        // 目標エンドエフェクタ位置を初期化
+        for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+          if(it->second->contactPoint()->parent() && it->second->contactPoint()->interaction()){
+            it->second->contactPoint()->interaction()->reset_ref();
           }
         }
       }
