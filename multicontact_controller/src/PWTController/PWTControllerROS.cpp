@@ -137,6 +137,10 @@ namespace multicontact_controller {
 
     ros::ServiceServer enableService = pnh.advertiseService("enable",&PWTControllerROS::enableCallback,this);
 
+    dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig> server;
+    server.setCallback(std::bind(&PWTControllerROS::configCallback, this, std::placeholders::_1, std::placeholders::_2));
+    this->updateServerConfig(server);
+
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction > controllerClient("fullbody_controller/follow_joint_trajectory_action", true);
     ROS_INFO("Waiting for fullbody_controller to start.");
     controllerClient.waitForServer();
@@ -145,15 +149,14 @@ namespace multicontact_controller {
     isEnabled_ = false;
 
     // main loop
-    int rate;
-    pnh.param("rate", rate, 50); // 50 hz
-    ros::Rate r(rate);
+    pnh.param("rate", this->rate_, 50.0); // 50 hz
+    this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
 
     unsigned int seq = 0;
     ros::Time stamp = ros::Time::now();
     while (ros::ok()) {
       ros::Time now = ros::Time::now();
-      double dt = std::min(10.0/rate, std::max(1.0/rate, (now - stamp).toSec())); //rosは厳密はdtは無理。dtが想定より小さすぎたり大きすぎると計算が不安定になるので。
+      double dt = std::min(10.0/this->rate_, std::max(1.0/this->rate_, (now - stamp).toSec())); //rosは厳密はdtは無理。dtが想定より小さすぎたり大きすぎると計算が不安定になるので。
 
       // spin
       ros::spinOnce();
@@ -181,14 +184,16 @@ namespace multicontact_controller {
         }
 
         // draw
-        this->drawObjects(false);
-        for(size_t i=0;i<contactPoints.size();i++){
-          std::vector<cnoid::SgNodePtr> objects = contactPoints[i]->getDrawOnObjects();
-          for(size_t j=0;j<objects.size();j++){
-            this->drawOn(objects[j]);
+        if(this->hasViewer()){
+          this->drawObjects(false);
+          for(size_t i=0;i<contactPoints.size();i++){
+            std::vector<cnoid::SgNodePtr> objects = contactPoints[i]->getDrawOnObjects();
+            for(size_t j=0;j<objects.size();j++){
+              this->drawOn(objects[j]);
+            }
           }
+          this->flush();
         }
-        this->flush();
 
         // solve
         robot_->calcCenterOfMass();
@@ -212,7 +217,7 @@ namespace multicontact_controller {
       seq++;
       stamp = now;
 
-      r.sleep();
+      this->rosRate_->sleep();
     }
 
     exit(0);
@@ -294,6 +299,47 @@ namespace multicontact_controller {
       response.message = "";
       return true;
     }
+  }
+
+  void PWTControllerROS::configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level){
+    if(this->rate_ != config.rate){
+      this->rate_ = config.rate;
+      this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
+    }
+    PWTController_->sv_ratio() = config.sv_ratio;
+    PWTController_->k0() = config.k0;
+    PWTController_->k1() = config.k1;
+    PWTController_->w1() = config.w1;
+    PWTController_->we1() = config.we1;
+    PWTController_->w_scale1() = config.w_scale1;
+    PWTController_->tau_scale1() = config.tau_scale1;
+    PWTController_->w2() = config.w2;
+    PWTController_->we2() = config.we2;
+    PWTController_->k3() = config.k3;
+    PWTController_->w3() = config.w3;
+    PWTController_->w_scale3() = config.w_scale3;
+    PWTController_->tau_scale3() = config.tau_scale3;
+    PWTController_->taumax_weight3() = config.taumax_weight3;
+  }
+
+  void PWTControllerROS::updateServerConfig(dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig>& server){
+    multicontact_controller_msgs::PWTControllerConfig config;
+    config.rate = this->rate_;
+    config.sv_ratio = PWTController_->sv_ratio();
+    config.k0 = PWTController_->k0();
+    config.k1 = PWTController_->k1();
+    config.w1 = PWTController_->w1();
+    config.we1 = PWTController_->we1();
+    config.w_scale1 = PWTController_->w_scale1();
+    config.tau_scale1 = PWTController_->tau_scale1();
+    config.w2 = PWTController_->w2();
+    config.we2 = PWTController_->we2();
+    config.k3 = PWTController_->k3();
+    config.w3 = PWTController_->w3();
+    config.w_scale3 = PWTController_->w_scale3();
+    config.tau_scale3 = PWTController_->tau_scale3();
+    config.taumax_weight3 = PWTController_->taumax_weight3();
+    server.updateConfig(config);
   }
 
 };

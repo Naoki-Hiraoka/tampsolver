@@ -185,12 +185,34 @@ namespace multicontact_controller {
     //calcForwardKinematics()とcalcCM()が事前に必要
     bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt);
 
-    double& sv_ratio() { return sv_ratio_;}
     double sv_ratio() const { return sv_ratio_;}
-
-    double& k0() { return k0_;}
+    double& sv_ratio() { return sv_ratio_;}
     double k0() const { return k0_;}
-
+    double& k0() { return k0_;}
+    double k1() const { return k1_;}
+    double& k1() { return k1_;}
+    double w1() const { return w1_;}
+    double& w1() { return w1_;}
+    double we1() const { return we1_;}
+    double& we1() { return we1_;}
+    double w_scale1() const { return w_scale1_;}
+    double& w_scale1() { return w_scale1_;}
+    double tau_scale1() const { return tau_scale1_;}
+    double& tau_scale1() { return tau_scale1_;}
+    double w2() const { return w2_;}
+    double& w2() { return w2_;}
+    double we2() const { return we2_;}
+    double& we2() { return we2_;}
+    double k3() const { return k3_;}
+    double& k3() { return k3_;}
+    double w3() const { return w3_;}
+    double& w3() { return w3_;}
+    double w_scale3() const { return w_scale3_;}
+    double& w_scale3() { return w_scale3_;}
+    double tau_scale3() const { return tau_scale3_;}
+    double& tau_scale3() { return tau_scale3_;}
+    double taumax_weight3() const { return taumax_weight3_;}
+    double& taumax_weight3() { return taumax_weight3_;}
   protected:
     // メンバ変数はKa_しか使わない
     bool calcPWTJacobian(Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,//返り値
@@ -255,6 +277,7 @@ namespace multicontact_controller {
                          const cnoid::VectorX& dl,
                          const cnoid::VectorX& du,
                          const cnoid::VectorX& wc);
+
   private:
     cnoid::Body* robot_;
     std::vector<std::shared_ptr<JointInfo> >& jointInfos_;

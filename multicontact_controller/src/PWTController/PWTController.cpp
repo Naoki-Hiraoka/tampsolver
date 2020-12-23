@@ -583,22 +583,15 @@ namespace multicontact_controller {
       task->w().resize(cols);//解かないので使わない
       for(size_t i=0;i<task->w().size();i++) task->w()[i] = 1.0;
 
-      std::cerr << "A" << std::endl;
-      std::cerr << task->A() << std::endl;
-      std::cerr << "b" << std::endl;
-      std::cerr << task->b() << std::endl;
-      std::cerr << "C" << std::endl;
-      std::cerr << task->C() << std::endl;
-      std::cerr << "dl" << std::endl;
-      std::cerr << task->dl() << std::endl;
-      std::cerr << "du" << std::endl;
-      std::cerr << task->du() << std::endl;
-      std::cerr << "wa" << std::endl;
-      std::cerr << task->wa() << std::endl;
-      std::cerr << "wc" << std::endl;
-      std::cerr << task->wc() << std::endl;
-      std::cerr << "w" << std::endl;
-      std::cerr << task->w() << std::endl;
+      std::cerr << "Task0" << std::endl;
+      std::cerr << "A" << std::endl << task->A() << std::endl;
+      std::cerr << "b" << std::endl << task->b() << std::endl;
+      std::cerr << "C" << std::endl << task->C() << std::endl;
+      std::cerr << "dl" << std::endl << task->dl() << std::endl;
+      std::cerr << "du" << std::endl << task->du() << std::endl;
+      std::cerr << "wa" << std::endl << task->wa() << std::endl;
+      std::cerr << "wc" << std::endl << task->wc() << std::endl;
+      std::cerr << "w" << std::endl << task->w() << std::endl;
 
       return true;
   }

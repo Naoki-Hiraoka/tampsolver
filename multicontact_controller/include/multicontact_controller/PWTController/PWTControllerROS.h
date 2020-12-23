@@ -13,7 +13,9 @@
 #include <multicontact_controller_msgs/StringArray.h>
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
 #include <multicontact_controller_msgs/MotorTemperatureState.h>
+#include <multicontact_controller_msgs/PWTControllerConfig.h>
 #include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <pr2_controllers_msgs/JointTrajectoryControllerState.h>
 #include <actionlib/client/simple_action_client.h>
@@ -86,6 +88,8 @@ namespace multicontact_controller {
     void controllerStateCallback(const pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+    void configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level);
+    void updateServerConfig(dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig>& server);
 
     bool isEnabled_;
 
@@ -96,6 +100,10 @@ namespace multicontact_controller {
     std::shared_ptr<PWTController> PWTController_;
 
     pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr controllerState_;
+
+    // param
+    double rate_;
+    std::shared_ptr<ros::Rate> rosRate_;
 
   };
 

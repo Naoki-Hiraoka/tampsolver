@@ -48,14 +48,6 @@ namespace multicontact_controller{
          + (/*v_ref_ - prev_v_ref_ +*/ prev_v_) * M_p_ / dt_) // ROSを用いる場合はtopicが届く時刻がバラバラなのでrefの加速度は考慮しない
         / (M_p_ / std::pow(dt_,2) + D_p_ / dt_ + K_p_);
 
-      std::cerr << "prev_T_ref_.linear()" << std::endl << prev_T_ref_.linear() << std::endl;
-      std::cerr << "cnoid::omegaFromRot(prev_T_ref_.linear().transpose() * T_ref_.linear())" << std::endl << cnoid::omegaFromRot(prev_T_ref_.linear().transpose() * T_ref_.linear()) << std::endl;
-      std::cerr << "dt" << std::endl << dt_ << std::endl;
-      std::cerr << "T_.linear()" << std::endl << T_.linear() << std::endl;
-      std::cerr << "T_ref_.linear()" << std::endl << T_ref_.linear() << std::endl;
-      std::cerr << "cnoid::omegaFromRot(T_.linear().transpose() * T_ref_.linear())" << std::endl << cnoid::omegaFromRot(T_.linear().transpose() * T_ref_.linear()) << std::endl;
-      std::cerr << "w_ref_" << std::endl << w_ref_ << std::endl;
-      std::cerr << "prev_w_" << std::endl << prev_w_ << std::endl;
       b.tail<3>() =
         ((F_.tail<3>()-F_ref_.tail<3>()).cwiseProduct(moment_gain_)
          + cnoid::omegaFromRot(T_.linear().transpose() * T_ref_.linear()) * K_r_
