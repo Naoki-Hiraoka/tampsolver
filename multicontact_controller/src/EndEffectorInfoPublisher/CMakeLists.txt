@@ -2,6 +2,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf2_ros
   eigen_conversions
+  dynamic_reconfigure
   multicontact_controller_msgs)
 
 add_executable(end_effector_info_publisher EndEffectorInfoPublisher.cpp)
