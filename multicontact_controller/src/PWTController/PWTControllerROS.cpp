@@ -145,7 +145,7 @@ namespace multicontact_controller {
     isEnabled_ = false;
 
     // main loop
-    pnh.param("rate", this->rate_, 50.0); // 50 hz
+    pnh.param("rate", this->rate_, 100.0); // 100 hz
     this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
 
     dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig> server;
@@ -308,9 +308,9 @@ namespace multicontact_controller {
   void PWTControllerROS::configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level){
     if(this->rate_ != config.rate){
       this->rate_ = config.rate;
-      std::cerr << config.rate << std::endl;
       this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
     }
+    PWTController_->debug_print() = config.debug_print;
     PWTController_->sv_ratio() = config.sv_ratio;
     PWTController_->k0() = config.k0;
     PWTController_->k1() = config.k1;
@@ -330,6 +330,7 @@ namespace multicontact_controller {
   multicontact_controller_msgs::PWTControllerConfig PWTControllerROS::getCurrentConfig(){
     multicontact_controller_msgs::PWTControllerConfig config;
     config.rate = this->rate_;
+    config.debug_print = PWTController_->debug_print();
     config.sv_ratio = PWTController_->sv_ratio();
     config.k0 = PWTController_->k0();
     config.k1 = PWTController_->k1();

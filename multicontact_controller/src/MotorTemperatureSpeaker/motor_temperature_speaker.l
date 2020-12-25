@@ -39,7 +39,11 @@
               (setq minimum j)))
 
           (when (< (cadr minimum) speak-limit-time)
-            (let ((m (format nil "~S ~A second" (car minimum) (cadr minimum))))
+            (let ((m (format nil "~A ~A second"
+                             (map string #'(lambda (c) (cond ((= c (elt "_" 0)) (elt " " 0))
+                                                             (t c)))
+                                  (car minimum))
+                             (floor (cadr minimum)))))
               (ros::ros-info m)
               (speak m)
               (setq prev-speak-time time)

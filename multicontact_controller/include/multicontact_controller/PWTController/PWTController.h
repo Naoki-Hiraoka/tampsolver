@@ -162,19 +162,20 @@ namespace multicontact_controller {
         jointInfos_(jointInfos),
         torqueJacobianCalculator_(robot_),
         //params
+        debug_print_(false),
         sv_ratio_(1e-12),
         k0_(0.1),
         k1_(3.0),
         w1_(1e-2),
-        we1_(1e-8),
-        w_scale1_(1e2),
-        tau_scale1_(1e2),
+        we1_(1e2),
+        w_scale1_(1e3),
+        tau_scale1_(1e3),
         w2_(1e-2),
         we2_(1e4),
         k3_(5.0),//TODO
         w3_(1e-2),//TODO
-        w_scale3_(1e2),//TODO
-        tau_scale3_(1e2),//TODO
+        w_scale3_(1e3),//TODO
+        tau_scale3_(5e3),//TODO
         taumax_weight3_(1e2),//TODO
 
         //cache
@@ -185,6 +186,8 @@ namespace multicontact_controller {
     //calcForwardKinematics()とcalcCM()が事前に必要
     bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt);
 
+    bool debug_print() const {return debug_print_;}
+    bool& debug_print() {return debug_print_;}
     double sv_ratio() const { return sv_ratio_;}
     double& sv_ratio() { return sv_ratio_;}
     double k0() const { return k0_;}
@@ -225,14 +228,14 @@ namespace multicontact_controller {
                          std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
                          double sv_ratio);
 
-    // メンバ変数はTask0_しか使わない
+    // メンバ変数はdebug_print_とTask0_しか使わない
     bool setupTask0(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                     double k,
                     double dt);
 
-    // メンバ変数はTask1_しか使わない
+    // メンバ変数はdebug_print_とTask1_しか使わない
     bool setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
@@ -246,7 +249,7 @@ namespace multicontact_controller {
                     double w,
                     double we);
 
-    // メンバ変数はTask2_しか使わない
+    // メンバ変数はdebug_print_とTask2_しか使わない
     bool setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
@@ -256,7 +259,7 @@ namespace multicontact_controller {
                     double w,
                     double we);
 
-    // メンバ変数はTask3_しか使わない
+    // メンバ変数はdebug_print_とTask3_しか使わない
     bool setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
@@ -284,6 +287,7 @@ namespace multicontact_controller {
     cnoidbodyutils::TorqueJacobianCalculator torqueJacobianCalculator_;
 
     // params
+    bool debug_print_;
     //   calcPWTJacobian
     double sv_ratio_;
     //   setupTask0

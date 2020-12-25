@@ -397,7 +397,9 @@ namespace multicontact_controller {
 
     }
 
-    std::cerr << "result" << result << std::endl;
+    if(debug_print_){
+      std::cerr << "result" << result << std::endl;
+    }
 
     return true;
   }
@@ -590,15 +592,17 @@ namespace multicontact_controller {
       task->w().resize(cols);//解かないので使わない
       for(size_t i=0;i<task->w().size();i++) task->w()[i] = 1.0;
 
-      std::cerr << "Task0" << std::endl;
-      std::cerr << "A" << std::endl << task->A() << std::endl;
-      std::cerr << "b" << std::endl << task->b() << std::endl;
-      std::cerr << "C" << std::endl << task->C() << std::endl;
-      std::cerr << "dl" << std::endl << task->dl() << std::endl;
-      std::cerr << "du" << std::endl << task->du() << std::endl;
-      std::cerr << "wa" << std::endl << task->wa() << std::endl;
-      std::cerr << "wc" << std::endl << task->wc() << std::endl;
-      std::cerr << "w" << std::endl << task->w() << std::endl;
+      if(debug_print_){
+        std::cerr << "Task0" << std::endl;
+        std::cerr << "A" << std::endl << task->A() << std::endl;
+        std::cerr << "b" << std::endl << task->b() << std::endl;
+        std::cerr << "C" << std::endl << task->C() << std::endl;
+        std::cerr << "dl" << std::endl << task->dl() << std::endl;
+        std::cerr << "du" << std::endl << task->du() << std::endl;
+        std::cerr << "wa" << std::endl << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl << task->wc() << std::endl;
+        std::cerr << "w" << std::endl << task->w() << std::endl;
+      }
 
       return true;
   }
@@ -620,7 +624,7 @@ namespace multicontact_controller {
         task = this->task1_;
         task->name() = "Task1: Contact Force, Joint Torque";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(true);
+        task->solver().settings()->setVerbosity(debug_print_);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -629,6 +633,10 @@ namespace multicontact_controller {
         task->toSolve() = true;
       }else{
         task = this->task1_;
+        if(task->solver().settings()->getSettings()->verbose != debug_print_){
+          task->solver().settings()->setVerbosity(debug_print_);
+          task->solver().clearSolver();
+        }
       }
 
       size_t cols = 0;
@@ -716,22 +724,24 @@ namespace multicontact_controller {
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
-      std::cerr << "A" << std::endl;
-      std::cerr << task->A() << std::endl;
-      std::cerr << "b" << std::endl;
-      std::cerr << task->b() << std::endl;
-      std::cerr << "C" << std::endl;
-      std::cerr << task->C() << std::endl;
-      std::cerr << "dl" << std::endl;
-      std::cerr << task->dl() << std::endl;
-      std::cerr << "du" << std::endl;
-      std::cerr << task->du() << std::endl;
-      std::cerr << "wa" << std::endl;
-      std::cerr << task->wa() << std::endl;
-      std::cerr << "wc" << std::endl;
-      std::cerr << task->wc() << std::endl;
-      std::cerr << "w" << std::endl;
-      std::cerr << task->w() << std::endl;
+      if(debug_print_){
+        std::cerr << "A" << std::endl;
+        std::cerr << task->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << task->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << task->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << task->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << task->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << task->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << task->w() << std::endl;
+      }
 
       return true;
   }
@@ -749,7 +759,7 @@ namespace multicontact_controller {
         task = this->task2_;
         task->name() = "Task2: Interacting EndEffector";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(true);
+        task->solver().settings()->setVerbosity(debug_print_);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -758,6 +768,10 @@ namespace multicontact_controller {
         task->toSolve() = true;
       }else{
         task = this->task2_;
+        if(task->solver().settings()->getSettings()->verbose != debug_print_){
+          task->solver().settings()->setVerbosity(debug_print_);
+          task->solver().clearSolver();
+        }
       }
 
       size_t cols = 0;
@@ -818,22 +832,24 @@ namespace multicontact_controller {
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
-      std::cerr << "A" << std::endl;
-      std::cerr << task->A() << std::endl;
-      std::cerr << "b" << std::endl;
-      std::cerr << task->b() << std::endl;
-      std::cerr << "C" << std::endl;
-      std::cerr << task->C() << std::endl;
-      std::cerr << "dl" << std::endl;
-      std::cerr << task->dl() << std::endl;
-      std::cerr << "du" << std::endl;
-      std::cerr << task->du() << std::endl;
-      std::cerr << "wa" << std::endl;
-      std::cerr << task->wa() << std::endl;
-      std::cerr << "wc" << std::endl;
-      std::cerr << task->wc() << std::endl;
-      std::cerr << "w" << std::endl;
-      std::cerr << task->w() << std::endl;
+      if(debug_print_){
+        std::cerr << "A" << std::endl;
+        std::cerr << task->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << task->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << task->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << task->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << task->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << task->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << task->w() << std::endl;
+      }
 
       return true;
   }
@@ -855,7 +871,7 @@ namespace multicontact_controller {
         task = this->task3_;
         task->name() = "Task3: Contact Force, Joint Torque Reduction";
         task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(true);
+        task->solver().settings()->setVerbosity(debug_print_);
         task->solver().settings()->setWarmStart(true);
         task->solver().settings()->setMaxIteration(4000);
         task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
@@ -864,6 +880,10 @@ namespace multicontact_controller {
         task->toSolve() = true;
       }else{
         task = this->task3_;
+        if(task->solver().settings()->getSettings()->verbose != debug_print_){
+          task->solver().settings()->setVerbosity(debug_print_);
+          task->solver().clearSolver();
+        }
       }
 
       size_t cols = 0;
@@ -946,22 +966,24 @@ namespace multicontact_controller {
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
 
-      std::cerr << "A" << std::endl;
-      std::cerr << task->A() << std::endl;
-      std::cerr << "b" << std::endl;
-      std::cerr << task->b() << std::endl;
-      std::cerr << "C" << std::endl;
-      std::cerr << task->C() << std::endl;
-      std::cerr << "dl" << std::endl;
-      std::cerr << task->dl() << std::endl;
-      std::cerr << "du" << std::endl;
-      std::cerr << task->du() << std::endl;
-      std::cerr << "wa" << std::endl;
-      std::cerr << task->wa() << std::endl;
-      std::cerr << "wc" << std::endl;
-      std::cerr << task->wc() << std::endl;
-      std::cerr << "w" << std::endl;
-      std::cerr << task->w() << std::endl;
+      if(debug_print_){
+        std::cerr << "A" << std::endl;
+        std::cerr << task->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << task->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << task->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << task->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << task->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << task->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << task->w() << std::endl;
+      }
 
       return true;
   }
