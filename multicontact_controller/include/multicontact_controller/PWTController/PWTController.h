@@ -171,7 +171,7 @@ namespace multicontact_controller {
         we2_(1e4),
         k2_5_(5.0),
         w2_5_(1e-2),
-        we2_5_(1e4),
+        we2_5_(1e8),
         w_scale2_5_(1e3),
         k3_(5.0),//TODO
         w3_(1e-2),//TODO
