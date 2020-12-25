@@ -54,6 +54,7 @@ namespace multicontact_controller{
     }
 
     //Ax = b, dl <= Cx <= du
+    //各行は無次元化されている
     void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       // A,bはゼロ．
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
@@ -73,84 +74,122 @@ namespace multicontact_controller{
       int idx=0;
 
       //垂直抗力
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,1));
-      dl[idx] = std::max(this->min_fz_,0.0);
-      du[idx] = this->max_fz_;
-      wc[idx] = 1.0;
-      idx++;
+      {
+        double scale = std::max(this->max_fz_,1e-4);
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,1.0/scale));
+        dl[idx] = std::max(this->min_fz_,0.0) / scale;
+        du[idx] = std::max(std::max(this->max_fz_, this->min_fz_) , 0.0) / scale;
+        wc[idx] = 1.0;
+        idx++;
+      }
 
       //x摩擦
-      tripletList.push_back(Eigen::Triplet<double>(idx,0,-1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      idx++;
-      tripletList.push_back(Eigen::Triplet<double>(idx,0,1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      idx++;
-
-      //y摩擦
-      tripletList.push_back(Eigen::Triplet<double>(idx,1,-1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      idx++;
-      tripletList.push_back(Eigen::Triplet<double>(idx,1,1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      idx++;
-
-      //回転摩擦
-      tripletList.push_back(Eigen::Triplet<double>(idx,5,-1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
-      idx++;
-      tripletList.push_back(Eigen::Triplet<double>(idx,5,1));
-      tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance));
-      dl[idx] = 0;
-      du[idx] = std::numeric_limits<double>::max();
-      wc[idx] = std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
-      idx++;
-
-      //COP
-      for(size_t i=0;i<this->surface_->polygonVertices().size();i++){
-        cnoid::Vector3f v1 = this->surface_->vertices()->at(this->surface_->polygonVertices()[i]);
-        int v2_idx = (i+1 == this->surface_->polygonVertices().size())? 0 : i+1;
-        cnoid::Vector3f v2 = this->surface_->vertices()->at(this->surface_->polygonVertices()[v2_idx]);
-        tripletList.push_back(Eigen::Triplet<double>(idx,2,v1[0]*v2[1]-v1[1]*v2[0]));
-        tripletList.push_back(Eigen::Triplet<double>(idx,3,v1[1]-v2[1]));
-        tripletList.push_back(Eigen::Triplet<double>(idx,4,-v1[0]+v2[0]));
+      {
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        tripletList.push_back(Eigen::Triplet<double>(idx,0,-1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
+        dl[idx] = 0.0;
+        du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = 1.0;
+        idx++;
+        tripletList.push_back(Eigen::Triplet<double>(idx,0,1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
         dl[idx] = 0;
         du[idx] = std::numeric_limits<double>::max();
-        wc[idx] = std::min(1e4, 1.0/std::pow(maximum_distance,2));
+        wc[idx] = 1.0;
         idx++;
+      }
+
+      //y摩擦
+      {
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        tripletList.push_back(Eigen::Triplet<double>(idx,1,-1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
+        dl[idx] = 0;
+        du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = 1.0;
+        idx++;
+        tripletList.push_back(Eigen::Triplet<double>(idx,1,1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
+        dl[idx] = 0;
+        du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = 1.0;
+        idx++;
+      }
+
+      //回転摩擦
+      {
+        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1e-4);
+        tripletList.push_back(Eigen::Triplet<double>(idx,5,-1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance/scale));
+        dl[idx] = 0;
+        du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = 1.0;
+        idx++;
+        tripletList.push_back(Eigen::Triplet<double>(idx,5,1.0/scale));
+        tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance/scale));
+        dl[idx] = 0;
+        du[idx] = std::numeric_limits<double>::max();
+        wc[idx] = 1.0;
+        idx++;
+      }
+
+      //COP
+      {
+        double scale = std::max(this->max_fz_ * maximum_distance, 1e-4);
+        for(size_t i=0;i<this->surface_->polygonVertices().size();i++){
+          cnoid::Vector3f v1 = this->surface_->vertices()->at(this->surface_->polygonVertices()[i]);
+          int v2_idx = (i+1 == this->surface_->polygonVertices().size())? 0 : i+1;
+          cnoid::Vector3f v2 = this->surface_->vertices()->at(this->surface_->polygonVertices()[v2_idx]);
+          tripletList.push_back(Eigen::Triplet<double>(idx,2,(v1[0]*v2[1]-v1[1]*v2[0])/scale));
+          tripletList.push_back(Eigen::Triplet<double>(idx,3,(v1[1]-v2[1])/scale));
+          tripletList.push_back(Eigen::Triplet<double>(idx,4,(-v1[0]+v2[0])/scale));
+          dl[idx] = 0;
+          du[idx] = std::numeric_limits<double>::max();
+          wc[idx] = 1.0;
+          idx++;
+        }
       }
 
       C.setFromTriplets(tripletList.begin(), tripletList.end());
     }
 
-        //Ax = b, dl <= Cx <= du
+    //Ax = b, dl <= Cx <= du
+    //各行は無次元化される
     void SurfaceContact::getStabilityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6);
-      for(size_t i=0;i<6;i++) A.insert(i,i) = 1.0;
       b = Eigen::VectorXd::Zero(6);
       wa = Eigen::VectorXd(6);
+      {
+        //垂直抗力
+        double scale = std::max(this->max_fz_,1e-4);
+        A.insert(0,0) = 1.0/scale;
+        wa[0] = 1.0;
+      }
+      {
+        //x摩擦
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        A.insert(1,1) = 1.0/scale;
+        wa[1] = 1.0;
+        //y摩擦
+        A.insert(2,2) = 1.0/scale;
+        wa[2] = 1.0;
+      }
       double maximum_distance = this->calcFarthestVertexDistance(this->surface_);
-      wa[0] = 1.0/std::pow(this->max_fz_,2);
-      wa[1] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      wa[2] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_,2));
-      wa[3] = wa[0] * std::min(1e4, 1.0/std::pow(maximum_distance,2));
-      wa[4] = wa[0] * std::min(1e4, 1.0/std::pow(maximum_distance,2));
-      wa[5] = wa[0] * std::min(1e4, 1.0/std::pow(this->mu_trans_*maximum_distance,2));
+      //COP
+      {
+        double scale = std::max(this->max_fz_ * maximum_distance, 1e-4);
+        A.insert(3,3) = 1.0/scale;
+        wa[3] = 1.0;
+        A.insert(4,4) = 1.0/scale;
+        wa[4] = 1.0;
+      }
+      //回転摩擦
+      {
+        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1e-4);
+        A.insert(5,5) = 1.0/scale;
+        wa[5] = 1.0;
+      }
 
       // Cはゼロ．
       C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);

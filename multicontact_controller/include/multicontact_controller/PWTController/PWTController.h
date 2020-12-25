@@ -167,14 +167,14 @@ namespace multicontact_controller {
         k1_(3.0),
         w1_(1e-2),
         we1_(1e-8),
-        w_scale1_(1e6),//hessianが大きい気がする
-        tau_scale1_(1e6),
+        w_scale1_(1e2),
+        tau_scale1_(1e2),
         w2_(1e-2),
         we2_(1e4),
         k3_(5.0),//TODO
         w3_(1e-2),//TODO
-        w_scale3_(1e6),//TODO
-        tau_scale3_(1e6),//TODO
+        w_scale3_(1e2),//TODO
+        tau_scale3_(1e2),//TODO
         taumax_weight3_(1e2),//TODO
 
         //cache

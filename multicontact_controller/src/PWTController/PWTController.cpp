@@ -15,6 +15,7 @@ namespace multicontact_controller {
   }
 
   // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
+  // 各行は無次元化されている
   void ContactPointPWTC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
     if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
       this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
@@ -55,6 +56,7 @@ namespace multicontact_controller {
   }
 
   // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
+  //各行は無次元化される
   void ContactPointPWTC::bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
       this->contact()->getStabilityConstraint(A,b,wa,C,dl,du,wc);
@@ -92,6 +94,7 @@ namespace multicontact_controller {
   }
 
   // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
+  // 各行はm, rad
   void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(this->state() == "AIR" || this->state() == "NEAR_CONTACT" || this->state() == "TOWARD_MAKE_CONTACT"){
       // TODO
@@ -212,19 +215,21 @@ namespace multicontact_controller {
   }
 
   // 関節トルク上下限に関する制約を返す.破損防止
+  // 各行は無次元化されている
   void JointInfo::JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
     if(care_torque_){
+      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
+      double scale = std::max(std::min(maximum_effort_hard_, max_torque), 1e-4);
       A.resize(0,1);
       b.resize(0);
       wa.resize(0);
-      C.resize(1,1); C.coeffRef(0,0) = 1.0;
+      C.resize(1,1); C.coeffRef(0,0) = 1.0/scale;
       dl.resize(1);
       du.resize(1);
       wc.resize(1);
 
-      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
-      du[0] = std::min(maximum_effort_hard_, max_torque) - joint_->u();
-      dl[0] = std::max(-maximum_effort_hard_, -max_torque) - joint_->u();
+      du[0] = std::min(maximum_effort_hard_, max_torque)/scale - C.coeffRef(0,0) * joint_->u();
+      dl[0] = std::max(-maximum_effort_hard_, -max_torque)/scale - C.coeffRef(0,0) * joint_->u();
       wc[0] = 1.0;
     }else{
       A.resize(0,1);
@@ -238,9 +243,12 @@ namespace multicontact_controller {
     return;
   }
 
+  // 各行は無次元化されている
   void JointInfo::bestEffortJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(care_torque_){
-      A.resize(1,1); A.coeffRef(0,0) = 1.0;
+      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
+      double scale = std::max(std::min(maximum_effort_soft_, max_torque), 1e-4);
+      A.resize(1,1); A.coeffRef(0,0) = 1.0/scale;
       b.resize(1);
       wa.resize(1);
       C.resize(0,1);
@@ -248,9 +256,8 @@ namespace multicontact_controller {
       du.resize(0);
       wc.resize(0);
 
-      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
-      b[0] = 0 - joint_->u();
-      wa[0] = 1.0 / std::pow(std::min(maximum_effort_soft_, max_torque),2);
+      b[0] = 0 - A.coeffRef(0,0) * joint_->u();
+      wa[0] = 1.0;
     }else{
       A.resize(0,1);
       b.resize(0);
@@ -639,6 +646,7 @@ namespace multicontact_controller {
 
       {
         // contact force constraint
+        // 各行は無次元化された上でw_scaleで割られてm,radのオーダにする
         size_t idx = 0;
         for(size_t i=0;i<contactPoints.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
@@ -662,6 +670,7 @@ namespace multicontact_controller {
 
       {
         // joint torque limit
+        // 各行は無次元化された上でtau_scaleで割られてm,radのオーダにする
         for(size_t i=0;i<jointInfos.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
           cnoid::VectorX b;
@@ -766,6 +775,7 @@ namespace multicontact_controller {
 
       {
         // interaction end_effector
+        // 各行はm,radのオーダ
         size_t idx = 0;
         for(size_t i=0;i<contactPoints.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
