@@ -320,6 +320,10 @@ namespace multicontact_controller {
     PWTController_->tau_scale1() = config.tau_scale1;
     PWTController_->w2() = config.w2;
     PWTController_->we2() = config.we2;
+    PWTController_->k2_5() = config.k2_5;
+    PWTController_->w2_5() = config.w2_5;
+    PWTController_->we2_5() = config.we2_5;
+    PWTController_->w_scale2_5() = config.w_scale2_5;
     PWTController_->k3() = config.k3;
     PWTController_->w3() = config.w3;
     PWTController_->w_scale3() = config.w_scale3;
@@ -340,6 +344,10 @@ namespace multicontact_controller {
     config.tau_scale1 = PWTController_->tau_scale1();
     config.w2 = PWTController_->w2();
     config.we2 = PWTController_->we2();
+    config.k2_5 = PWTController_->k2_5();
+    config.w2_5 = PWTController_->w2_5();
+    config.we2_5 = PWTController_->we2_5();
+    config.w_scale2_5 = PWTController_->w_scale2_5();
     config.k3 = PWTController_->k3();
     config.w3 = PWTController_->w3();
     config.w_scale3 = PWTController_->w_scale3();

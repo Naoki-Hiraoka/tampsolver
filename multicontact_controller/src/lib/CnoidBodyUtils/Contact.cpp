@@ -55,7 +55,7 @@ namespace multicontact_controller{
 
     //Ax = b, dl <= Cx <= du
     //各行は無次元化されている
-    void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc, bool allow_break_contact){
       // A,bはゼロ．
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
       b = Eigen::VectorXd(0);
@@ -77,7 +77,11 @@ namespace multicontact_controller{
       {
         double scale = std::max(this->max_fz_,1e-4);
         tripletList.push_back(Eigen::Triplet<double>(idx,2,1.0/scale));
-        dl[idx] = std::max(this->min_fz_,0.0) / scale;
+        if(allow_break_contact){
+          dl[idx] = 0.0;
+        }else{
+          dl[idx] = std::max(this->min_fz_,0.0) / scale;
+        }
         du[idx] = std::max(std::max(this->max_fz_, this->min_fz_) , 0.0) / scale;
         wc[idx] = 1.0;
         idx++;
@@ -156,6 +160,25 @@ namespace multicontact_controller{
 
     //Ax = b, dl <= Cx <= du
     //各行は無次元化される
+    void SurfaceContact::getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+      A = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6);
+      b = Eigen::VectorXd(1);
+      wa = Eigen::VectorXd(1);
+
+      // C,dはゼロ．
+      C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+      dl = Eigen::VectorXd::Zero(0);
+      du = Eigen::VectorXd::Zero(0);
+      wc = Eigen::VectorXd::Zero(0);
+
+      double scale = std::max(this->max_fz_,1e-4);
+      A.insert(0,2) = 1.0 / scale;
+      b[0] = 0.0;
+      wa[0] = 1.0;
+    }
+
+    //Ax = b, dl <= Cx <= du
+    //各行は無次元化される
     void SurfaceContact::getStabilityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(6,6);
       b = Eigen::VectorXd::Zero(6);
@@ -198,6 +221,19 @@ namespace multicontact_controller{
       wc = Eigen::VectorXd::Zero(0);
 
       return;
+    }
+
+    const cnoid::VectorX& SurfaceContact::contactDirection() {
+      if(contactDirection_.size() != 6){
+        contactDirection_.resize(6);
+        contactDirection_[0] = 0;
+        contactDirection_[1] = 0;
+        contactDirection_[2] = -1;
+        contactDirection_[3] = 0;
+        contactDirection_[4] = 0;
+        contactDirection_[5] = 0;
+      }
+      return contactDirection_;
     }
 
     std::vector<cnoid::SgNodePtr> SurfaceContact::getDrawOnObjects(const cnoid::Position& T){

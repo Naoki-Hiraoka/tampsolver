@@ -17,8 +17,13 @@ namespace multicontact_controller {
   // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
   // 各行は無次元化されている
   void ContactPointPWTC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    if(this->state() == "CONTACT" || this->state() == "TOWARD_BREAK_CONTACT"){
+    if(this->state() == "CONTACT"){
       this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
+      b -= A * selectMatrixForKinematicsConstraint() * F_;
+      dl -= C * selectMatrixForKinematicsConstraint() * F_;
+      du -= C * selectMatrixForKinematicsConstraint() * F_;
+    }else if(this->state() == "TOWARD_BREAK_CONTACT"){
+      this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc,true);//allow_break_contact
       b -= A * selectMatrixForKinematicsConstraint() * F_;
       dl -= C * selectMatrixForKinematicsConstraint() * F_;
       du -= C * selectMatrixForKinematicsConstraint() * F_;
@@ -35,10 +40,10 @@ namespace multicontact_controller {
     return;
   }
 
-  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用 TODO
+  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
   void ContactPointPWTC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
     if(this->state() == "TOWARD_BREAK_CONTACT"){
-      // TODO
+      this->contact()->getBreakContactConstraint(A,b,wa,C,dl,du,wc);
       b -= A * selectMatrixForKinematicsConstraint() * F_;
       dl -= C * selectMatrixForKinematicsConstraint() * F_;
       du -= C * selectMatrixForKinematicsConstraint() * F_;
@@ -76,28 +81,26 @@ namespace multicontact_controller {
     return;
   }
 
-  // 位置の目標値を返す。主に遊脚->支持脚遷移用. colは[root6dof + numJoint]
-  void ContactPointPWTC::makeContactPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-    if(this->state() == "TOWARD_MAKE_CONTACT"){
-      // TODO
-    }else{
-      A.resize(0,0);
-      b.resize(0);
-      wa.resize(0);
-      C.resize(0,0);
-      dl.resize(0);
-      du.resize(0);
-      wc.resize(0);
-    }
-
-    return;
-  }
-
   // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
   // 各行はm, rad
   void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-    if(this->state() == "AIR" || this->state() == "NEAR_CONTACT" || this->state() == "TOWARD_MAKE_CONTACT"){
-      // TODO
+    if(this->state() == "AIR" || this->state() == "NEAR_CONTACT"){
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
+      this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
+      Eigen::SparseMatrix<double,Eigen::RowMajor> J = this->calcJacobian();
+      A = A_local * J;
+      C = C_local * J;
+    } else if(this->state() == "TOWARD_MAKE_CONTACT"){
+      cnoid::Vector6 contactDirection = this->contact()->selectMatrix().transpose() * this->contact()->contactDirection();
+      if(contactDirection.head<3>().norm() > 0){
+        contactDirection.head<3>() = contactDirection.head<3>().normalized() * this->interaction()->v_limit() * this->interaction()->dt();
+        this->interaction()->T_ref().translation() += contactDirection.head<3>();
+      }
+      if(contactDirection.tail<3>().norm() > 0){
+        contactDirection.tail<3>() = contactDirection.tail<3>().normalized() * this->interaction()->w_limit() * this->interaction()->dt();
+        this->interaction()->T_ref().linear() = (this->interaction()->T_ref().linear() * cnoid::AngleAxis(contactDirection.tail<3>().norm(),contactDirection.tail<3>().normalized())).eval();
+      }
       Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
       Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
       this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
@@ -353,6 +356,25 @@ namespace multicontact_controller {
     }
 
     {
+      // priority 2.5
+      std::shared_ptr<prioritized_qp::Task> task2_5;
+      if(!this->setupTask2_5(task2_5,
+                             robot_,
+                             jointInfos_,
+                             contactPoints,
+                             Dwas,
+                             w_scale2_5_,
+                             k2_5_,
+                             dt,
+                             w2_5_,
+                             we2_5_)){
+        std::cerr << "setupTask2_5 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task2_5);
+    }
+
+    {
       // priority 3
       std::shared_ptr<prioritized_qp::Task> task3;
       if(!this->setupTask3(task3,
@@ -593,7 +615,7 @@ namespace multicontact_controller {
       for(size_t i=0;i<task->w().size();i++) task->w()[i] = 1.0;
 
       if(debug_print_){
-        std::cerr << "Task0" << std::endl;
+        std::cerr << task->name() << std::endl;
         std::cerr << "A" << std::endl << task->A() << std::endl;
         std::cerr << "b" << std::endl << task->b() << std::endl;
         std::cerr << "C" << std::endl << task->C() << std::endl;
@@ -655,7 +677,6 @@ namespace multicontact_controller {
       {
         // contact force constraint
         // 各行は無次元化された上でw_scaleで割られてm,radのオーダにする
-        size_t idx = 0;
         for(size_t i=0;i<contactPoints.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
           cnoid::VectorX b;
@@ -672,7 +693,6 @@ namespace multicontact_controller {
           dls.push_back(dl / w_scale);
           dus.push_back(du / w_scale);
           wcs.push_back(wc);
-          idx++;
         }
       }
 
@@ -725,6 +745,7 @@ namespace multicontact_controller {
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
       if(debug_print_){
+        std::cerr << task->name() << std::endl;
         std::cerr << "A" << std::endl;
         std::cerr << task->A() << std::endl;
         std::cerr << "b" << std::endl;
@@ -790,7 +811,6 @@ namespace multicontact_controller {
       {
         // interaction end_effector
         // 各行はm,radのオーダ
-        size_t idx = 0;
         for(size_t i=0;i<contactPoints.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
           cnoid::VectorX b;
@@ -807,7 +827,6 @@ namespace multicontact_controller {
           dls.push_back(dl);
           dus.push_back(du);
           wcs.push_back(wc);
-          idx++;
         }
       }
 
@@ -833,6 +852,120 @@ namespace multicontact_controller {
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
 
       if(debug_print_){
+        std::cerr << task->name() << std::endl;
+        std::cerr << "A" << std::endl;
+        std::cerr << task->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << task->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << task->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << task->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << task->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << task->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << task->w() << std::endl;
+      }
+
+      return true;
+  }
+
+  bool PWTController::setupTask2_5(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                                   cnoid::Body* robot,
+                                   std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                   std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                                   const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                                   double w_scale,
+                                   double k,
+                                   double dt,
+                                   double w,
+                                   double we){
+      if(!this->task2_5_) {
+        this->task2_5_ = std::make_shared<prioritized_qp::Task>();
+        task = this->task2_5_;
+        task->name() = "Task2.5: Contact Force (Break Contact)";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(debug_print_);
+        task->solver().settings()->setWarmStart(true);
+        task->solver().settings()->setMaxIteration(4000);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
+      }else{
+        task = this->task2_5_;
+        if(task->solver().settings()->getSettings()->verbose != debug_print_){
+          task->solver().settings()->setVerbosity(debug_print_);
+          task->solver().clearSolver();
+        }
+      }
+
+      size_t cols = 0;
+      for(size_t i=0;i<jointInfos.size();i++){
+        if(jointInfos[i]->controllable()) cols++;
+      }
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
+      std::vector<cnoid::VectorXd> bs;
+      std::vector<cnoid::VectorXd> was;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
+      std::vector<cnoid::VectorXd> dls;
+      std::vector<cnoid::VectorXd> dus;
+      std::vector<cnoid::VectorXd> wcs;
+
+      {
+        // break contact force constraint
+        // 各行は無次元化された上でw_scaleで割られてm,radのオーダにする
+        for(size_t i=0;i<contactPoints.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          contactPoints[i]->desiredForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
+          As.push_back(A*Dwas[i] / w_scale);
+          bs.push_back(b / w_scale);
+          was.push_back(wa);
+          Cs.push_back(C*Dwas[i] / w_scale);
+          dls.push_back(dl / w_scale);
+          dus.push_back(du / w_scale);
+          wcs.push_back(wc);
+        }
+      }
+
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
+      cnoidbodyutils::appendRow(bs, task->b());
+      cnoidbodyutils::appendRow(was, task->wa());
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
+      cnoidbodyutils::appendRow(dls, task->dl());
+      cnoidbodyutils::appendRow(dus, task->du());
+      cnoidbodyutils::appendRow(wcs, task->wc());
+
+      // velocity damper
+      task->A() *= k / dt;
+      task->C() *= k / dt;
+
+      // damping factor
+      double damping_factor = this->dampingFactor(w,
+                                                  we,
+                                                  task->b(),
+                                                  task->wa(),
+                                                  task->dl(),
+                                                  task->du(),
+                                                  task->wc());
+      task->w().resize(cols);
+      for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+
+      if(debug_print_){
+        std::cerr << task->name() << std::endl;
         std::cerr << "A" << std::endl;
         std::cerr << task->A() << std::endl;
         std::cerr << "b" << std::endl;
@@ -901,7 +1034,6 @@ namespace multicontact_controller {
 
       {
         // contact force reduction
-        size_t idx = 0;
         for(size_t i=0;i<contactPoints.size();i++){
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
           cnoid::VectorX b;
@@ -918,7 +1050,6 @@ namespace multicontact_controller {
           dls.push_back(dl / w_scale);
           dus.push_back(du / w_scale);
           wcs.push_back(wc);
-          idx++;
         }
       }
 
@@ -967,6 +1098,7 @@ namespace multicontact_controller {
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
 
       if(debug_print_){
+        std::cerr << task->name() << std::endl;
         std::cerr << "A" << std::endl;
         std::cerr << task->A() << std::endl;
         std::cerr << "b" << std::endl;

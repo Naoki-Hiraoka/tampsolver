@@ -19,9 +19,6 @@ namespace multicontact_controller {
     // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
     void bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
-    // 位置の目標値を返す。主に遊脚->支持脚遷移用. colは[root6dof + numJoint]
-    void makeContactPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
-
     // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
     void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
@@ -167,11 +164,15 @@ namespace multicontact_controller {
         k0_(0.1),
         k1_(3.0),
         w1_(1e-2),
-        we1_(1e2),
+        we1_(1e4),
         w_scale1_(1e3),
         tau_scale1_(1e3),
         w2_(1e-2),
         we2_(1e4),
+        k2_5_(5.0),
+        w2_5_(1e-2),
+        we2_5_(1e4),
+        w_scale2_5_(1e3),
         k3_(5.0),//TODO
         w3_(1e-2),//TODO
         w_scale3_(1e3),//TODO
@@ -206,6 +207,14 @@ namespace multicontact_controller {
     double& w2() { return w2_;}
     double we2() const { return we2_;}
     double& we2() { return we2_;}
+    double k2_5() const { return k2_5_;}
+    double& k2_5() { return k2_5_;}
+    double w2_5() const { return w2_5_;}
+    double& w2_5() { return w2_5_;}
+    double we2_5() const { return we2_5_;}
+    double& we2_5() { return we2_5_;}
+    double w_scale2_5() const { return w_scale2_5_;}
+    double& w_scale2_5() { return w_scale2_5_;}
     double k3() const { return k3_;}
     double& k3() { return k3_;}
     double w3() const { return w3_;}
@@ -259,6 +268,18 @@ namespace multicontact_controller {
                     double w,
                     double we);
 
+    // メンバ変数はdebug_print_とTask2_5_しか使わない
+    bool setupTask2_5(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                      cnoid::Body* robot,
+                      std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                      std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                      const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
+                      double w_scale,//次元の大きさを揃え、計算を安定化する
+                      double k,
+                      double dt,
+                      double w,
+                      double we);
+
     // メンバ変数はdebug_print_とTask3_しか使わない
     bool setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
@@ -301,6 +322,11 @@ namespace multicontact_controller {
     //   setupTask2
     double w2_;
     double we2_;
+    //   setupTask2_5
+    double k2_5_;
+    double w2_5_;
+    double we2_5_;
+    double w_scale2_5_;
     //   setupTask3
     double k3_;
     double w3_;
@@ -313,6 +339,7 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
+    std::shared_ptr<prioritized_qp::Task> task2_5_; // setupTas2_5
     std::shared_ptr<prioritized_qp::Task> task3_; // setupTask3
   };
 
