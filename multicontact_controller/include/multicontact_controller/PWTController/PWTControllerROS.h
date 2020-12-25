@@ -34,7 +34,7 @@ namespace multicontact_controller {
       contactPoint_->state() = state_;
 
       ros::NodeHandle nh;
-      forceSub_ = nh.subscribe(name_ + "/force", 1, &EndEffectorPWTCROS::forceCallback, this);
+      forceSub_ = nh.subscribe(name_ + "/force_filtered", 1, &EndEffectorPWTCROS::forceCallback, this);
       refForceSub_ = nh.subscribe(name_ + "/ref_force", 1, &EndEffectorPWTCROS::refForceCallback, this);
       targetPoseSub_ = nh.subscribe(name_ + "/target_pose", 1, &EndEffectorPWTCROS::targetPoseCallback, this);
     }
@@ -89,7 +89,7 @@ namespace multicontact_controller {
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
     void configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level);
-    void updateServerConfig(dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig>& server);
+    multicontact_controller_msgs::PWTControllerConfig getCurrentConfig();
 
     bool isEnabled_;
 

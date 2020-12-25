@@ -137,10 +137,6 @@ namespace multicontact_controller {
 
     ros::ServiceServer enableService = pnh.advertiseService("enable",&PWTControllerROS::enableCallback,this);
 
-    dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig> server;
-    server.setCallback(std::bind(&PWTControllerROS::configCallback, this, std::placeholders::_1, std::placeholders::_2));
-    this->updateServerConfig(server);
-
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction > controllerClient("fullbody_controller/follow_joint_trajectory_action", true);
     ROS_INFO("Waiting for fullbody_controller to start.");
     controllerClient.waitForServer();
@@ -151,6 +147,14 @@ namespace multicontact_controller {
     // main loop
     pnh.param("rate", this->rate_, 50.0); // 50 hz
     this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
+
+    dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig> server;
+    {
+      multicontact_controller_msgs::PWTControllerConfig config = this->getCurrentConfig();
+      server.setConfigDefault(config);
+      server.updateConfig(config);
+      server.setCallback(std::bind(&PWTControllerROS::configCallback, this, std::placeholders::_1, std::placeholders::_2));//この中でcallbackが呼ばれるので、その前にupdateConfigを呼ぶ必要がある
+    }
 
     unsigned int seq = 0;
     ros::Time stamp = ros::Time::now();
@@ -304,6 +308,7 @@ namespace multicontact_controller {
   void PWTControllerROS::configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level){
     if(this->rate_ != config.rate){
       this->rate_ = config.rate;
+      std::cerr << config.rate << std::endl;
       this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
     }
     PWTController_->sv_ratio() = config.sv_ratio;
@@ -322,7 +327,7 @@ namespace multicontact_controller {
     PWTController_->taumax_weight3() = config.taumax_weight3;
   }
 
-  void PWTControllerROS::updateServerConfig(dynamic_reconfigure::Server<multicontact_controller_msgs::PWTControllerConfig>& server){
+  multicontact_controller_msgs::PWTControllerConfig PWTControllerROS::getCurrentConfig(){
     multicontact_controller_msgs::PWTControllerConfig config;
     config.rate = this->rate_;
     config.sv_ratio = PWTController_->sv_ratio();
@@ -339,7 +344,8 @@ namespace multicontact_controller {
     config.w_scale3 = PWTController_->w_scale3();
     config.tau_scale3 = PWTController_->tau_scale3();
     config.taumax_weight3 = PWTController_->taumax_weight3();
-    server.updateConfig(config);
+
+    return config;
   }
 
 };

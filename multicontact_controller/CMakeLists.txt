@@ -128,6 +128,7 @@ add_subdirectory(src/IdleFootCoords)
 add_subdirectory(src/EndEffectorInteractiveMarkerServer)
 add_subdirectory(src/MultiContactFootCoords)
 add_subdirectory(src/PWTController)
+add_subdirectory(src/ContactForceFilter)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)

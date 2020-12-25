@@ -18,8 +18,10 @@ public:
     this->loadEndEffectorInfoParam(name_, endEffectorInfo_);
     endEffectorInfoPub_.publish(*endEffectorInfo_);
     configServer_ = std::make_shared<dynamic_reconfigure::Server<multicontact_controller_msgs::EndEffectorInfoConfig> >(pnh);
-    configServer_->setCallback(std::bind(&EndEffectorInfoPublisher::configCallback, this, std::placeholders::_1, std::placeholders::_2));
-    this->updateServerConfig(configServer_);
+    multicontact_controller_msgs::EndEffectorInfoConfig config = this->getCurrentConfig();
+    configServer_->setConfigDefault(config);
+    configServer_->updateConfig(config);
+    configServer_->setCallback(std::bind(&EndEffectorInfoPublisher::configCallback, this, std::placeholders::_1, std::placeholders::_2));//この中でcallbackが呼ばれるので、その前にupdateConfigを呼ぶ必要がある
   }
 
   std::shared_ptr<multicontact_controller_msgs::EndEffectorInfo> endEffectorInfo() { return endEffectorInfo_;}
@@ -210,7 +212,7 @@ protected:
     endEffectorInfoPub_.publish(*endEffectorInfo_);
   }
 
-  void updateServerConfig(std::shared_ptr<dynamic_reconfigure::Server<multicontact_controller_msgs::EndEffectorInfoConfig> > server){
+  multicontact_controller_msgs::EndEffectorInfoConfig getCurrentConfig(){
     multicontact_controller_msgs::EndEffectorInfoConfig config;
     config.type = endEffectorInfo_->contact.type;
     config.mu_trans = endEffectorInfo_->contact.mu_trans;
@@ -230,7 +232,8 @@ protected:
     config.moment_gain_x = endEffectorInfo_->interaction.moment_gain.x;
     config.moment_gain_y = endEffectorInfo_->interaction.moment_gain.y;
     config.moment_gain_z = endEffectorInfo_->interaction.moment_gain.z;
-    server->updateConfig(config);
+
+    return config;
   }
 
 private:
