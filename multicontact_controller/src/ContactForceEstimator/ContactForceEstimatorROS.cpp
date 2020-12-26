@@ -75,6 +75,7 @@ namespace multicontact_controller {
     ContactForceEstimator contactForceEstimator;
     contactForceEstimator.setRobot(robot_);
 
+    this->isEnabled_ = false;
     ros::ServiceServer enableService = nl.advertiseService("enable",&ContactForceEstimatorROS::enableCallback,this);
 
     double offsetUpdaterate;
