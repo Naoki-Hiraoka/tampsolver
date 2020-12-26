@@ -162,6 +162,9 @@ namespace multicontact_controller {
         debug_print_(false),
         sv_ratio_(1e-12),
         k0_(0.1),
+        k0_1_(0.5),
+        w0_1_(1e-2),
+        we0_1_(1e4),
         k1_(3.0),
         w1_(1e-2),
         we1_(1e4),
@@ -185,7 +188,9 @@ namespace multicontact_controller {
     }
 
     //calcForwardKinematics()とcalcCM()が事前に必要
-    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt);
+    bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
+                        std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                        double dt);
 
     bool debug_print() const {return debug_print_;}
     bool& debug_print() {return debug_print_;}
@@ -193,6 +198,12 @@ namespace multicontact_controller {
     double& sv_ratio() { return sv_ratio_;}
     double k0() const { return k0_;}
     double& k0() { return k0_;}
+    double k0_1() const { return k0_1_;}
+    double& k0_1() { return k0_1_;}
+    double w0_1() const { return w0_1_;}
+    double& w0_1() { return w0_1_;}
+    double we0_1() const { return we0_1_;}
+    double& we0_1() { return we0_1_;}
     double k1() const { return k1_;}
     double& k1() { return k1_;}
     double w1() const { return w1_;}
@@ -243,6 +254,17 @@ namespace multicontact_controller {
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                     double k,
                     double dt);
+
+    // メンバ変数はdebug_print_とTask0_1_しか使わない
+    bool setupTask0_1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                      cnoid::Body* robot,
+                      std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                      std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                      const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
+                      double k,
+                      double dt,
+                      double w,
+                      double we);
 
     // メンバ変数はdebug_print_とTask1_しか使わない
     bool setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -314,6 +336,10 @@ namespace multicontact_controller {
     double sv_ratio_;
     //   setupTask0
     double k0_;
+    //   setupTask0_1
+    double k0_1_;
+    double w0_1_;
+    double we0_1_;
     //   setupTask1
     double k1_;
     double w1_;
@@ -338,6 +364,7 @@ namespace multicontact_controller {
     // cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> Ka_; //calcPWTJacobian
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
+    std::shared_ptr<prioritized_qp::Task> task0_1_; // setupTask0_1
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
     std::shared_ptr<prioritized_qp::Task> task2_5_; // setupTas2_5

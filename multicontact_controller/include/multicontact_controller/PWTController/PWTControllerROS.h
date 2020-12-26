@@ -99,6 +99,7 @@ namespace multicontact_controller {
     std::map<std::string, std::shared_ptr<EndEffectorPWTCROS> > endEffectors_;
     std::map<std::string, std::shared_ptr<JointInfo> > jointInfoMap_;
     std::vector<std::shared_ptr<JointInfo> > jointInfos_;
+    std::vector<std::shared_ptr<cnoidbodyutils::Collision> > selfCollisions_;
     std::shared_ptr<PWTController> PWTController_;
 
     pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr controllerState_;

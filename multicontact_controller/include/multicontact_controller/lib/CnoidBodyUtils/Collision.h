@@ -6,6 +6,7 @@
 #include <cnoid/CollisionLinkPair>
 #include <cnoid/JointPath>
 #include <Eigen/Sparse>
+#include <multicontact_controller_msgs/CollisionArray.h>
 
 namespace Vclip{
   class Polyhedron;
@@ -25,7 +26,6 @@ namespace multicontact_controller{
     class VclipLinkPair {
     public:
       VclipLinkPair(const cnoid::Link* link0, std::shared_ptr<Vclip::Polyhedron> pqp_model0, const cnoid::Link* link1, std::shared_ptr<Vclip::Polyhedron> pqp_model1, double tolerance=0);
-      ~VclipLinkPair();
       bool checkCollision();
       double computeDistance(cnoid::Vector3& q1, cnoid::Vector3& q2);//q1,q2はworld系
       double computeDistanceLocal(cnoid::Vector3& q1, cnoid::Vector3& q2);//q1,q2はlocal系
@@ -53,7 +53,7 @@ namespace multicontact_controller{
       Collision(cnoid::Body* robot);
 
       // world座標系 Ax = b, dl <= Cx <= du. xの次元数は[rootlink + numJoints]
-      void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+      void getCollisionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
       std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
@@ -69,11 +69,17 @@ namespace multicontact_controller{
 
       // for visualization
       double distance_;
+      cnoid::Vector3 p0_;
+      cnoid::Vector3 p1_;
       cnoid::SgLineSetPtr lines_;
 
       // cache
       cnoid::JointPath path_;
+      cnoid::JointPath path0_;
+      cnoid::JointPath path1_;
     };
+
+    void collisionArrayMsgToCnoid(cnoid::Body* robot, const multicontact_controller_msgs::CollisionArray& msg, std::vector<std::shared_ptr<Collision> >& collisions);
   };
 };
 

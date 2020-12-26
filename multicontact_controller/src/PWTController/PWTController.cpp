@@ -274,7 +274,7 @@ namespace multicontact_controller {
     return;
   }
 
-  bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, double dt){
+  bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints, std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions, double dt){
 
     std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > > Js;Js.reserve(contactPoints.size());
     for(size_t i=0;i<contactPoints.size();i++) Js.emplace_back(contactPoints[i]->calcJacobian());
@@ -315,6 +315,24 @@ namespace multicontact_controller {
         return false;
       }
       tasks.push_back(task0);
+    }
+
+    {
+      // priority 0.1
+      std::shared_ptr<prioritized_qp::Task> task0_1;
+      if(!this->setupTask0_1(task0_1,
+                             robot_,
+                             jointInfos_,
+                             selfCollisions,
+                             Dqa,
+                             k0_1_,
+                             dt,
+                             w0_1_,
+                             we0_1_)){
+        std::cerr << "setupTask0.1 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task0_1);
     }
 
     {
@@ -631,6 +649,119 @@ namespace multicontact_controller {
 
       return true;
   }
+
+  bool PWTController::setupTask0_1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                                   cnoid::Body* robot,
+                                   std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                   std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                                   const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
+                                   double k,
+                                   double dt,
+                                   double w,
+                                   double we){
+      if(!this->task0_1_) {
+        this->task0_1_ = std::make_shared<prioritized_qp::Task>();
+        task = this->task0_1_;
+        task->name() = "Task0.1: Self Collision";
+        task->solver().settings()->resetDefaultSettings();
+        task->solver().settings()->setVerbosity(debug_print_);
+        task->solver().settings()->setWarmStart(true);
+        task->solver().settings()->setMaxIteration(4000);
+        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        task->toSolve() = true;
+      }else{
+        task = this->task0_1_;
+        if(task->solver().settings()->getSettings()->verbose != debug_print_){
+          task->solver().settings()->setVerbosity(debug_print_);
+          task->solver().clearSolver();
+        }
+      }
+
+      size_t cols = 0;
+      for(size_t i=0;i<jointInfos.size();i++){
+        if(jointInfos[i]->controllable()) cols++;
+      }
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
+      std::vector<cnoid::VectorXd> bs;
+      std::vector<cnoid::VectorXd> was;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
+      std::vector<cnoid::VectorXd> dls;
+      std::vector<cnoid::VectorXd> dus;
+      std::vector<cnoid::VectorXd> wcs;
+
+      {
+        // self Collision
+        // 各行mのオーダ
+        for(size_t i=0;i<selfCollisions.size();i++){
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
+          cnoid::VectorX b;
+          cnoid::VectorX wa;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
+          cnoid::VectorX dl;
+          cnoid::VectorX du;
+          cnoid::VectorX wc;
+          selfCollisions[i]->getCollisionConstraint(A,b,wa,C,dl,du,wc);
+          As.push_back(A*Dqa);
+          bs.push_back(b);
+          was.push_back(wa);
+          Cs.push_back(C*Dqa);
+          dls.push_back(dl);
+          dus.push_back(du);
+          wcs.push_back(wc);
+        }
+      }
+
+      task->A().resize(task->A().rows(),cols);
+      cnoidbodyutils::appendRow(As, task->A());
+      cnoidbodyutils::appendRow(bs, task->b());
+      cnoidbodyutils::appendRow(was, task->wa());
+      task->C().resize(task->C().rows(),cols);
+      cnoidbodyutils::appendRow(Cs, task->C());
+      cnoidbodyutils::appendRow(dls, task->dl());
+      cnoidbodyutils::appendRow(dus, task->du());
+      cnoidbodyutils::appendRow(wcs, task->wc());
+
+      // velocity damper
+      task->A() *= k / dt;
+      task->C() *= k / dt;
+
+      // damping factor
+      double damping_factor = this->dampingFactor(w,
+                                                  we,
+                                                  task->b(),
+                                                  task->wa(),
+                                                  task->dl(),
+                                                  task->du(),
+                                                  task->wc());
+      task->w().resize(cols);
+      for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+
+      if(debug_print_){
+        std::cerr << task->name() << std::endl;
+        std::cerr << "A" << std::endl;
+        std::cerr << task->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << task->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << task->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << task->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << task->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << task->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << task->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << task->w() << std::endl;
+      }
+
+      return true;
+  }
+
 
   bool PWTController::setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,

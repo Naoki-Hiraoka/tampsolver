@@ -135,6 +135,8 @@ namespace multicontact_controller {
 
     ros::Subscriber controllerStateSub = nh.subscribe("fullbody_controller/state", 1, &PWTControllerROS::controllerStateCallback, this);
 
+    ros::Subscriber selfCollisionSub = nh.subscribe("self_collision", 1, &PWTControllerROS::selfCollisionCallback, this);
+
     ros::ServiceServer enableService = pnh.advertiseService("enable",&PWTControllerROS::enableCallback,this);
 
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction > controllerClient("fullbody_controller/follow_joint_trajectory_action", true);
@@ -196,12 +198,18 @@ namespace multicontact_controller {
               this->drawOn(objects[j]);
             }
           }
+          for(size_t i=0;i<selfCollisions_.size();i++){
+            std::vector<cnoid::SgNodePtr> objects = selfCollisions_[i]->getDrawOnObjects();
+            for(size_t j=0;j<objects.size();j++){
+              this->drawOn(objects[j]);
+            }
+          }
           this->flush();
         }
 
         // solve
         robot_->calcCenterOfMass();
-        PWTController_->calcPWTControl(contactPoints, dt);
+        PWTController_->calcPWTControl(contactPoints, selfCollisions_, dt);
 
         // send command
         control_msgs::FollowJointTrajectoryGoal goal;
@@ -270,9 +278,7 @@ namespace multicontact_controller {
   }
 
   void PWTControllerROS::selfCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg){
-    for(size_t i=0;i<msg->collisions.size();i++){
-
-    }
+    cnoidbodyutils::collisionArrayMsgToCnoid(robot_,*msg, selfCollisions_);
   }
 
   void PWTControllerROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
@@ -319,6 +325,9 @@ namespace multicontact_controller {
     PWTController_->debug_print() = config.debug_print;
     PWTController_->sv_ratio() = config.sv_ratio;
     PWTController_->k0() = config.k0;
+    PWTController_->k0_1() = config.k0_1;
+    PWTController_->w0_1() = config.w0_1;
+    PWTController_->we0_1() = config.we0_1;
     PWTController_->k1() = config.k1;
     PWTController_->w1() = config.w1;
     PWTController_->we1() = config.we1;
@@ -343,6 +352,9 @@ namespace multicontact_controller {
     config.debug_print = PWTController_->debug_print();
     config.sv_ratio = PWTController_->sv_ratio();
     config.k0 = PWTController_->k0();
+    config.k0_1 = PWTController_->k0_1();
+    config.w0_1 = PWTController_->w0_1();
+    config.we0_1 = PWTController_->we0_1();
     config.k1 = PWTController_->k1();
     config.w1 = PWTController_->w1();
     config.we1 = PWTController_->we1();
