@@ -57,6 +57,8 @@ add_message_files(
   ContactInfo.msg
   EndEffectorInfo.msg
   MotorTemperatureState.msg
+  Collision.msg
+  CollisionArray.msg
   )
 
 ## Generate services in the 'srv' folder

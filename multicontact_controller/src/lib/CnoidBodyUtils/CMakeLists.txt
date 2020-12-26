@@ -3,6 +3,8 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   sensor_msgs
   eigen_conversions
+  vclip
+  qhulleigen
   choreonoid_cpp
   multicontact_controller_msgs
   )
@@ -14,6 +16,7 @@ add_library(CnoidBodyUtils
   TorqueJacobianCalculator.cpp
   JointLimitTable.cpp
   Interaction.cpp
+  Collision.cpp
   )
 
 target_include_directories(CnoidBodyUtils PUBLIC
