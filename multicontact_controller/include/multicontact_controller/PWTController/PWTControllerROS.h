@@ -14,6 +14,7 @@
 #include <multicontact_controller_msgs/EndEffectorInfo.h>
 #include <multicontact_controller_msgs/MotorTemperatureState.h>
 #include <multicontact_controller_msgs/PWTControllerConfig.h>
+#include <multicontact_controller_msgs/CollisionArray.h>
 #include <ros/ros.h>
 #include <dynamic_reconfigure/server.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
@@ -86,6 +87,7 @@ namespace multicontact_controller {
     void motorStatesCallback(const hrpsys_ros_bridge::MotorStates::ConstPtr& msg);
     void motorTemperatureStateCallback(const multicontact_controller_msgs::MotorTemperatureState::ConstPtr& msg);
     void controllerStateCallback(const pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr& msg);
+    void selfCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
     void configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level);

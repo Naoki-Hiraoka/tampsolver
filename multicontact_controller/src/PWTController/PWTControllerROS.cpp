@@ -269,6 +269,12 @@ namespace multicontact_controller {
     controllerState_ = msg;
   }
 
+  void PWTControllerROS::selfCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg){
+    for(size_t i=0;i<msg->collisions.size();i++){
+
+    }
+  }
+
   void PWTControllerROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
     endeffectorutils::stringArrayToEndEffectors(msg,endEffectors_,this->robot_);
   }
