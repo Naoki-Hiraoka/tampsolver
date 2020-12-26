@@ -12,48 +12,52 @@ namespace prioritized_qp{
     for(size_t i=0;i<tasks.size();i++){
       if(dim<0) dim = tasks[i]->A().cols();
       if(dim != tasks[i]->A().cols()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (dim != tasks[i]->A().cols())" << std::endl;
         return false;
       }
       if(dim != tasks[i]->C().cols()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (dim != tasks[i]->C().cols())" << std::endl;
         return false;
       }
       if(tasks[i]->toSolve() && (dim != tasks[i]->w().size())){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->toSolve() && (dim != tasks[i]->w().size()))" << std::endl;
         return false;
       }
 
       if(tasks[i]->A().rows() != tasks[i]->b().size()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->A().rows() != tasks[i]->b().size())" << std::endl;
         return false;
       }
       if(tasks[i]->toSolve() && tasks[i]->A().rows() != tasks[i]->wa().size()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->toSolve() && tasks[i]->A().rows() != tasks[i]->wa().size())" << std::endl;
         return false;
       }
       if(tasks[i]->C().rows() != tasks[i]->dl().size() || tasks[i]->C().rows() != tasks[i]->du().size()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->C().rows() != tasks[i]->dl().size() || tasks[i]->C().rows() != tasks[i]->du().size())" << std::endl;
         return false;
       }
       if(tasks[i]->toSolve() && tasks[i]->C().rows() != tasks[i]->wc().size()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->toSolve() && tasks[i]->C().rows() != tasks[i]->wc().size())" << std::endl;
         return false;
       }
       if(tasks[i]->A_ext().cols() != tasks[i]->C_ext().cols()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->A_ext().cols() != tasks[i]->C_ext().cols())" << std::endl;
+        return false;
+      }
+      if(tasks[i]->id_ext().size() != 0 && tasks[i]->A_ext().cols() != tasks[i]->id_ext().size()){
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->id_ext().size() != 0 && tasks[i]->A_ext().cols() != tasks[i]->id_ext().size())" << std::endl;
         return false;
       }
       if(tasks[i]->A_ext().cols() != 0 && tasks[i]->A_ext().rows() != tasks[i]->A().rows()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->A_ext().cols() != 0 && tasks[i]->A_ext().rows() != tasks[i]->A().rows())" << std::endl;
         return false;
       }
       if(tasks[i]->C_ext().cols() != 0 && tasks[i]->C_ext().rows() != tasks[i]->C().rows()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->C_ext().cols() != 0 && tasks[i]->C_ext().rows() != tasks[i]->C().rows())" << std::endl;
         return false;
       }
       if(tasks[i]->toSolve() && tasks[i]->A_ext().cols() != tasks[i]->w_ext().size()){
-        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch" << std::endl;
+        std::cerr << "[prioritized_qp::PriroritizedQPSolver::solve] dimension mismatch (tasks[i]->toSolve() && tasks[i]->A_ext().cols() != tasks[i]->w_ext().size())" << std::endl;
         return false;
       }
     }
@@ -68,18 +72,43 @@ namespace prioritized_qp{
     Eigen::VectorXd lBs(0);
     Eigen::VectorXd uBs(0);
     Eigen::VectorXd w_exts(0);
+    std::map<std::string, size_t> id_exts;
 
     for(size_t i=0;i<tasks.size();i++){
       Eigen::SparseMatrix<double,Eigen::RowMajor> taskA = tasks[i]->A();
       Eigen::SparseMatrix<double,Eigen::RowMajor> taskC = tasks[i]->C();
       if(tasks[i]->A_ext().cols() != 0){
-        Eigen::SparseMatrix<double,Eigen::ColMajor> taskA_ColMajor(taskA.rows(), As.cols() + tasks[i]->A_ext().cols());
+        size_t additionalCols = 0;
+        if(tasks[i]->id_ext().size() == 0) additionalCols = tasks[i]->A_ext().cols();
+        else{
+          for(size_t j=0;j<tasks[i]->A_ext().cols();j++){
+            if(id_exts.find(tasks[i]->id_ext()[j]) == id_exts.end()){
+              id_exts[tasks[i]->id_ext()[j]] = As.cols() + additionalCols;
+              additionalCols++;
+            }
+          }
+        }
+        Eigen::SparseMatrix<double,Eigen::ColMajor> taskA_ColMajor(taskA.rows(), As.cols() + additionalCols);
         taskA_ColMajor.leftCols(taskA.cols()) = taskA;
-        taskA_ColMajor.rightCols(tasks[i]->A_ext().cols()) = tasks[i]->A_ext();
+        if(tasks[i]->id_ext().size() == 0){
+          taskA_ColMajor.rightCols(tasks[i]->A_ext().cols()) = tasks[i]->A_ext();
+        }else{
+          Eigen::SparseMatrix<double,Eigen::ColMajor> taskA_ext_ColMajor(tasks[i]->A_ext());
+          for(size_t j=0;j<tasks[i]->A_ext().cols();j++){
+            taskA_ColMajor.col(id_exts[tasks[i]->id_ext()[j]]) = taskA_ext_ColMajor.col(j);
+          }
+        }
         taskA = taskA_ColMajor;
-        Eigen::SparseMatrix<double,Eigen::ColMajor> taskC_ColMajor(taskC.rows(), As.cols() + tasks[i]->C_ext().cols());
+        Eigen::SparseMatrix<double,Eigen::ColMajor> taskC_ColMajor(taskC.rows(), As.cols() + additionalCols);
         taskC_ColMajor.leftCols(taskC.cols()) = taskC;
-        taskC_ColMajor.rightCols(tasks[i]->C_ext().cols()) = tasks[i]->C_ext();
+        if(tasks[i]->id_ext().size() == 0){
+          taskC_ColMajor.rightCols(tasks[i]->C_ext().cols()) = tasks[i]->C_ext();
+        }else{
+          Eigen::SparseMatrix<double,Eigen::ColMajor> taskC_ext_ColMajor(tasks[i]->C_ext());
+          for(size_t j=0;j<tasks[i]->C_ext().cols();j++){
+            taskC_ColMajor.col(id_exts[tasks[i]->id_ext()[j]]) = taskC_ext_ColMajor.col(j);
+          }
+        }
         taskC = taskC_ColMajor;
         w_exts.resize(w_exts.size() + tasks[i]->w_ext().size());
         w_exts.tail(tasks[i]->w_ext().size()) = tasks[i]->w_ext();

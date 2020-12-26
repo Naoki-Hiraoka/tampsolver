@@ -165,19 +165,19 @@ namespace multicontact_controller {
         k1_(3.0),
         w1_(1e-2),
         we1_(1e4),
-        w_scale1_(1e3),
-        tau_scale1_(1e3),
+        w_scale1_(2e3),
+        tau_scale1_(2e3),
         w2_(1e-2),
         we2_(1e4),
         k2_5_(5.0),
         w2_5_(1e-2),
         we2_5_(1e8),
-        w_scale2_5_(1e3),
-        k3_(5.0),//TODO
-        w3_(1e-2),//TODO
-        w_scale3_(1e3),//TODO
-        tau_scale3_(5e3),//TODO
-        taumax_weight3_(1e2),//TODO
+        w_scale2_5_(2e3),
+        k3_(5.0),
+        w3_(1e0),
+        w_scale3_(2e3),
+        tau_scale3_(2e3),
+        taumax_weight3_(1e1),
 
         //cache
         Ka_(6+robot_->numJoints(),6+robot_->numJoints())
@@ -280,8 +280,9 @@ namespace multicontact_controller {
                       double w,
                       double we);
 
-    // メンバ変数はdebug_print_とTask3_しか使わない
-    bool setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+    // メンバ変数はdebug_print_とTask3Helper_しか使わない
+    bool setupTask3(std::shared_ptr<prioritized_qp::Task>& taskHelper, //返り値,
+                    std::shared_ptr<prioritized_qp::Task>& task, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                     std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
@@ -340,6 +341,7 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
     std::shared_ptr<prioritized_qp::Task> task2_5_; // setupTas2_5
+    std::shared_ptr<prioritized_qp::Task> task3Helper_; // setupTask3_Helper
     std::shared_ptr<prioritized_qp::Task> task3_; // setupTask3
   };
 

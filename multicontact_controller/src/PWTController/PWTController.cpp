@@ -376,8 +376,10 @@ namespace multicontact_controller {
 
     {
       // priority 3
+      std::shared_ptr<prioritized_qp::Task> task3Helper;
       std::shared_ptr<prioritized_qp::Task> task3;
-      if(!this->setupTask3(task3,
+      if(!this->setupTask3(task3Helper,
+                           task3,
                            robot_,
                            jointInfos_,
                            contactPoints,
@@ -392,6 +394,7 @@ namespace multicontact_controller {
         std::cerr << "setupTask3 failed" << std::endl;
         return false;
       }
+      tasks.push_back(task3Helper);
       tasks.push_back(task3);
     }
 
@@ -987,7 +990,8 @@ namespace multicontact_controller {
       return true;
   }
 
-  bool PWTController::setupTask3(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+  bool PWTController::setupTask3(std::shared_ptr<prioritized_qp::Task>& taskHelper, //返り値
+                                 std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,
                                  std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
@@ -999,6 +1003,26 @@ namespace multicontact_controller {
                                  double k,
                                  double dt,
                                  double w){
+      if(!this->task3Helper_) {
+        this->task3Helper_ = std::make_shared<prioritized_qp::Task>();
+        taskHelper = this->task3Helper_;
+        taskHelper->name() = "Task3Helper: Maximun Joint Torque";
+        taskHelper->solver().settings()->resetDefaultSettings();
+        taskHelper->solver().settings()->setVerbosity(debug_print_);
+        taskHelper->solver().settings()->setWarmStart(true);
+        taskHelper->solver().settings()->setMaxIteration(4000);
+        taskHelper->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskHelper->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskHelper->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        taskHelper->toSolve() = false; //最大値を定義するだけなので解かない
+      }else{
+        taskHelper = this->task3Helper_;
+        if(taskHelper->solver().settings()->getSettings()->verbose != debug_print_){
+          taskHelper->solver().settings()->setVerbosity(debug_print_);
+          taskHelper->solver().clearSolver();
+        }
+      }
+
       if(!this->task3_) {
         this->task3_ = std::make_shared<prioritized_qp::Task>();
         task = this->task3_;
@@ -1024,6 +1048,16 @@ namespace multicontact_controller {
         if(jointInfos[i]->controllable()) cols++;
       }
 
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > AsHelper;
+      std::vector<cnoid::VectorXd> bsHelper;
+      std::vector<cnoid::VectorXd> wasHelper;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > CsHelper;
+      std::vector<cnoid::VectorXd> dlsHelper;
+      std::vector<cnoid::VectorXd> dusHelper;
+      std::vector<cnoid::VectorXd> wcsHelper;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_extsHelper;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_extsHelper;
+
       std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
       std::vector<cnoid::VectorXd> bs;
       std::vector<cnoid::VectorXd> was;
@@ -1031,6 +1065,8 @@ namespace multicontact_controller {
       std::vector<cnoid::VectorXd> dls;
       std::vector<cnoid::VectorXd> dus;
       std::vector<cnoid::VectorXd> wcs;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_exts;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_exts;
 
       {
         // contact force reduction
@@ -1043,6 +1079,7 @@ namespace multicontact_controller {
           cnoid::VectorX du;
           cnoid::VectorX wc;
           contactPoints[i]->bestEffortForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
+
           As.push_back(A*Dwas[i] / w_scale);
           bs.push_back(b / w_scale);
           was.push_back(wa);
@@ -1050,6 +1087,12 @@ namespace multicontact_controller {
           dls.push_back(dl / w_scale);
           dus.push_back(du / w_scale);
           wcs.push_back(wc);
+
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext(A.rows(),1);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext(C.rows(),1);
+          A_exts.push_back(A_ext);
+          C_exts.push_back(C_ext);
+
         }
       }
 
@@ -1064,6 +1107,7 @@ namespace multicontact_controller {
           cnoid::VectorX du;
           cnoid::VectorX wc;
           jointInfos[i]->bestEffortJointTorqueConstraint(A,b,wa,C,dl,du,wc);
+
           const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
           As.push_back(A*S*Dtaua / tau_scale);
           bs.push_back(b / tau_scale);
@@ -1072,11 +1116,117 @@ namespace multicontact_controller {
           dls.push_back(dl / tau_scale);
           dus.push_back(du / tau_scale);
           wcs.push_back(wc);
+
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext(A.rows(),1);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext(C.rows(),1);
+          A_exts.push_back(A_ext);
+          C_exts.push_back(C_ext);
         }
       }
 
       {
-        // taumax reduction TODO
+        // taumax reduction
+
+        // すでにA b C dの行がm,radの次元にそろえてあるため、ここではそろえる必要はない
+        double maximum = 0.0;
+        for(size_t i=0;i<jointInfos.size();i++){
+          const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
+          for(size_t j=0;j<b.size();j++){
+            double e = std::abs(b[j]);
+            if(e > maximum) maximum = e;
+          }
+          const cnoid::VectorX& du = dus[dus.size()-jointInfos.size()+i];
+          for(size_t j=0;j<du.size();j++){
+            double e = std::abs(std::min(0.0,du[j]));
+            if(e > maximum) maximum = e;
+          }
+          const cnoid::VectorX& dl = dls[dls.size()-jointInfos.size()+i];
+          for(size_t j=0;j<dl.size();j++){
+            double e = std::abs(std::max(0.0,dl[j]));
+            if(e > maximum) maximum = e;
+          }
+        }
+
+        // define taumax
+        for(size_t i=0;i<jointInfos.size();i++){
+          {
+            const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[As.size()-jointInfos.size()+i];
+            const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
+            CsHelper.push_back(A);
+            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
+            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
+            C_extsHelper.push_back(tmpC_ext);
+            cnoid::VectorX tmpdl(b.size());
+            for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = - std::numeric_limits<double>::max();
+            dlsHelper.push_back(tmpdl);
+            dusHelper.push_back(b - tmpC_ext * maximum);
+          }
+          {
+            const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[As.size()-jointInfos.size()+i];
+            const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
+            CsHelper.push_back(A);
+            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
+            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
+            C_extsHelper.push_back(tmpC_ext);
+            cnoid::VectorX tmpdu(b.size());
+            for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
+            dusHelper.push_back(tmpdu);
+            dlsHelper.push_back(b - tmpC_ext * maximum);
+          }
+          {
+            const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[Cs.size()-jointInfos.size()+i];
+            const cnoid::VectorX& du = dus[dus.size()-jointInfos.size()+i];
+            CsHelper.push_back(C);
+            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
+            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
+            C_extsHelper.push_back(tmpC_ext);
+            cnoid::VectorX tmpdl(du.size());
+            for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = -std::numeric_limits<double>::max();
+            dlsHelper.push_back(tmpdl);
+            dusHelper.push_back(du - tmpC_ext * maximum);
+          }
+          {
+            const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[Cs.size()-jointInfos.size()+i];
+            const cnoid::VectorX& dl = dls[dls.size()-jointInfos.size()+i];
+            CsHelper.push_back(C);
+            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
+            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
+            C_extsHelper.push_back(tmpC_ext);
+            cnoid::VectorX tmpdu(dl.size());
+            for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
+            dusHelper.push_back(tmpdu);
+            dlsHelper.push_back(dl - tmpC_ext * maximum);
+          }
+          wcsHelper.push_back(wcs[wcs.size()-jointInfos.size()+i]);//解かないので使わない
+        }
+
+        //reduce taumax
+        {
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A(1,cols);
+          cnoid::VectorX b(1);
+          cnoid::VectorX wa(1);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C(0,cols);
+          cnoid::VectorX dl(0);
+          cnoid::VectorX du(0);
+          cnoid::VectorX wc(0);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext(1,1);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext(0,1);
+
+          A_ext.insert(0,0) = 1.0;
+          b[0] = - maximum;
+          wa[0] = 1.0 * taumax_weight;
+
+          As.push_back(A);
+          bs.push_back(b);
+          was.push_back(wa);
+          Cs.push_back(C);
+          dls.push_back(dl);
+          dus.push_back(du);
+          wcs.push_back(wc);
+          A_exts.push_back(A_ext);
+          C_exts.push_back(C_ext);
+
+        }
       }
 
       task->A().resize(task->A().rows(),cols);
@@ -1088,14 +1238,74 @@ namespace multicontact_controller {
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
+      task->A_ext().resize(task->A_ext().rows(),1);
+      cnoidbodyutils::appendRow(A_exts, task->A_ext());
+      task->C_ext().resize(task->C_ext().rows(),1);
+      cnoidbodyutils::appendRow(C_exts, task->C_ext());
+
+      taskHelper->A().resize(taskHelper->A().rows(),cols);
+      cnoidbodyutils::appendRow(AsHelper, taskHelper->A());
+      cnoidbodyutils::appendRow(bsHelper, taskHelper->b());
+      cnoidbodyutils::appendRow(wasHelper, taskHelper->wa());
+      taskHelper->C().resize(taskHelper->C().rows(),cols);
+      cnoidbodyutils::appendRow(CsHelper, taskHelper->C());
+      cnoidbodyutils::appendRow(dlsHelper, taskHelper->dl());
+      cnoidbodyutils::appendRow(dusHelper, taskHelper->du());
+      cnoidbodyutils::appendRow(wcsHelper, taskHelper->wc());
+      taskHelper->A_ext().resize(taskHelper->A_ext().rows(),1);
+      cnoidbodyutils::appendRow(A_extsHelper, taskHelper->A_ext());
+      taskHelper->C_ext().resize(taskHelper->C_ext().rows(),1);
+      cnoidbodyutils::appendRow(C_extsHelper, taskHelper->C_ext());
 
       // velocity damper
       task->A() *= k / dt;
       task->C() *= k / dt;
+      // task->A_ext() *= k / dt;
+      // task->C_ext() *= k / dt;
+      taskHelper->A() *= k / dt;
+      taskHelper->C() *= k / dt;
+      // taskHelper->A_ext() *= k / dt;
+      // taskHelper->C_ext() *= k / dt;
 
       // damping factor
       task->w().resize(cols);
       for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
+      task->w_ext().resize(1);
+      for(size_t i=0;i<task->w_ext().size();i++)task->w_ext()[i] = w;
+      taskHelper->w().resize(cols);//解かないので使わない
+      for(size_t i=0;i<taskHelper->w().size();i++)taskHelper->w()[i] = w;//解かないので使わない
+      taskHelper->w_ext().resize(1);//解かないので使わない
+      for(size_t i=0;i<taskHelper->w_ext().size();i++)taskHelper->w_ext()[i] = w;//解かないので使わない
+
+      //id
+      task->id_ext() = std::vector<std::string>{"taumax"};
+      taskHelper->id_ext() = std::vector<std::string>{"taumax"};
+
+      if(debug_print_){
+        std::cerr << taskHelper->name() << std::endl;
+        std::cerr << "A" << std::endl;
+        std::cerr << taskHelper->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << taskHelper->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << taskHelper->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << taskHelper->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << taskHelper->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << taskHelper->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << taskHelper->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << taskHelper->w() << std::endl;
+        std::cerr << "A_ext" << std::endl;
+        std::cerr << taskHelper->A_ext() << std::endl;
+        std::cerr << "C_ext" << std::endl;
+        std::cerr << taskHelper->C_ext() << std::endl;
+        std::cerr << "w_ext" << std::endl;
+        std::cerr << taskHelper->w_ext() << std::endl;
+      }
 
       if(debug_print_){
         std::cerr << task->name() << std::endl;
@@ -1115,6 +1325,12 @@ namespace multicontact_controller {
         std::cerr << task->wc() << std::endl;
         std::cerr << "w" << std::endl;
         std::cerr << task->w() << std::endl;
+        std::cerr << "A_ext" << std::endl;
+        std::cerr << task->A_ext() << std::endl;
+        std::cerr << "C_ext" << std::endl;
+        std::cerr << task->C_ext() << std::endl;
+        std::cerr << "w_ext" << std::endl;
+        std::cerr << task->w_ext() << std::endl;
       }
 
       return true;

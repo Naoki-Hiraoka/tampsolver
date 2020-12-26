@@ -41,6 +41,9 @@ namespace prioritized_qp{
     Eigen::VectorXd& w() { return w_; }
 
     // 追加の変数に対応. 最大値最小化等で用いる
+    std::vector<std::string> id_ext() const { return id_ext_;} //各追加変数のタスク間の対応をあらわす
+    std::vector<std::string>& id_ext() { return id_ext_;}
+
     Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext() const { return A_ext_; }
     Eigen::SparseMatrix<double,Eigen::RowMajor>& A_ext() { return A_ext_; }
 
@@ -69,6 +72,7 @@ namespace prioritized_qp{
 
     Eigen::VectorXd w_;
 
+    std::vector<std::string> id_ext_;
     Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext_;
     Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext_;
     Eigen::VectorXd w_ext_;
