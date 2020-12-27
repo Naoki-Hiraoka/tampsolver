@@ -135,7 +135,7 @@ namespace multicontact_controller {
               collision.point1.header.frame_id = collisionLinkPair->link[0]->name();
               tf::pointEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[j*2+0].point,collision.point1.point);
               collision.normal1.header.frame_id = collisionLinkPair->link[0]->name();
-              tf::vectorEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[j*2+0].normal,collision.normal1.vector);
+              tf::vectorEigenToMsg(collisionLinkPair->link[0]->R().inverse() * collisionLinkPair->collisions[j*2+0].normal,collision.normal1.vector);
               collision.point2.header.stamp = now;
               collision.point2.header.seq = seq;
               collision.point2.header.frame_id = "odom";
@@ -194,7 +194,9 @@ namespace multicontact_controller {
   void PCLCollisionDetectorROS::obstacleCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
     pcl::PointCloud<pcl::PointXYZ>::Ptr obstacle_model(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*msg, *obstacle_model);
-    pclCollisionDetector_->setObstacleModel(obstacle_model);
+    if(obstacle_model->points.size() > 0){
+      pclCollisionDetector_->setObstacleModel(obstacle_model);
+    }
   }
 
   void PCLCollisionDetectorROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {

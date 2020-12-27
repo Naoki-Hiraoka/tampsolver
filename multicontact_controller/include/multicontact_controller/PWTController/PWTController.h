@@ -162,6 +162,7 @@ namespace multicontact_controller {
         debug_print_(false),
         sv_ratio_(1e-12),
         k0_(0.1),
+        tolerance0_1_(0.02),
         k0_1_(0.5),
         w0_1_(1e-2),
         we0_1_(1e4),
@@ -170,6 +171,10 @@ namespace multicontact_controller {
         we1_(1e4),
         w_scale1_(2e3),
         tau_scale1_(2e3),
+        tolerance1_1_(0.05),
+        k1_1_(0.5),
+        w1_1_(1e-2),
+        we1_1_(1e4),
         w2_(1e-2),
         we2_(1e4),
         k2_5_(5.0),
@@ -190,6 +195,7 @@ namespace multicontact_controller {
     //calcForwardKinematics()とcalcCM()が事前に必要
     bool calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                         std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                        std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& pclCollisions,
                         double dt);
 
     bool debug_print() const {return debug_print_;}
@@ -198,6 +204,8 @@ namespace multicontact_controller {
     double& sv_ratio() { return sv_ratio_;}
     double k0() const { return k0_;}
     double& k0() { return k0_;}
+    double tolerance0_1() const { return tolerance0_1_;}
+    double& tolerance0_1() { return tolerance0_1_;}
     double k0_1() const { return k0_1_;}
     double& k0_1() { return k0_1_;}
     double w0_1() const { return w0_1_;}
@@ -214,6 +222,14 @@ namespace multicontact_controller {
     double& w_scale1() { return w_scale1_;}
     double tau_scale1() const { return tau_scale1_;}
     double& tau_scale1() { return tau_scale1_;}
+    double tolerance1_1() const { return tolerance1_1_;}
+    double& tolerance1_1() { return tolerance1_1_;}
+    double k1_1() const { return k1_1_;}
+    double& k1_1() { return k1_1_;}
+    double w1_1() const { return w1_1_;}
+    double& w1_1() { return w1_1_;}
+    double we1_1() const { return we1_1_;}
+    double& we1_1() { return we1_1_;}
     double w2() const { return w2_;}
     double& w2() { return w2_;}
     double we2() const { return we2_;}
@@ -261,6 +277,7 @@ namespace multicontact_controller {
                       std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                       std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
                       const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
+                      double tolerance,
                       double k,
                       double dt,
                       double w,
@@ -279,6 +296,18 @@ namespace multicontact_controller {
                     double dt,
                     double w,
                     double we);
+
+    // メンバ変数はdebug_print_とTask1_1_しか使わない
+    bool setupTask1_1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+                      cnoid::Body* robot,
+                      std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                      std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& pclCollisions,
+                      const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
+                      double tolerance,
+                      double k,
+                      double dt,
+                      double w,
+                      double we);
 
     // メンバ変数はdebug_print_とTask2_しか使わない
     bool setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -337,6 +366,7 @@ namespace multicontact_controller {
     //   setupTask0
     double k0_;
     //   setupTask0_1
+    double tolerance0_1_;
     double k0_1_;
     double w0_1_;
     double we0_1_;
@@ -346,6 +376,11 @@ namespace multicontact_controller {
     double we1_;
     double w_scale1_;
     double tau_scale1_;
+    //   setupTask1_1
+    double tolerance1_1_;
+    double k1_1_;
+    double w1_1_;
+    double we1_1_;
     //   setupTask2
     double w2_;
     double we2_;
@@ -366,6 +401,7 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> task0_; // setupTask0
     std::shared_ptr<prioritized_qp::Task> task0_1_; // setupTask0_1
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
+    std::shared_ptr<prioritized_qp::Task> task1_1_; // setupTask1_1
     std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
     std::shared_ptr<prioritized_qp::Task> task2_5_; // setupTas2_5
     std::shared_ptr<prioritized_qp::Task> task3Helper_; // setupTask3_Helper

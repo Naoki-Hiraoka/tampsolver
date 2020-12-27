@@ -88,6 +88,7 @@ namespace multicontact_controller {
     void motorTemperatureStateCallback(const multicontact_controller_msgs::MotorTemperatureState::ConstPtr& msg);
     void controllerStateCallback(const pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr& msg);
     void selfCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg);
+    void pclCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg);
     void endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg);
     bool enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
     void configCallback(multicontact_controller_msgs::PWTControllerConfig& config, int32_t level);
@@ -100,6 +101,7 @@ namespace multicontact_controller {
     std::map<std::string, std::shared_ptr<JointInfo> > jointInfoMap_;
     std::vector<std::shared_ptr<JointInfo> > jointInfos_;
     std::vector<std::shared_ptr<cnoidbodyutils::Collision> > selfCollisions_;
+    std::vector<std::shared_ptr<cnoidbodyutils::Collision> > pclCollisions_;
     std::shared_ptr<PWTController> PWTController_;
 
     pr2_controllers_msgs::JointTrajectoryControllerState::ConstPtr controllerState_;

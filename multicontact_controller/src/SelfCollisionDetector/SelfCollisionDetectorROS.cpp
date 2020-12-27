@@ -90,11 +90,11 @@ namespace multicontact_controller {
             collision.point1.header.stamp = now;
             collision.point1.header.seq = seq;
             tf::pointEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[0].point,collision.point1.point);
-            tf::vectorEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[0].normal,collision.normal1.vector);
+            tf::vectorEigenToMsg(collisionLinkPair->link[0]->R().inverse() * collisionLinkPair->collisions[0].normal,collision.normal1.vector);
             collision.point2.header.stamp = now;
             collision.point2.header.seq = seq;
             tf::pointEigenToMsg(collisionLinkPair->link[1]->T().inverse() * collisionLinkPair->collisions[1].point,collision.point2.point);
-            tf::vectorEigenToMsg(collisionLinkPair->link[1]->T().inverse() * collisionLinkPair->collisions[1].normal,collision.normal2.vector);
+            tf::vectorEigenToMsg(collisionLinkPair->link[1]->R().inverse() * collisionLinkPair->collisions[1].normal,collision.normal2.vector);
             collision.distance = - collisionLinkPair->collisions[0].depth;
           }
 

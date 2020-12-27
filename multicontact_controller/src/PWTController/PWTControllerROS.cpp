@@ -137,6 +137,8 @@ namespace multicontact_controller {
 
     ros::Subscriber selfCollisionSub = nh.subscribe("self_collision", 1, &PWTControllerROS::selfCollisionCallback, this);
 
+    ros::Subscriber pclCollisionSub = nh.subscribe("pcl_collision", 1, &PWTControllerROS::pclCollisionCallback, this);
+
     ros::ServiceServer enableService = pnh.advertiseService("enable",&PWTControllerROS::enableCallback,this);
 
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction > controllerClient("fullbody_controller/follow_joint_trajectory_action", true);
@@ -204,12 +206,18 @@ namespace multicontact_controller {
               this->drawOn(objects[j]);
             }
           }
+          for(size_t i=0;i<pclCollisions_.size();i++){
+            std::vector<cnoid::SgNodePtr> objects = pclCollisions_[i]->getDrawOnObjects();
+            for(size_t j=0;j<objects.size();j++){
+              this->drawOn(objects[j]);
+            }
+          }
           this->flush();
         }
 
         // solve
         robot_->calcCenterOfMass();
-        PWTController_->calcPWTControl(contactPoints, selfCollisions_, dt);
+        PWTController_->calcPWTControl(contactPoints, selfCollisions_, pclCollisions_, dt);
 
         // send command
         control_msgs::FollowJointTrajectoryGoal goal;
@@ -281,6 +289,10 @@ namespace multicontact_controller {
     cnoidbodyutils::collisionArrayMsgToCnoid(robot_,*msg, selfCollisions_);
   }
 
+  void PWTControllerROS::pclCollisionCallback(const multicontact_controller_msgs::CollisionArray::ConstPtr& msg){
+    cnoidbodyutils::collisionArrayMsgToCnoid(robot_,*msg, pclCollisions_);
+  }
+
   void PWTControllerROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
     endeffectorutils::stringArrayToEndEffectors(msg,endEffectors_,this->robot_);
   }
@@ -325,6 +337,7 @@ namespace multicontact_controller {
     PWTController_->debug_print() = config.debug_print;
     PWTController_->sv_ratio() = config.sv_ratio;
     PWTController_->k0() = config.k0;
+    PWTController_->tolerance0_1() = config.tolerance0_1;
     PWTController_->k0_1() = config.k0_1;
     PWTController_->w0_1() = config.w0_1;
     PWTController_->we0_1() = config.we0_1;
@@ -333,6 +346,10 @@ namespace multicontact_controller {
     PWTController_->we1() = config.we1;
     PWTController_->w_scale1() = config.w_scale1;
     PWTController_->tau_scale1() = config.tau_scale1;
+    PWTController_->tolerance1_1() = config.tolerance1_1;
+    PWTController_->k1_1() = config.k1_1;
+    PWTController_->w1_1() = config.w1_1;
+    PWTController_->we1_1() = config.we1_1;
     PWTController_->w2() = config.w2;
     PWTController_->we2() = config.we2;
     PWTController_->k2_5() = config.k2_5;
@@ -352,6 +369,7 @@ namespace multicontact_controller {
     config.debug_print = PWTController_->debug_print();
     config.sv_ratio = PWTController_->sv_ratio();
     config.k0 = PWTController_->k0();
+    config.tolerance0_1 = PWTController_->tolerance0_1();
     config.k0_1 = PWTController_->k0_1();
     config.w0_1 = PWTController_->w0_1();
     config.we0_1 = PWTController_->we0_1();
@@ -360,6 +378,10 @@ namespace multicontact_controller {
     config.we1 = PWTController_->we1();
     config.w_scale1 = PWTController_->w_scale1();
     config.tau_scale1 = PWTController_->tau_scale1();
+    config.tolerance1_1 = PWTController_->tolerance1_1();
+    config.k1_1 = PWTController_->k1_1();
+    config.w1_1 = PWTController_->w1_1();
+    config.we1_1 = PWTController_->we1_1();
     config.w2 = PWTController_->w2();
     config.we2 = PWTController_->we2();
     config.k2_5 = PWTController_->k2_5();

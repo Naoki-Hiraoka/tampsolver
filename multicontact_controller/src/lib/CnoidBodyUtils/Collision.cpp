@@ -236,8 +236,13 @@ namespace multicontact_controller{
       //distanceを更新
       p0_ = collisionLinkPair_.link[0] ? collisionLinkPair_.link[0]->T() * collisionLinkPair_.collisions[0].point : collisionLinkPair_.collisions[0].point;
       p1_ = collisionLinkPair_.link[1] ? collisionLinkPair_.link[1]->T() * collisionLinkPair_.collisions[1].point : collisionLinkPair_.collisions[1].point;
-      cnoid::Vector3 normal01 = (collisionLinkPair_.link[0] ? collisionLinkPair_.link[0]->T() * collisionLinkPair_.collisions[0].normal : collisionLinkPair_.collisions[0].normal).normalized();//p1がこの方向に動くと離れる
-      distance_ = (p1_ - p0_).norm() * ((p1_ - p0_).dot(normal01) >= 0 ? 1.0 : -1.0);
+      cnoid::Vector3 normal01 = (collisionLinkPair_.link[0] ? collisionLinkPair_.link[0]->R() * collisionLinkPair_.collisions[0].normal : collisionLinkPair_.collisions[0].normal).normalized();//p1がこの方向に動くと離れる
+      if(collisionLinkPair_.collisions[0].depth > -1e5){
+        distance_ = (p1_ - p0_).norm() * ((p1_ - p0_).dot(normal01) >= 0 ? 1.0 : -1.0);
+      }else{
+        //非常に遠い. このときp0, p1にはでたらめな値が入っている場合があるので、distanceは計算しない
+        distance_ = - collisionLinkPair_.collisions[0].depth;
+      }
 
       A.resize(0,6+robot_->numJoints());
       b.resize(0);
@@ -269,8 +274,7 @@ namespace multicontact_controller{
       }else{
         if(collisionLinkPair_.link[0] && collisionLinkPair_.body[0] &&
            collisionLinkPair_.body[0] == robot_){
-          if(!path0_.baseLink() ||
-             !path0_.endLink() ||
+          if(path0_.empty() ||
              path0_.baseLink() != robot_->rootLink() ||
              path0_.endLink() != collisionLinkPair_.link[0]){
             path0_.setPath(collisionLinkPair_.link[0]);
@@ -296,8 +300,7 @@ namespace multicontact_controller{
         }
         if(collisionLinkPair_.link[1] && collisionLinkPair_.body[1] &&
            collisionLinkPair_.body[1] == robot_){
-          if(!path1_.baseLink() ||
-             !path1_.endLink() ||
+          if(path1_.empty() ||
              path1_.baseLink() != robot_->rootLink() ||
              path1_.endLink() != collisionLinkPair_.link[1]){
             path1_.setPath(collisionLinkPair_.link[1]);
@@ -372,9 +375,18 @@ namespace multicontact_controller{
         this->lines_ = new cnoid::SgLineSet;
         this->lines_->setLineWidth(1.0);
         this->lines_->getOrCreateColors()->resize(3);
-        this->lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
-        this->lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(0.6,0.0,0.0);
-        this->lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(1.0,0.0,0.0);
+        {
+          if(collisionLinkPair_.link[0] && collisionLinkPair_.link[1]){
+            this->lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
+            this->lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(0.6,0.0,0.0);
+            this->lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(1.0,0.0,0.0);
+          }else{
+            this->lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(0.0,0.0,0.3);
+            this->lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(0.0,0.0,0.6);
+            this->lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(0.0,0.0,1.0);
+          }
+        }
+
         // A, B
         this->lines_->getOrCreateVertices()->resize(2);
         this->lines_->colorIndices().resize(0);
@@ -384,6 +396,8 @@ namespace multicontact_controller{
       cnoid::Vector3 A_v = p0_;
       cnoid::Vector3 B_v = p1_;
       double d = distance_;
+
+      if(distance_ > 1e5) return std::vector<cnoid::SgNodePtr>();
 
       this->lines_->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
       this->lines_->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
@@ -415,7 +429,15 @@ namespace multicontact_controller{
         cnoid::SgLineSetPtr lines(new cnoid::SgLineSet);
         lines->setLineWidth(1.0);
         lines->getOrCreateColors()->resize(1);
-        lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
+        {
+          cnoid::Vector3f color;
+          if(collisionLinkPair->link[0] && collisionLinkPair->link[1]){
+            color = cnoid::Vector3f(0.3,0.0,0.0);
+          }else{
+            color = cnoid::Vector3f(0.0,0.0,0.3);
+          }
+          lines->getOrCreateColors()->at(0) = color;
+        }
         // A, B
         lines->getOrCreateVertices()->resize(2);
         lines->colorIndices().resize(0);
