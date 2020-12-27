@@ -63,6 +63,7 @@
   <depend>pr2_controllers_msgs</depend>
   <depend>interactive_markers</depend>
   <depend>urdf</depend>
+  <depend>pcl_ros</depend>
 
   <depend>roseus</depend>
   <depend>roseus_smach</depend>

@@ -6,6 +6,7 @@
 #include <multicontact_controller/MultiContactFootCoords/MultiContactFootCoordsROSItem.h>
 #include <multicontact_controller/PWTController/PWTControllerROSItem.h>
 #include <multicontact_controller/SelfCollisionDetector/SelfCollisionDetectorROSItem.h>
+#include <multicontact_controller/PCLCollisionDetector/PCLCollisionDetectorROSItem.h>
 
 using namespace cnoid;
 
@@ -24,6 +25,7 @@ public:
       MultiContactFootCoordsROSItem::initializeClass(this);
       PWTControllerROSItem::initializeClass(this);
       SelfCollisionDetectorROSItem::initializeClass(this);
+      PCLCollisionDetectorROSItem::initializeClass(this);
       return true;
     }
 

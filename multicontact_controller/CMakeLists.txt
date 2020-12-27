@@ -130,6 +130,7 @@ add_subdirectory(src/MultiContactFootCoords)
 add_subdirectory(src/PWTController)
 add_subdirectory(src/ContactForceFilter)
 add_subdirectory(src/SelfCollisionDetector)
+add_subdirectory(src/PCLCollisionDetector)
 
 add_library(CnoidMultiContactControllerPlugin SHARED
   src/MultiContactControllerPlugin.cpp)
@@ -138,7 +139,8 @@ target_link_libraries(CnoidMultiContactControllerPlugin
   ContactForceEstimator
   MultiContactFootCoords
   PWTController
-  SelfCollisionDetector)
+  SelfCollisionDetector
+  PCLCollisionDetector)
 set_target_properties(CnoidMultiContactControllerPlugin PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CHOREONOID_PLUGIN_DIR})
 
 ## Add cmake target dependencies of the library

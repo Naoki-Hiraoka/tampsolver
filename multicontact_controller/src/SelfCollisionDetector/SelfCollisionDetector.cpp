@@ -5,12 +5,13 @@ namespace multicontact_controller {
   SelfCollisionDetector::SelfCollisionDetector(cnoid::Body* robot)
     : robot_(robot)
   {
+    cnoidbodyutils::convertCollisionToConvexHull(robot_);
     for(size_t i=0;i<robot_->numLinks();i++){
-      cnoid::SgNode* convexHull = cnoidbodyutils::convertToConvexHull(robot_->link(i)->collisionShape());
-      if(!convexHull) continue;
-      std::shared_ptr<Vclip::Polyhedron> collisionShape = cnoidbodyutils::convertToVClipModel(convexHull);
-      if(!collisionShape) continue;
-      collisionShapes_[robot_->link(i)] = collisionShape;
+      cnoid::SgNode* collisionshape = robot_->link(i)->collisionShape();
+      if(!collisionshape) continue;
+      std::shared_ptr<Vclip::Polyhedron> vclipCollisionShape = cnoidbodyutils::convertToVClipModel(collisionshape);
+      if(!vclipCollisionShape) continue;
+      collisionShapes_[robot_->link(i)] = vclipCollisionShape;
     }
   }
 

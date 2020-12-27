@@ -80,6 +80,8 @@ namespace multicontact_controller{
     };
 
     void collisionArrayMsgToCnoid(cnoid::Body* robot, const multicontact_controller_msgs::CollisionArray& msg, std::vector<std::shared_ptr<Collision> >& collisions);
+
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, double thre=10.0);
   };
 };
 

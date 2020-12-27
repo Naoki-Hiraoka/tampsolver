@@ -404,6 +404,35 @@ namespace multicontact_controller{
       return std::vector<cnoid::SgNodePtr>{this->lines_};
     }
 
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, double thre){
+      std::vector<cnoid::SgNodePtr> objects;
+      for(size_t i=0;i<collisionLinkPair->collisions.size()/2;i++){
+        cnoid::Vector3 A_v = collisionLinkPair->collisions[i*2+0].point;
+        cnoid::Vector3 B_v = collisionLinkPair->collisions[i*2+1].point;
+        double d = - collisionLinkPair->collisions[i*2+0].depth;
+        if(d>thre)continue;
+
+        cnoid::SgLineSetPtr lines(new cnoid::SgLineSet);
+        lines->setLineWidth(1.0);
+        lines->getOrCreateColors()->resize(1);
+        lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
+        // A, B
+        lines->getOrCreateVertices()->resize(2);
+        lines->colorIndices().resize(0);
+        lines->addLine(0,1); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+
+        lines->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
+        lines->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
+        lines->setLineWidth(1.0);
+        lines->colorIndices().at(0) = 0;
+        lines->colorIndices().at(1) = 0;
+
+        objects.push_back(lines);
+      }
+
+      return objects;
+    }
+
   };
 };
 
