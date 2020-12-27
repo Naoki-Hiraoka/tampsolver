@@ -186,6 +186,17 @@ namespace multicontact_controller {
   }
 
   bool ContactForceEstimatorROS::enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {
+    if(this->isEnabled_ && ! req.data){
+      for(std::map<std::string,std::shared_ptr<EndEffectorCFEROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+        cnoid::Vector6 F = cnoid::Vector6::Zero();
+
+        geometry_msgs::WrenchStamped msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = it->first;
+        tf::wrenchEigenToMsg(F, msg.wrench);
+        it->second->contactForcePub().publish(msg);
+      }
+    }
     this->isEnabled_ = req.data;
     res.success = true;
     return true;
