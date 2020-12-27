@@ -18,5 +18,21 @@ namespace multicontact_controller{
       contactPoint->T_local().linear() = q.normalized().toRotationMatrix();
     }
 
+    void vectorToString(const std::vector<std::string>& stringVector, std::string& outString){
+      std::stringstream ss;
+      for(size_t i=0;i<stringVector.size();i++){
+        ss << stringVector[i];
+        if(i != stringVector.size() -1) ss << ",";
+      }
+      outString = ss.str();
+    }
+    void stringToVector(const std::string& inString, std::vector<std::string>& stringVector){
+      stringVector.clear();
+      std::stringstream ss(inString);
+      std::string s;
+      while(std::getline(ss,s,',')){
+        stringVector.push_back(s);
+      }
+    }
   }
 }

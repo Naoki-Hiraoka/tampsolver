@@ -6,6 +6,7 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <dynamic_reconfigure/server.h>
+#include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
 
 class EndEffectorInfoPublisher{
 public:
@@ -184,8 +185,15 @@ protected:
       }else{
         nh.getParam(interaction_ns+"/K_r",endEffectorInfo->interaction.K_r);
       }
-
     }
+
+    if(!nh.hasParam(ns+"/allow_collision_links")){
+      ROS_WARN("rosparam %s not found",(ns+"/allow_collision_links").c_str());
+      endEffectorInfo->allow_collision_links.clear();
+    }else{
+      nh.getParam(ns+"/allow_collision_links",endEffectorInfo->allow_collision_links);
+    }
+
     return true;
   }
 
@@ -208,6 +216,7 @@ protected:
     endEffectorInfo_->interaction.moment_gain.x = config.moment_gain_x;
     endEffectorInfo_->interaction.moment_gain.y = config.moment_gain_y;
     endEffectorInfo_->interaction.moment_gain.z = config.moment_gain_z;
+    multicontact_controller::endeffectorutils::stringToVector(config.allow_collision_links,endEffectorInfo_->allow_collision_links);
 
     endEffectorInfoPub_.publish(*endEffectorInfo_);
   }
@@ -232,6 +241,7 @@ protected:
     config.moment_gain_x = endEffectorInfo_->interaction.moment_gain.x;
     config.moment_gain_y = endEffectorInfo_->interaction.moment_gain.y;
     config.moment_gain_z = endEffectorInfo_->interaction.moment_gain.z;
+    multicontact_controller::endeffectorutils::vectorToString(endEffectorInfo_->allow_collision_links,config.allow_collision_links);
 
     return config;
   }

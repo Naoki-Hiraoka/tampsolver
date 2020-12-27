@@ -73,6 +73,8 @@ namespace multicontact_controller {
 
     void updateContactPointFromInfo(cnoid::Body* robot, std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint, const multicontact_controller_msgs::EndEffectorInfo& info);
 
+    void vectorToString(const std::vector<std::string>& stringVector, std::string& outString);
+    void stringToVector(const std::string& inString, std::vector<std::string>& stringVector);
   };
 };
 

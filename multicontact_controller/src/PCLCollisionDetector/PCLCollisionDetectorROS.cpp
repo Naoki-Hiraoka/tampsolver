@@ -6,6 +6,29 @@
 #include <multicontact_controller_msgs/CollisionArray.h>
 
 namespace multicontact_controller {
+  std::vector<cnoid::Link*> EndEffectorPCLCDROS::allowCollisionLinks(){
+    if(this->state_ == "CONTACT" ||
+       this->state_ == "TOWARD_MAKE_CONTACT" ||
+       this->state_ == "TOWARD_BREAK_CONTACT" ||
+       this->state_ == "NEAR_CONTACT"){
+      return allowCollisionLinks_;
+    }else{
+      return std::vector<cnoid::Link*>();
+    }
+  }
+
+  void EndEffectorPCLCDROS::onInfoUpdated(){
+    allowCollisionLinks_.clear();
+    for(size_t i=0;i<info_->allow_collision_links.size();i++){
+      cnoid::Link* link = robot_->link(info_->allow_collision_links[i]);
+      if(!link){
+        ROS_WARN("%s not found",info_->allow_collision_links[i].c_str());
+        continue;
+      }
+      allowCollisionLinks_.push_back(link);
+    }
+  }
+
   void PCLCollisionDetectorROS::main(int argc, char** argv) {
     ros::init(argc,argv,"pcl_collision_detector");
     ros::NodeHandle nh;
@@ -32,7 +55,9 @@ namespace multicontact_controller {
 
     ros::Subscriber odomSub = nh.subscribe("multicontact_odom", 1, &PCLCollisionDetectorROS::odomCallback, this);
 
-    ros::Subscriber obstacleSub = nh.subscribe("/octomap/octomap_point_cloud_centers", 1, &PCLCollisionDetectorROS::obstacleCallback, this);
+    ros::Subscriber obstacleSub = nh.subscribe("obstacle_model", 1, &PCLCollisionDetectorROS::obstacleCallback, this);
+
+    ros::Subscriber endEffectorsSub = nh.subscribe("end_effectors", 1, &PCLCollisionDetectorROS::endEffectorsCallback, this);
 
     // setup publishers
     ros::Publisher collisionArrayPub =  nh.advertise<multicontact_controller_msgs::CollisionArray>("pcl_collision", 100);
@@ -71,7 +96,22 @@ namespace multicontact_controller {
       ros::spinOnce();
 
       if( this->isEnabled_ ){
-        std::vector<cnoid::Link*> links = environmentCollisionLinks;
+        std::vector<cnoid::Link*> links;
+        {
+          std::set<cnoid::Link*> allowCollisionLinks;
+          for(std::map<std::string,std::shared_ptr<EndEffectorPCLCDROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+            std::vector<cnoid::Link*> allowCollisionLinks_for_oneEEF = it->second->allowCollisionLinks();
+            for(size_t i=0;i<allowCollisionLinks_for_oneEEF.size();i++){
+              allowCollisionLinks.insert(allowCollisionLinks_for_oneEEF[i]);
+            }
+          }
+          for(size_t i=0;i<environmentCollisionLinks.size();i++){
+            if(allowCollisionLinks.find(environmentCollisionLinks[i]) == allowCollisionLinks.end()){
+              links.push_back(environmentCollisionLinks[i]);
+            }
+          }
+        }
+
         pclCollisionDetector_->setLinks(links);
         if(pclCollisionDetector_->solve()){
           msg.header.seq = seq;
@@ -155,6 +195,10 @@ namespace multicontact_controller {
     pcl::PointCloud<pcl::PointXYZ>::Ptr obstacle_model(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*msg, *obstacle_model);
     pclCollisionDetector_->setObstacleModel(obstacle_model);
+  }
+
+  void PCLCollisionDetectorROS::endEffectorsCallback(const multicontact_controller_msgs::StringArray::ConstPtr& msg) {
+    endeffectorutils::stringArrayToEndEffectors(msg,endEffectors_,this->robot_);
   }
 
   bool PCLCollisionDetectorROS::enableCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {

@@ -13,7 +13,7 @@ namespace multicontact_controller {
       ros::NodeHandle n;
       std::string vrml_file;
       if (!n.getParam(paramname, vrml_file)) {
-        ROS_WARN("Failed to get param 'vrml_file'");
+        ROS_WARN("Failed to get param %s",paramname.c_str());
         return nullptr;
       }
       // package://に対応
