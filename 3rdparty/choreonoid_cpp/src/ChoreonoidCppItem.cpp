@@ -28,10 +28,28 @@ namespace cnoid {
 
     QStringList argv_list = QCoreApplication::arguments();
     char* argv[argv_list.size()];
+
+    //なぜかわからないがargv_list.at(i).toUtf8().data()のポインタをそのままargvに入れるとros::initがうまく解釈してくれない.
     for(size_t i=0;i<argv_list.size();i++){
-      argv[i] = argv_list.at(i).toUtf8().data();
+      char* data = argv_list.at(i).toUtf8().data();
+      size_t dataSize = 0;
+      for(size_t j=0;;j++){
+        if(data[j] == '\0'){
+          dataSize = j;
+          break;
+        }
+      }
+      argv[i] = (char *)malloc(sizeof(char) * (dataSize+1));
+      for(size_t j=0;j<dataSize;j++){
+        argv[i][j] = data[j];
+      }
+      argv[i][dataSize] = '\0';
     }
     worker->main(argv_list.size(),argv);
+
+    for(size_t i=0;i<argv_list.size();i++){
+      free(argv[i]);
+    }
   }
 }
 

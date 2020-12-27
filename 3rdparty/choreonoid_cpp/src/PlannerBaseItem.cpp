@@ -23,7 +23,7 @@ namespace cnoid {
     SceneView::instance()->sceneWidget()->sceneRoot()->addChild(this->_markerGroup);
 
     this->_worker.sigTimeout().connect([&](){ this->main_common(); });
-    this->_worker.start(200);
+    this->_worker.start(500);
 
   }
 
