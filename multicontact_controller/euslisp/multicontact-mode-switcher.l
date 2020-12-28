@@ -93,7 +93,9 @@
     (send req :data t)
     (ros::service-call "/end_effector_interactive_marker_server/enable" req))
   (send *ri* :set-interpolation-mode :linear)
-  ;; (send *ri* :start-st)
+  (let ((req (instance std_srvs::SetBoolRequest :init)))
+    (send req :data t)
+    (ros::service-call "/pwt_controller/enable" req))
   t)
 
 (defun disable-multicontact-mode
@@ -116,7 +118,9 @@
     (return-from enable-walk-mode nil))
   (ros::publish "control_mode" (instance std_msgs::string :init :data "IDLE"))
   (setq *control-mode* "IDLE")
-  ;; (send *ri* :stop-st)
+  (let ((req (instance std_srvs::SetBoolRequest :init)))
+    (send req :data nil)
+    (ros::service-call "/pwt_controller/enable" req))
   (send *ri* :set-interpolation-mode :hoffarbib)
   (let ((req (instance std_srvs::SetBoolRequest :init)))
     (send req :data nil)
