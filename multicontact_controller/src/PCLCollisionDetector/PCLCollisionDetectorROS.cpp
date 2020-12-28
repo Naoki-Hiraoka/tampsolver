@@ -18,15 +18,88 @@ namespace multicontact_controller {
   }
 
   void EndEffectorPCLCDROS::onInfoUpdated(){
+    endeffectorutils::updateContactPointFromInfo(robot_, contactPoint_, *info_);
+
     allowCollisionLinks_.clear();
-    for(size_t i=0;i<info_->allow_collision_links.size();i++){
-      cnoid::Link* link = robot_->link(info_->allow_collision_links[i]);
+    for(size_t i=0;i<info_->collision.allow_collision_links.size();i++){
+      cnoid::Link* link = robot_->link(info_->collision.allow_collision_links[i]);
       if(!link){
-        ROS_WARN("%s not found",info_->allow_collision_links[i].c_str());
+        ROS_WARN("%s not found",info_->collision.allow_collision_links[i].c_str());
         continue;
       }
       allowCollisionLinks_.push_back(link);
     }
+
+    {
+      const multicontact_controller_msgs::BoundingBox& boundingBox = info_->collision.allow_collision_box;
+      if(boundingBox.size.x >= 0.0 &&
+         boundingBox.size.y >= 0.0 &&
+         boundingBox.size.z >= 0.0){
+        allowCollisionBoxFilter_->setMax(Eigen::Vector4f(boundingBox.size.x/2,
+                                                         boundingBox.size.y/2,
+                                                         boundingBox.size.z/2,
+                                                         1.0));
+        allowCollisionBoxFilter_->setMin(Eigen::Vector4f(-boundingBox.size.x/2,
+                                                         -boundingBox.size.y/2,
+                                                         -boundingBox.size.z/2,
+                                                         1.0));
+      }else{
+        ROS_ERROR("boundingBox.size < 0");
+      }
+
+      {
+        cnoid::Vector3 p;
+        tf::vectorMsgToEigen(boundingBox.center, p);
+        allowCollisionBoxCenter_.translation() = p;
+      }
+    }
+  }
+
+  std::vector<cnoid::SgNodePtr> EndEffectorPCLCDROS::getDrawOnObjects(){
+    if(!this->isValid() ||
+       !(this->state_ == "CONTACT" ||
+         this->state_ == "TOWARD_MAKE_CONTACT" ||
+         this->state_ == "TOWARD_BREAK_CONTACT" ||
+         this->state_ == "NEAR_CONTACT")){
+      return std::vector<cnoid::SgNodePtr>();
+    }
+
+    if(!this->lines){
+      this->lines = new cnoid::SgLineSet;
+      this->lines->setLineWidth(3.0);
+      this->lines->getOrCreateColors()->resize(1);
+      this->lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.0,1.0,0.0);
+      // A, B
+      this->lines->getOrCreateVertices()->resize(8);
+      this->lines->colorIndices().resize(0);
+      this->lines->addLine(0,1); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(1,2); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(2,3); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(3,0); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(0,4); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(1,5); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(2,6); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(3,7); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(4,5); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(5,6); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(6,7); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+      this->lines->addLine(7,4); this->lines->colorIndices().push_back(0); this->lines->colorIndices().push_back(0);
+    }
+
+    cnoid::Vector4f maxVec = allowCollisionBoxFilter_->getMax();
+    cnoid::Vector4f minVec = allowCollisionBoxFilter_->getMin();
+    Eigen::Affine3f center = (this->contactPoint_->parent()->T() * this->contactPoint_->T_local() * this->allowCollisionBoxCenter_).cast<float>();
+
+    this->lines->vertices()->at(0) = center * cnoid::Vector3f(minVec[0],minVec[1],minVec[2]);
+    this->lines->vertices()->at(1) = center * cnoid::Vector3f(maxVec[0],minVec[1],minVec[2]);
+    this->lines->vertices()->at(2) = center * cnoid::Vector3f(maxVec[0],maxVec[1],minVec[2]);
+    this->lines->vertices()->at(3) = center * cnoid::Vector3f(minVec[0],maxVec[1],minVec[2]);
+    this->lines->vertices()->at(4) = center * cnoid::Vector3f(minVec[0],minVec[1],maxVec[2]);
+    this->lines->vertices()->at(5) = center * cnoid::Vector3f(maxVec[0],minVec[1],maxVec[2]);
+    this->lines->vertices()->at(6) = center * cnoid::Vector3f(maxVec[0],maxVec[1],maxVec[2]);
+    this->lines->vertices()->at(7) = center * cnoid::Vector3f(minVec[0],maxVec[1],maxVec[2]);
+
+    return std::vector<cnoid::SgNodePtr>{this->lines};
   }
 
   void PCLCollisionDetectorROS::main(int argc, char** argv) {
@@ -96,23 +169,22 @@ namespace multicontact_controller {
       ros::spinOnce();
 
       if( this->isEnabled_ ){
-        std::vector<cnoid::Link*> links;
+        std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > > allowCollisionBoxFilters;
         {
-          std::set<cnoid::Link*> allowCollisionLinks;
           for(std::map<std::string,std::shared_ptr<EndEffectorPCLCDROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-            std::vector<cnoid::Link*> allowCollisionLinks_for_oneEEF = it->second->allowCollisionLinks();
-            for(size_t i=0;i<allowCollisionLinks_for_oneEEF.size();i++){
-              allowCollisionLinks.insert(allowCollisionLinks_for_oneEEF[i]);
-            }
-          }
-          for(size_t i=0;i<environmentCollisionLinks.size();i++){
-            if(allowCollisionLinks.find(environmentCollisionLinks[i]) == allowCollisionLinks.end()){
-              links.push_back(environmentCollisionLinks[i]);
+            if(!it->second->isValid()) continue;
+            std::vector<cnoid::Link*> allowCollisionLinks = it->second->allowCollisionLinks();
+            std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter = it->second->allowCollisionBoxFilter();
+            cnoid::Position allowCollisionBoxCenter = it->second->contactPoint()->parent()->T()* it->second->contactPoint()->T_local()* it->second->allowCollisionBoxCenter();
+            allowCollisionBoxFilter->setTransform(allowCollisionBoxCenter.inverse().cast<float>()); // Set a transformation that should be applied to the cloud before filtering. なのでinverse()
+            for(size_t i=0;i<allowCollisionLinks.size();i++){
+              allowCollisionBoxFilters[allowCollisionLinks[i]].push_back(allowCollisionBoxFilter);
             }
           }
         }
 
-        pclCollisionDetector_->setLinks(links);
+        pclCollisionDetector_->setLinks(environmentCollisionLinks);
+        pclCollisionDetector_->setAllowCollisionBoxFilters(allowCollisionBoxFilters);
         if(pclCollisionDetector_->solve()){
           msg.header.seq = seq;
           msg.header.stamp = now;
@@ -158,9 +230,17 @@ namespace multicontact_controller {
       if(this->hasViewer()){
         this->drawObjects(false);
         if(isEnabled_){
-          std::vector<cnoid::SgNodePtr> objects = pclCollisionDetector_->getDrawOnObjects();
-          for(size_t j=0;j<objects.size();j++){
-            this->drawOn(objects[j]);
+          {
+            std::vector<cnoid::SgNodePtr> objects = pclCollisionDetector_->getDrawOnObjects();
+            for(size_t j=0;j<objects.size();j++){
+              this->drawOn(objects[j]);
+            }
+          }
+          for(std::map<std::string,std::shared_ptr<EndEffectorPCLCDROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
+            std::vector<cnoid::SgNodePtr> objects = it->second->getDrawOnObjects();
+            for(size_t j=0;j<objects.size();j++){
+              this->drawOn(objects[j]);
+            }
           }
         }
         this->flush();

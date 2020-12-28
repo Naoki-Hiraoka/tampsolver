@@ -55,6 +55,8 @@ add_message_files(
   StringArray.msg
   InteractionInfo.msg
   ContactInfo.msg
+  CollisionInfo.msg
+  BoundingBox.msg
   EndEffectorInfo.msg
   MotorTemperatureState.msg
   Collision.msg

@@ -187,11 +187,55 @@ protected:
       }
     }
 
-    if(!nh.hasParam(ns+"/allow_collision_links")){
-      ROS_WARN("rosparam %s not found",(ns+"/allow_collision_links").c_str());
-      endEffectorInfo->allow_collision_links.clear();
-    }else{
-      nh.getParam(ns+"/allow_collision_links",endEffectorInfo->allow_collision_links);
+    {
+      std::string collision_ns = ns + "/collision";
+
+      if(!nh.hasParam(collision_ns+"/allow_collision_links")){
+        ROS_WARN("rosparam %s not found",(collision_ns+"/allow_collision_links").c_str());
+        endEffectorInfo->collision.allow_collision_links.clear();
+      }else{
+        nh.getParam(collision_ns+"/allow_collision_links",endEffectorInfo->collision.allow_collision_links);
+      }
+
+      if(!nh.hasParam(collision_ns+"/allow_collision_box/center")){
+        ROS_WARN("rosparam %s not found",(collision_ns+"/allow_collision_box/center").c_str());
+        endEffectorInfo->collision.allow_collision_box.center.x = 0.0;
+        endEffectorInfo->collision.allow_collision_box.center.y = 0.0;
+        endEffectorInfo->collision.allow_collision_box.center.z = 0.0;
+      }else{
+        std::vector<double> center;
+        nh.getParam(collision_ns+"/allow_collision_box/center",center);
+        if(center.size() == 3){
+          endEffectorInfo->collision.allow_collision_box.center.x = center[0];
+          endEffectorInfo->collision.allow_collision_box.center.y = center[1];
+          endEffectorInfo->collision.allow_collision_box.center.z = center[2];
+        }else{
+          ROS_WARN("rosparam %s size mismatch",(collision_ns+"/allow_collision_box/center").c_str());
+          endEffectorInfo->collision.allow_collision_box.center.x = 0.0;
+          endEffectorInfo->collision.allow_collision_box.center.y = 0.0;
+          endEffectorInfo->collision.allow_collision_box.center.z = 0.0;
+        }
+      }
+
+      if(!nh.hasParam(collision_ns+"/allow_collision_box/size")){
+        ROS_WARN("rosparam %s not found",(collision_ns+"/allow_collision_box/size").c_str());
+        endEffectorInfo->collision.allow_collision_box.size.x = 0.0;
+        endEffectorInfo->collision.allow_collision_box.size.y = 0.0;
+        endEffectorInfo->collision.allow_collision_box.size.z = 0.0;
+      }else{
+        std::vector<double> size;
+        nh.getParam(collision_ns+"/allow_collision_box/size",size);
+        if(size.size() == 3){
+          endEffectorInfo->collision.allow_collision_box.size.x = size[0];
+          endEffectorInfo->collision.allow_collision_box.size.y = size[1];
+          endEffectorInfo->collision.allow_collision_box.size.z = size[2];
+        }else{
+          ROS_WARN("rosparam %s size mismatch",(collision_ns+"/allow_collision_box/size").c_str());
+          endEffectorInfo->collision.allow_collision_box.size.x = 0.0;
+          endEffectorInfo->collision.allow_collision_box.size.y = 0.0;
+          endEffectorInfo->collision.allow_collision_box.size.z = 0.0;
+        }
+      }
     }
 
     return true;
@@ -216,7 +260,13 @@ protected:
     endEffectorInfo_->interaction.moment_gain.x = config.moment_gain_x;
     endEffectorInfo_->interaction.moment_gain.y = config.moment_gain_y;
     endEffectorInfo_->interaction.moment_gain.z = config.moment_gain_z;
-    multicontact_controller::endeffectorutils::stringToVector(config.allow_collision_links,endEffectorInfo_->allow_collision_links);
+    multicontact_controller::endeffectorutils::stringToVector(config.allow_collision_links,endEffectorInfo_->collision.allow_collision_links);
+    endEffectorInfo_->collision.allow_collision_box.size.x = config.allow_collision_box_size_x;
+    endEffectorInfo_->collision.allow_collision_box.size.y = config.allow_collision_box_size_y;
+    endEffectorInfo_->collision.allow_collision_box.size.z = config.allow_collision_box_size_z;
+    endEffectorInfo_->collision.allow_collision_box.center.x = config.allow_collision_box_center_x;
+    endEffectorInfo_->collision.allow_collision_box.center.y = config.allow_collision_box_center_y;
+    endEffectorInfo_->collision.allow_collision_box.center.z = config.allow_collision_box_center_z;
 
     endEffectorInfoPub_.publish(*endEffectorInfo_);
   }
@@ -241,7 +291,13 @@ protected:
     config.moment_gain_x = endEffectorInfo_->interaction.moment_gain.x;
     config.moment_gain_y = endEffectorInfo_->interaction.moment_gain.y;
     config.moment_gain_z = endEffectorInfo_->interaction.moment_gain.z;
-    multicontact_controller::endeffectorutils::vectorToString(endEffectorInfo_->allow_collision_links,config.allow_collision_links);
+    multicontact_controller::endeffectorutils::vectorToString(endEffectorInfo_->collision.allow_collision_links,config.allow_collision_links);
+    config.allow_collision_box_size_x = endEffectorInfo_->collision.allow_collision_box.size.x;
+    config.allow_collision_box_size_y = endEffectorInfo_->collision.allow_collision_box.size.y;
+    config.allow_collision_box_size_z = endEffectorInfo_->collision.allow_collision_box.size.z;
+    config.allow_collision_box_center_x = endEffectorInfo_->collision.allow_collision_box.center.x;
+    config.allow_collision_box_center_y = endEffectorInfo_->collision.allow_collision_box.center.y;
+    config.allow_collision_box_center_z = endEffectorInfo_->collision.allow_collision_box.center.z;
 
     return config;
   }

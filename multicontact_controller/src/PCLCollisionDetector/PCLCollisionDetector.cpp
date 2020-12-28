@@ -56,7 +56,7 @@ namespace multicontact_controller {
     }
   }
 
-  bool PCLCollisionDetector::setLinks(std::vector<cnoid::Link*> links){
+  bool PCLCollisionDetector::setLinks(std::vector<cnoid::Link*>& links){
     collisionLinkPairs_.resize(links.size());
     vclipLinkPairs_.resize(links.size());
 
@@ -80,6 +80,10 @@ namespace multicontact_controller {
         vclipLinkPair = std::make_shared<cnoidbodyutils::VclipLinkPair>(links[i],collisionShapes_[links[i]],boxelLink_,boxelModel_);
       }
     }
+  }
+
+  void PCLCollisionDetector::setAllowCollisionBoxFilters(std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > >& allowCollisionBoxFilters){
+    allowCollisionBoxFilters_ = allowCollisionBoxFilters;
   }
 
   bool PCLCollisionDetector::solve(){
@@ -117,6 +121,18 @@ namespace multicontact_controller {
         extract.setIndices(localNearIndices);
         extract.setNegative(false);
         extract.filter(*localNearObstacles);
+      }
+
+      if(allowCollisionBoxFilters_.find(collisionLinkPair->link[0]) != allowCollisionBoxFilters_.end()){
+        std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > >& boxFilters = allowCollisionBoxFilters_[collisionLinkPair->link[0]];
+        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered( new pcl::PointCloud<pcl::PointXYZ>() );
+        for(size_t i=0;i<boxFilters.size();i++){
+          if(localNearObstacles->points.size()==0)break;
+          boxFilters[i]->setInputCloud(localNearObstacles);
+          boxFilters[i]->setNegative(true);//boxの中を除去する
+          boxFilters[i]->filter(*filtered);
+          localNearObstacles = filtered;
+        }
       }
 
       cnoid::Vector3 p0_min = vclipLinkPair->link0()->p();

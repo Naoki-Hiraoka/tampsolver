@@ -1,0 +1,2 @@
+string[] allow_collision_links
+multicontact_controller_msgs/BoundingBox allow_collision_box

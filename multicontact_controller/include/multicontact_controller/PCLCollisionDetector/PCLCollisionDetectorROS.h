@@ -10,20 +10,46 @@
 #include <ros/ros.h>
 
 #include <multicontact_controller/lib/EndEffectorUtils/EndEffectorUtils.h>
+#include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
 
 namespace multicontact_controller {
   class EndEffectorPCLCDROS: public endeffectorutils::EndEffectorClient {
   public:
-    EndEffectorPCLCDROS(const std::string& name, cnoid::Body* robot)
-      : endeffectorutils::EndEffectorClient::EndEffectorClient(name)
+    EndEffectorPCLCDROS(const std::string& name, cnoid::Body* robot):
+      endeffectorutils::EndEffectorClient::EndEffectorClient(name),
+      robot_(robot),
+      allowCollisionBoxFilter_(std::make_shared<pcl::CropBox<pcl::PointXYZ> >()),
+      contactPoint_(std::make_shared<cnoidbodyutils::ContactPoint>())
     {
-      robot_ = robot;
+      allowCollisionBoxCenter_.setIdentity();
     }
+
     std::vector<cnoid::Link*> allowCollisionLinks();
+    std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter() const {return allowCollisionBoxFilter_;}
+    std::shared_ptr<pcl::CropBox<pcl::PointXYZ> >& allowCollisionBoxFilter() {return allowCollisionBoxFilter_;}
+    cnoid::Position& allowCollisionBoxCenter() { return allowCollisionBoxCenter_;}
+    cnoid::Position allowCollisionBoxCenter() const { return allowCollisionBoxCenter_;}
+
+    std::shared_ptr<cnoidbodyutils::ContactPoint>& contactPoint() { return contactPoint_;}
+    std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint() const { return contactPoint_;}
+
     void onInfoUpdated() override;
+
+    bool isValid() override{
+      return endeffectorutils::EndEffectorClient::isValid() && contactPoint_->isValid();
+    }
+
+    std::vector<cnoid::SgNodePtr> getDrawOnObjects();
   private:
     cnoid::Body* robot_;
     std::vector<cnoid::Link*> allowCollisionLinks_;
+    std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter_;
+    cnoid::Position allowCollisionBoxCenter_;
+
+    std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint_;
+
+    //for visualize
+    cnoid::SgLineSetPtr lines;
   };
 
 

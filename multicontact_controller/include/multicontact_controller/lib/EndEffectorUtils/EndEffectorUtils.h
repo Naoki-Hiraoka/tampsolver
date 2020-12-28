@@ -71,10 +71,47 @@ namespace multicontact_controller {
       ros::Subscriber stateSub_;
     };
 
-    void updateContactPointFromInfo(cnoid::Body* robot, std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint, const multicontact_controller_msgs::EndEffectorInfo& info);
+    // TはContactPoint
+    template<typename T>
+    void updateContactPointFromInfo(cnoid::Body* robot, std::shared_ptr<T> contactPoint, const multicontact_controller_msgs::EndEffectorInfo& info){
+      const std::string& linkname = info.header.frame_id;
+      cnoid::Link* link = cnoidbodyutils::getLinkFromURDFlinkName(robot,linkname);
+      if(!link) {
+        ROS_WARN("Link '%s' is not found in %s",linkname.c_str(),robot->name().c_str());
+      }
 
-    void vectorToString(const std::vector<std::string>& stringVector, std::string& outString);
-    void stringToVector(const std::string& inString, std::vector<std::string>& stringVector);
+      contactPoint->parent() = link;
+      cnoid::Vector3 p;
+      tf::vectorMsgToEigen(info.transform.translation,p);
+      contactPoint->T_local().translation() = p;
+      Eigen::Quaterniond q;
+      tf::quaternionMsgToEigen(info.transform.rotation,q);
+      contactPoint->T_local().linear() = q.normalized().toRotationMatrix();
+    }
+
+    template<typename T>
+    void vectorToString(const std::vector<T>& inVector, std::string& outString){
+      std::stringstream ss;
+      for(size_t i=0;i<inVector.size();i++){
+        ss << inVector[i];
+        if(i != inVector.size() -1) ss << ",";
+      }
+      outString = ss.str();
+    }
+
+    template<typename T>
+    void stringToVector(const std::string& inString, std::vector<T>& outVector){
+      outVector.clear();
+      std::stringstream ss(inString);
+      std::string s;
+      while(std::getline(ss,s,',')){
+        std::stringstream ss_(s);
+        T s_;
+        ss_ >> s_;
+        outVector.push_back(s_);
+      }
+    }
+
   };
 };
 

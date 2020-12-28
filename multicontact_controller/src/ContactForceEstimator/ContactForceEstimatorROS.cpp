@@ -7,20 +7,7 @@
 
 namespace multicontact_controller {
   void EndEffectorCFEROS::onInfoUpdated(){
-    const std::string& linkname = info_->header.frame_id;
-    cnoid::Link* link = cnoidbodyutils::getLinkFromURDFlinkName(robot_,linkname);
-    if(!link) {
-      ROS_WARN("Link '%s' is not found in %s",linkname.c_str(),robot_->name().c_str());
-    }
-
-    this->linkName() = linkname;
-    this->contactPoint()->parent() = link;
-    cnoid::Vector3 p;
-    tf::vectorMsgToEigen(info_->transform.translation,p);
-    this->contactPoint()->T_local().translation() = p;
-    Eigen::Quaterniond q;
-    tf::quaternionMsgToEigen(info_->transform.rotation,q);
-    this->contactPoint()->T_local().linear() = q.normalized().toRotationMatrix();
+    endeffectorutils::updateContactPointFromInfo(robot_,this->contactPoint(),*info_);
   }
 
   void ContactForceEstimatorROS::main(int argc, char** argv) {

@@ -171,7 +171,7 @@ namespace multicontact_controller {
         we1_(1e4),
         w_scale1_(2e3),
         tau_scale1_(2e3),
-        tolerance1_1_(0.02),
+        tolerance1_1_(0.04),
         k1_1_(0.5),
         w1_1_(1e-2),
         we1_1_(1e4),

@@ -6,6 +6,7 @@
 #include <memory>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/crop_box.h>
 
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
 
@@ -19,7 +20,9 @@ namespace multicontact_controller {
 
     void setObstacleModel(pcl::PointCloud<pcl::PointXYZ>::Ptr obstacle_model);
 
-    bool setLinks(std::vector<cnoid::Link*> links);
+    bool setLinks(std::vector<cnoid::Link*>& links);
+
+    void setAllowCollisionBoxFilters(std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > >& allowCollisionBoxFilters);
 
     // linksそれぞれについて、obstacle_modelとのcollisionを計算。
     bool solve();
@@ -46,6 +49,8 @@ namespace multicontact_controller {
 
     std::vector<std::shared_ptr<cnoid::CollisionLinkPair> > collisionLinkPairs_;
     std::vector<std::shared_ptr<cnoidbodyutils::VclipLinkPair> > vclipLinkPairs_;
+
+    std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > > allowCollisionBoxFilters_;
 
     //params
     double filterDistanceGlobal_; //solve

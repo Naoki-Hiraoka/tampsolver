@@ -361,24 +361,24 @@ namespace multicontact_controller {
       tasks.push_back(task1);
     }
 
-    // {
-    //   // priority 1.1
-    //   std::shared_ptr<prioritized_qp::Task> task1_1;
-    //   if(!this->setupTask1_1(task1_1,
-    //                          robot_,
-    //                          jointInfos_,
-    //                          pclCollisions,
-    //                          Dqa,
-    //                          tolerance1_1_,
-    //                          k1_1_,
-    //                          dt,
-    //                          w1_1_,
-    //                          we1_1_)){
-    //     std::cerr << "setupTask1.1 failed" << std::endl;
-    //     return false;
-    //   }
-    //   tasks.push_back(task1_1);
-    // }
+    {
+      // priority 1.1
+      std::shared_ptr<prioritized_qp::Task> task1_1;
+      if(!this->setupTask1_1(task1_1,
+                             robot_,
+                             jointInfos_,
+                             pclCollisions,
+                             Dqa,
+                             tolerance1_1_,
+                             k1_1_,
+                             dt,
+                             w1_1_,
+                             we1_1_)){
+        std::cerr << "setupTask1.1 failed" << std::endl;
+        return false;
+      }
+      tasks.push_back(task1_1);
+    }
 
     {
       // priority 2
