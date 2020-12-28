@@ -30,7 +30,7 @@ public:
 
     int_marker_.name = name_;
     int_marker_.header.stamp=ros::Time(0);
-    int_marker_.scale = 0.3;
+    int_marker_.scale = 0.4;
 
     ros::NodeHandle n;
     targetPosePub_ = n.advertise<geometry_msgs::PoseStamped>(name_ + "/target_pose", 100);

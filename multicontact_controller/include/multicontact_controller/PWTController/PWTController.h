@@ -179,11 +179,11 @@ namespace multicontact_controller {
         we2_(1e4),
         k2_5_(5.0),
         w2_5_(1e-2),
-        we2_5_(1e8),
+        we2_5_(1e4),
         w_scale2_5_(2e3),
         k3_(5.0),
         w3_(1e0),
-        w_scale3_(2e3),
+        w_scale3_(5e3),
         tau_scale3_(2e3),
         taumax_weight3_(1e1),
 

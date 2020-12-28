@@ -143,11 +143,11 @@ namespace multicontact_controller {
       pnh.param("we2",PWTController_->we2(),1e4);
       pnh.param("k2_5",PWTController_->k2_5(),5.0);
       pnh.param("w2_5",PWTController_->w2_5(),1e-2);
-      pnh.param("we2_5",PWTController_->we2_5(),1e8);
+      pnh.param("we2_5",PWTController_->we2_5(),1e4);
       pnh.param("w_scale2_5",PWTController_->w_scale2_5(),2e3);
       pnh.param("k3",PWTController_->k3(),5.0);
       pnh.param("w3",PWTController_->w3(),1e0);
-      pnh.param("w_scale3",PWTController_->w_scale3(),2e3);
+      pnh.param("w_scale3",PWTController_->w_scale3(),5e3);
       pnh.param("tau_scale3",PWTController_->tau_scale3(),2e3);
       pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e1);
     }
