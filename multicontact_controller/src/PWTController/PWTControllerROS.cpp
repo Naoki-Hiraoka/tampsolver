@@ -122,6 +122,36 @@ namespace multicontact_controller {
 
     PWTController_ = std::make_shared<PWTController>(robot_, jointInfos_);
 
+    // setup PWTController from params
+    {
+      pnh.param("sv_ratio",PWTController_->sv_ratio(),1e-12);
+      pnh.param("k0",PWTController_->k0(),0.1);
+      pnh.param("tolerance0_1",PWTController_->tolerance0_1(),0.02);
+      pnh.param("k0_1",PWTController_->k0_1(),0.5);
+      pnh.param("w0_1",PWTController_->w0_1(),1e-2);
+      pnh.param("we0_1",PWTController_->we0_1(),1e4);
+      pnh.param("k1",PWTController_->k1(),5.0);
+      pnh.param("w1",PWTController_->w1(),1e-2);
+      pnh.param("we1",PWTController_->we1(),1e4);
+      pnh.param("w_scale1",PWTController_->w_scale1(),2e3);
+      pnh.param("tau_scale1",PWTController_->tau_scale1(),2e3);
+      pnh.param("tolerance1_1",PWTController_->tolerance1_1(),0.04);
+      pnh.param("k1_1",PWTController_->k1_1(),0.5);
+      pnh.param("w1_1",PWTController_->w1_1(),1e-2);
+      pnh.param("we1_1",PWTController_->we1_1(),1e4);
+      pnh.param("w2",PWTController_->w2(),1e-2);
+      pnh.param("we2",PWTController_->we2(),1e4);
+      pnh.param("k2_5",PWTController_->k2_5(),5.0);
+      pnh.param("w2_5",PWTController_->w2_5(),1e-2);
+      pnh.param("we2_5",PWTController_->we2_5(),1e8);
+      pnh.param("w_scale2_5",PWTController_->w_scale2_5(),2e3);
+      pnh.param("k3",PWTController_->k3(),5.0);
+      pnh.param("w3",PWTController_->w3(),1e0);
+      pnh.param("w_scale3",PWTController_->w_scale3(),2e3);
+      pnh.param("tau_scale3",PWTController_->tau_scale3(),2e3);
+      pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e1);
+    }
+
     // setup subscribers
     ros::Subscriber jointStateSub = nh.subscribe("joint_states", 100, &PWTControllerROS::jointStateCallback, this); // 一部しか含まないjoint_statesにも対応するため、バッファは1(最新のみ)では不可
 

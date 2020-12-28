@@ -166,7 +166,7 @@ namespace multicontact_controller {
         k0_1_(0.5),
         w0_1_(1e-2),
         we0_1_(1e4),
-        k1_(3.0),
+        k1_(5.0),
         w1_(1e-2),
         we1_(1e4),
         w_scale1_(2e3),
