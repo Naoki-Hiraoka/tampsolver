@@ -59,13 +59,16 @@ namespace multicontact_controller{
 
       cnoid::CollisionLinkPair& collisionLinkPair() { return collisionLinkPair_;}
       cnoid::CollisionLinkPair collisionLinkPair() const { return collisionLinkPair_;}
-      double& tolerance() { return tolerance_;}
+      double& tolerance() { return tolerance_;}//これ以下に接近することを許さない
       double tolerance() const { return tolerance_;}
+      double& maxDistance() { return maxDistance_;}//これ以上離れている場合考慮しない
+      double maxDistance() const { return maxDistance_;}
     protected:
       cnoid::Body* robot_;
 
       cnoid::CollisionLinkPair collisionLinkPair_;
       double tolerance_;
+      double maxDistance_;
 
       // for visualization
       double distance_;

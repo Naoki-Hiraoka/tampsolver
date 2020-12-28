@@ -23,7 +23,7 @@ namespace multicontact_controller {
     void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     void update(const cnoid::VectorX& dqa){
-      cnoid::Vector6 vel = this->calcJacobian() * dqa;
+      cnoid::Vector6 vel = this->calcRinv() * this->calcJacobian() * dqa; //local系
       this->interaction_->update(vel.head<3>(), vel.tail<3>());
     }
 
@@ -171,7 +171,7 @@ namespace multicontact_controller {
         we1_(1e4),
         w_scale1_(2e3),
         tau_scale1_(2e3),
-        tolerance1_1_(0.05),
+        tolerance1_1_(0.02),
         k1_1_(0.5),
         w1_1_(1e-2),
         we1_1_(1e4),

@@ -88,9 +88,10 @@ namespace multicontact_controller {
       Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
       Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
       this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
-      Eigen::SparseMatrix<double,Eigen::RowMajor> J = this->calcJacobian();
-      A = A_local * J;
-      C = C_local * J;
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>& J = this->calcJacobian();//world系,contactpoint周り
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>& Rinv = this->calcRinv();//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
+      A = A_local * Rinv * J;
+      C = C_local * Rinv * J;
     } else if(this->state() == "TOWARD_MAKE_CONTACT"){
       cnoid::Vector6 contactDirection = this->contact()->selectMatrix().transpose() * this->contact()->contactDirection();
       if(contactDirection.head<3>().norm() > 0){
@@ -360,24 +361,24 @@ namespace multicontact_controller {
       tasks.push_back(task1);
     }
 
-    {
-      // priority 1.1
-      std::shared_ptr<prioritized_qp::Task> task1_1;
-      if(!this->setupTask1_1(task1_1,
-                             robot_,
-                             jointInfos_,
-                             pclCollisions,
-                             Dqa,
-                             tolerance1_1_,
-                             k1_1_,
-                             dt,
-                             w1_1_,
-                             we1_1_)){
-        std::cerr << "setupTask1.1 failed" << std::endl;
-        return false;
-      }
-      tasks.push_back(task1_1);
-    }
+    // {
+    //   // priority 1.1
+    //   std::shared_ptr<prioritized_qp::Task> task1_1;
+    //   if(!this->setupTask1_1(task1_1,
+    //                          robot_,
+    //                          jointInfos_,
+    //                          pclCollisions,
+    //                          Dqa,
+    //                          tolerance1_1_,
+    //                          k1_1_,
+    //                          dt,
+    //                          w1_1_,
+    //                          we1_1_)){
+    //     std::cerr << "setupTask1.1 failed" << std::endl;
+    //     return false;
+    //   }
+    //   tasks.push_back(task1_1);
+    // }
 
     {
       // priority 2

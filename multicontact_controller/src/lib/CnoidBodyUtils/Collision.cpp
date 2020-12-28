@@ -227,6 +227,7 @@ namespace multicontact_controller{
     Collision::Collision(cnoid::Body* robot)
       : robot_(robot),
         tolerance_(0.02),
+        maxDistance_(0.2),
         distance_(0.1)
     {
       collisionLinkPair_.collisions.resize(2);
@@ -242,6 +243,18 @@ namespace multicontact_controller{
       }else{
         //非常に遠い. このときp0, p1にはでたらめな値が入っている場合があるので、distanceは計算しない
         distance_ = - collisionLinkPair_.collisions[0].depth;
+      }
+
+      if(distance_ > maxDistance_){
+        //考慮しない
+        A.resize(0,6+robot_->numJoints());
+        b.resize(0);
+        wa.resize(0);
+        C.resize(0,6+robot_->numJoints());
+        dl.resize(0);
+        du.resize(0);
+        wc.resize(0);
+        return;
       }
 
       A.resize(0,6+robot_->numJoints());
@@ -397,7 +410,7 @@ namespace multicontact_controller{
       cnoid::Vector3 B_v = p1_;
       double d = distance_;
 
-      if(distance_ > 1e5) return std::vector<cnoid::SgNodePtr>();
+      if(distance_ > maxDistance_) return std::vector<cnoid::SgNodePtr>();
 
       this->lines_->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
       this->lines_->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();

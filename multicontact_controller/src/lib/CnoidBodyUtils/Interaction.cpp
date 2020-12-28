@@ -38,12 +38,12 @@ namespace multicontact_controller{
       b.resize(6);
       wa.resize(6);
 
-      v_ref_ = T_ref_.linear().transpose() * (T_ref_.translation() - prev_T_ref_.translation()) / dt_;
-      w_ref_ = cnoid::omegaFromRot(prev_T_ref_.linear().transpose() * T_ref_.linear()) / dt_;
+      v_ref_ = T_ref_.linear().transpose() * (T_ref_.translation() - prev_T_ref_.translation()) / dt_;//local系
+      w_ref_ = cnoid::omegaFromRot(prev_T_ref_.linear().transpose() * T_ref_.linear()) / dt_;//local系
 
       b.head<3>() =
         ((F_.head<3>()-F_ref_.head<3>()).cwiseProduct(force_gain_)
-         + (T_ref_.translation() - T_.translation()) * K_p_
+         + (T_.linear().transpose() * (T_ref_.translation() - T_.translation())) * K_p_
          + v_ref_ * D_p_
          + (/*v_ref_ - prev_v_ref_ +*/ prev_v_) * M_p_ / dt_) // ROSを用いる場合はtopicが届く時刻がバラバラなのでrefの加速度は考慮しない
         / (M_p_ / std::pow(dt_,2) + D_p_ / dt_ + K_p_);
@@ -75,7 +75,7 @@ namespace multicontact_controller{
       return;
     }
 
-    void Interaction::update(const cnoid::Vector3& v, const cnoid::Vector3& w){
+    void Interaction::update(const cnoid::Vector3& v, const cnoid::Vector3& w){//local系
       prev_v_ = v;
       prev_w_ = w;
       prev_v_ref_ = v_ref_;

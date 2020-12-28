@@ -12,10 +12,11 @@ namespace multicontact_controller{
     public:
       Interaction();
 
+      // A, Cのcolは6次元のlocal系,eefまわりの変位
       void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
       // odom系の座標のref値
-      cnoid::Position T_ref() const { return T_ref_; }
+      cnoid::Position T_ref() const { return T_ref_; }//world系
       cnoid::Position& T_ref() {return T_ref_; }
       void reset_ref() {
         F_ref_ = F_;
@@ -25,15 +26,15 @@ namespace multicontact_controller{
         prev_v_ = prev_w_ = cnoid::Vector3::Zero();
       }
 
-      void update(const cnoid::Vector3& v, const cnoid::Vector3& w);
+      void update(const cnoid::Vector3& v, const cnoid::Vector3& w);//local系
 
       std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
-      cnoid::Vector6 F() const { return F_;}
+      cnoid::Vector6 F() const { return F_;}//local系,eefまわり
       cnoid::Vector6& F() { return F_;}
-      cnoid::Vector6 F_ref() const { return F_ref_;}
+      cnoid::Vector6 F_ref() const { return F_ref_;}//local系,eefまわり
       cnoid::Vector6& F_ref() { return F_ref_;}
-      cnoid::Position T() const { return T_; }
+      cnoid::Position T() const { return T_; }//world系
       cnoid::Position& T() {return T_; }
       double dt() const { return dt_;}
       double& dt() { return dt_;}
@@ -50,9 +51,9 @@ namespace multicontact_controller{
       double& D_r() { return D_r_;}
       double K_r() const { return K_r_;}
       double& K_r() { return K_r_;}
-      cnoid::Vector3 force_gain() const { return force_gain_;}
+      cnoid::Vector3 force_gain() const { return force_gain_;}//local系
       cnoid::Vector3& force_gain() { return force_gain_;}
-      cnoid::Vector3 moment_gain() const { return moment_gain_;}
+      cnoid::Vector3 moment_gain() const { return moment_gain_;}//local系
       cnoid::Vector3& moment_gain() { return moment_gain_;}
       double weight_trans() const { return weight_trans_;}
       double& weight_trans() { return weight_trans_;}
