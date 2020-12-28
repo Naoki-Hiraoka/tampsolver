@@ -127,7 +127,7 @@ namespace multicontact_controller {
 
     ros::Subscriber endEffectorsSub = nh.subscribe("end_effectors", 1, &PWTControllerROS::endEffectorsCallback, this);
 
-    ros::Subscriber odomSub = nh.subscribe("multicontact_odom", 1, &PWTControllerROS::odomCallback, this);
+    ros::Subscriber odomSub = nh.subscribe("odom", 1, &PWTControllerROS::odomCallback, this);
 
     ros::Subscriber motorStatesSub = nh.subscribe("motor_states", 1, &PWTControllerROS::motorStatesCallback, this);
 

@@ -61,6 +61,9 @@ namespace multicontact_controller {
     std::string odom_frame;
     pnh.param("odom_frame",odom_frame,std::string("odom"));
 
+    bool publish_tf;
+    pnh.param("publish_tf",publish_tf,false);
+
     // main loop
     int rate;
     pnh.param("rate", rate, 250); // 250 hz
@@ -100,13 +103,15 @@ namespace multicontact_controller {
             tf::poseEigenToMsg(odom, msg.pose.pose);
             odomPub.publish(msg);
 
-            geometry_msgs::TransformStamped transformStamped;
-            transformStamped.header.stamp = now;
-            transformStamped.header.seq = seq;
-            transformStamped.header.frame_id = odom_frame;
-            transformStamped.child_frame_id = base_frame;
-            tf::transformEigenToMsg(odom, transformStamped.transform);
-            br.sendTransform(transformStamped);
+            if(publish_tf){
+              geometry_msgs::TransformStamped transformStamped;
+              transformStamped.header.stamp = now;
+              transformStamped.header.seq = seq;
+              transformStamped.header.frame_id = odom_frame;
+              transformStamped.child_frame_id = base_frame;
+              tf::transformEigenToMsg(odom, transformStamped.transform);
+              br.sendTransform(transformStamped);
+            }
           }
         }
       }

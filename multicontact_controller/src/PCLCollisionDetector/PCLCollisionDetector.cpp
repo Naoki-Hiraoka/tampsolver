@@ -96,7 +96,9 @@ namespace multicontact_controller {
       extract.setIndices(globalNearIndices);
       extract.setNegative(false);
       extract.filter(*globalNearObstacles);
-      globalNearObstaclesTreeModel->setInputCloud(globalNearObstacles);
+      if(globalNearObstacles->points.size()>0){      // Cannot create a KDTree with an empty input cloud
+        globalNearObstaclesTreeModel->setInputCloud(globalNearObstacles);
+      }
     }
 
     for(size_t i=0;i<collisionLinkPairs_.size();i++){

@@ -53,7 +53,7 @@ namespace multicontact_controller {
     // setup subscribers
     ros::Subscriber jointStateSub = nh.subscribe("joint_states", 100, &PCLCollisionDetectorROS::jointStateCallback, this); // 一部しか含まないjoint_statesにも対応するため、バッファは1(最新のみ)では不可
 
-    ros::Subscriber odomSub = nh.subscribe("multicontact_odom", 1, &PCLCollisionDetectorROS::odomCallback, this);
+    ros::Subscriber odomSub = nh.subscribe("odom", 1, &PCLCollisionDetectorROS::odomCallback, this);
 
     ros::Subscriber obstacleSub = nh.subscribe("obstacle_model", 1, &PCLCollisionDetectorROS::obstacleCallback, this);
 
