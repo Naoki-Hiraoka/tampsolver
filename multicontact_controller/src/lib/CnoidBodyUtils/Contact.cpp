@@ -76,7 +76,7 @@ namespace multicontact_controller{
 
       //垂直抗力
       {
-        double scale = std::max(this->max_fz_,1e-4);
+        double scale = std::max(this->max_fz_,1.0);
         tripletList.push_back(Eigen::Triplet<double>(idx,2,1.0/scale));
         if(allow_break_contact){
           dl[idx] = 0.0;
@@ -90,7 +90,7 @@ namespace multicontact_controller{
 
       //x摩擦
       {
-        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1.0);
         tripletList.push_back(Eigen::Triplet<double>(idx,0,-1.0/scale));
         tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
         dl[idx] = 0.0;
@@ -107,7 +107,7 @@ namespace multicontact_controller{
 
       //y摩擦
       {
-        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1.0);
         tripletList.push_back(Eigen::Triplet<double>(idx,1,-1.0/scale));
         tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_/scale));
         dl[idx] = 0;
@@ -124,7 +124,7 @@ namespace multicontact_controller{
 
       //回転摩擦
       {
-        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1e-4);
+        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1.0);
         tripletList.push_back(Eigen::Triplet<double>(idx,5,-1.0/scale));
         tripletList.push_back(Eigen::Triplet<double>(idx,2,this->mu_trans_*maximum_distance/scale));
         dl[idx] = 0;
@@ -141,7 +141,7 @@ namespace multicontact_controller{
 
       //COP
       {
-        double scale = std::max(this->max_fz_ * maximum_distance, 1e-4);
+        double scale = std::max(this->max_fz_ * maximum_distance, 1.0);
         for(size_t i=0;i<this->surface_->polygonVertices().size();i++){
           cnoid::Vector3f v1 = this->surface_->vertices()->at(this->surface_->polygonVertices()[i]);
           int v2_idx = (i+1 == this->surface_->polygonVertices().size())? 0 : i+1;
@@ -173,7 +173,7 @@ namespace multicontact_controller{
       du = Eigen::VectorXd::Zero(0);
       wc = Eigen::VectorXd::Zero(0);
 
-      double scale = std::max(this->max_fz_,1e-4);
+      double scale = std::max(this->max_fz_,1.0);
       A.insert(0,2) = 1.0 / scale;
       if(dt_ > 0.0 && break_contact_f_v_limit_ > 0.0){
         b[0] = - break_contact_f_v_limit_ * dt_ / scale;
@@ -192,13 +192,13 @@ namespace multicontact_controller{
       wa = Eigen::VectorXd(6);
       {
         //垂直抗力
-        double scale = std::max(this->max_fz_,1e-4);
+        double scale = std::max(this->max_fz_,1.0);
         A.insert(0,0) = 1.0/scale;
         wa[0] = 1.0;
       }
       {
         //x摩擦
-        double scale = std::max(this->max_fz_ * this->mu_trans_, 1e-4);
+        double scale = std::max(this->max_fz_ * this->mu_trans_, 1.0);
         A.insert(1,1) = 1.0/scale;
         wa[1] = 1.0;
         //y摩擦
@@ -208,7 +208,7 @@ namespace multicontact_controller{
       double maximum_distance = this->calcFarthestVertexDistance(this->surface_);
       //COP
       {
-        double scale = std::max(this->max_fz_ * maximum_distance, 1e-4);
+        double scale = std::max(this->max_fz_ * maximum_distance, 1.0);
         A.insert(3,3) = 1.0/scale;
         wa[3] = 1.0;
         A.insert(4,4) = 1.0/scale;
@@ -216,7 +216,7 @@ namespace multicontact_controller{
       }
       //回転摩擦
       {
-        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1e-4);
+        double scale = std::max(this->max_fz_ * this->mu_trans_ * maximum_distance, 1.0);
         A.insert(5,5) = 1.0/scale;
         wa[5] = 1.0;
       }

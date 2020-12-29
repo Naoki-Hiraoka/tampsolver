@@ -15,18 +15,30 @@ namespace multicontact_controller {
   }
 
   // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
-  // 各行は無次元化されている
+  // 各行は/iter次元化されている
   void ContactPointPWTC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
     if(this->state() == "CONTACT"){
       this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
       b -= A * selectMatrixForKinematicsConstraint() * F_;
       dl -= C * selectMatrixForKinematicsConstraint() * F_;
       du -= C * selectMatrixForKinematicsConstraint() * F_;
+      b *= dt_/k_;// velocity damper
+      dl *= dt_/k_;// velocity damper
+      du *= dt_/k_;// velocity damper
     }else if(this->state() == "TOWARD_BREAK_CONTACT"){
       this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc,true);//allow_break_contact
       b -= A * selectMatrixForKinematicsConstraint() * F_;
       dl -= C * selectMatrixForKinematicsConstraint() * F_;
       du -= C * selectMatrixForKinematicsConstraint() * F_;
+      b *= dt_/k_;// velocity damper
+      for(size_t i=0;i<dl.size();i++){
+        if(dl[i]>0.0) dl[i] *= dt_/k_;// velocity damper
+        else dl[i] *= 1.0;// 接触解除速度を早める
+      }
+      for(size_t i=0;i<du.size();i++){
+        if(du[i]<0.0) du[i] *= dt_/k_;// velocity damper
+        else du[i] *= 1.0;// 接触解除速度を早める
+      }
     }else{
       A.resize(0,0);
       b.resize(0);
@@ -859,6 +871,8 @@ namespace multicontact_controller {
         // contact force constraint
         // 各行は無次元化された上でw_scaleで割られてm,radのオーダにする
         for(size_t i=0;i<contactPoints.size();i++){
+          contactPoints[i]->k() = k;
+
           Eigen::SparseMatrix<double,Eigen::RowMajor> A;
           cnoid::VectorX b;
           cnoid::VectorX wa;
@@ -868,11 +882,11 @@ namespace multicontact_controller {
           cnoid::VectorX wc;
           contactPoints[i]->contactForceConstraintForKinematicsConstraint(A,b,wa,C,dl,du,wc);
           As.push_back(A*Dwas[i] / w_scale);
-          bs.push_back(b / w_scale);
+          bs.push_back(b / w_scale); // velocity damper
           was.push_back(wa);
           Cs.push_back(C*Dwas[i] / w_scale);
-          dls.push_back(dl / w_scale);
-          dus.push_back(du / w_scale);
+          dls.push_back(dl / w_scale); // velocity damper
+          dus.push_back(du / w_scale); // velocity damper
           wcs.push_back(wc);
         }
       }
@@ -891,11 +905,11 @@ namespace multicontact_controller {
           jointInfos[i]->JointTorqueConstraint(A,b,wa,C,dl,du,wc);
           const Eigen::SparseMatrix<double, Eigen::RowMajor>& S = jointInfos[i]->torqueSelectMatrix();
           As.push_back(A*S*Dtaua / tau_scale);
-          bs.push_back(b / tau_scale);
+          bs.push_back(b *dt/k / tau_scale); // velocity damper
           was.push_back(wa);
           Cs.push_back(C*S*Dtaua / tau_scale);
-          dls.push_back(dl / tau_scale);
-          dus.push_back(du / tau_scale);
+          dls.push_back(dl *dt/k / tau_scale); // velocity damper
+          dus.push_back(du *dt/k / tau_scale); // velocity damper
           wcs.push_back(wc);
         }
       }
@@ -909,11 +923,6 @@ namespace multicontact_controller {
       cnoidbodyutils::appendRow(dls, task->dl());
       cnoidbodyutils::appendRow(dus, task->du());
       cnoidbodyutils::appendRow(wcs, task->wc());
-
-      // velocity damper
-      task->b() *= dt / k;
-      task->dl() *= dt / k;
-      task->du() *= dt / k;
 
       // damping factor
       double damping_factor = this->dampingFactor(w,

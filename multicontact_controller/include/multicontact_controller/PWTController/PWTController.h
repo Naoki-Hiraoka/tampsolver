@@ -13,7 +13,7 @@ namespace multicontact_controller {
     // S J dqa = 0 となるSを返す. ? x 6
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrixForKinematicsConstraint();
     // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
-    // 無次元
+    // /iterの次元
     void contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
     // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
     // /iterの次元
@@ -45,12 +45,18 @@ namespace multicontact_controller {
 
     std::string& state() { return state_;}
     std::string state() const { return state_;}
+    double& k() { return k_;}
+    double k() const { return k_;}
+    double& dt() { return dt_;}
+    double dt() const { return dt_;}
   private:
 
     std::shared_ptr<cnoidbodyutils::Contact> contact_;
     std::shared_ptr<cnoidbodyutils::Interaction> interaction_;
 
     std::string state_;
+    double k_;
+    double dt_;
 
     //cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> selectMatrixForKinematicsConstraint_;

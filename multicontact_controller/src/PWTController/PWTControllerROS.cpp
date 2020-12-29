@@ -203,6 +203,7 @@ namespace multicontact_controller {
 
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
         if(it->second->isValid()){
+          it->second->contactPoint()->dt() = dt;
           it->second->contactPoint()->contact()->dt() = dt;
           it->second->contactPoint()->interaction()->T() = it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
           it->second->contactPoint()->interaction()->dt() = dt;
