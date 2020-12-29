@@ -165,27 +165,29 @@ namespace multicontact_controller {
         tolerance0_1_(0.02),
         k0_1_(0.5),
         w0_1_(1e-2),
-        we0_1_(1e4),
+        we0_1_(1e6),
         k1_(5.0),
         w1_(1e-2),
         we1_(1e4),
-        w_scale1_(2e3),
-        tau_scale1_(2e3),
+        w_scale1_(1e0),
+        tau_scale1_(1e0),
         tolerance1_1_(0.04),
         k1_1_(0.5),
         w1_1_(1e-2),
-        we1_1_(1e4),
+        we1_1_(1e6),
         w2_(1e-2),
         we2_(1e4),
         k2_5_(5.0),
         w2_5_(1e-2),
         we2_5_(1e4),
-        w_scale2_5_(2e3),
+        w_scale2_5_(1e0),
         k3_(5.0),
         w3_(1e0),
-        w_scale3_(5e3),
-        tau_scale3_(2e3),
-        taumax_weight3_(1e1),
+        w_scale3_(1e1),
+        tau_scale3_(1e0),
+        w_weight3_(1e0),
+        tau_weight3_(1e2),
+        taumax_weight3_(1e3),
 
         //cache
         Ka_(6+robot_->numJoints(),6+robot_->numJoints())
@@ -250,6 +252,10 @@ namespace multicontact_controller {
     double& w_scale3() { return w_scale3_;}
     double tau_scale3() const { return tau_scale3_;}
     double& tau_scale3() { return tau_scale3_;}
+    double w_weight3() const { return w_weight3_;}
+    double& w_weight3() { return w_weight3_;}
+    double tau_weight3() const { return tau_weight3_;}
+    double& tau_weight3() { return tau_weight3_;}
     double taumax_weight3() const { return taumax_weight3_;}
     double& taumax_weight3() { return taumax_weight3_;}
   protected:
@@ -263,6 +269,8 @@ namespace multicontact_controller {
                          std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                          std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
                          double sv_ratio);
+
+    // 各行はm/iter, rad/iterのオーダーにそろえる
 
     // メンバ変数はdebug_print_とTask0_しか使わない
     bool setupTask0(std::shared_ptr<prioritized_qp::Task>& task, //返り値
@@ -341,6 +349,8 @@ namespace multicontact_controller {
                     const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
                     double w_scale,//次元の大きさを揃え、計算を安定化する
                     double tau_scale,//次元の大きさを揃え、計算を安定化する
+                    double w_weight,
+                    double tau_weight,
                     double taumax_weight,//tauに比したtaumaxの重み
                     double k,
                     double dt,
@@ -394,6 +404,8 @@ namespace multicontact_controller {
     double w3_;
     double w_scale3_;
     double tau_scale3_;
+    double w_weight3_;
+    double tau_weight3_;
     double taumax_weight3_;
 
     // cache

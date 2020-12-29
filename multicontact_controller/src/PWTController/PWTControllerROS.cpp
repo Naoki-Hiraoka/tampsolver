@@ -129,27 +129,29 @@ namespace multicontact_controller {
       pnh.param("tolerance0_1",PWTController_->tolerance0_1(),0.02);
       pnh.param("k0_1",PWTController_->k0_1(),0.5);
       pnh.param("w0_1",PWTController_->w0_1(),1e-2);
-      pnh.param("we0_1",PWTController_->we0_1(),1e4);
+      pnh.param("we0_1",PWTController_->we0_1(),1e6);
       pnh.param("k1",PWTController_->k1(),5.0);
       pnh.param("w1",PWTController_->w1(),1e-2);
       pnh.param("we1",PWTController_->we1(),1e4);
-      pnh.param("w_scale1",PWTController_->w_scale1(),2e3);
-      pnh.param("tau_scale1",PWTController_->tau_scale1(),2e3);
+      pnh.param("w_scale1",PWTController_->w_scale1(),1e0);
+      pnh.param("tau_scale1",PWTController_->tau_scale1(),1e0);
       pnh.param("tolerance1_1",PWTController_->tolerance1_1(),0.04);
       pnh.param("k1_1",PWTController_->k1_1(),0.5);
       pnh.param("w1_1",PWTController_->w1_1(),1e-2);
-      pnh.param("we1_1",PWTController_->we1_1(),1e4);
+      pnh.param("we1_1",PWTController_->we1_1(),1e6);
       pnh.param("w2",PWTController_->w2(),1e-2);
       pnh.param("we2",PWTController_->we2(),1e4);
       pnh.param("k2_5",PWTController_->k2_5(),5.0);
       pnh.param("w2_5",PWTController_->w2_5(),1e-2);
       pnh.param("we2_5",PWTController_->we2_5(),1e4);
-      pnh.param("w_scale2_5",PWTController_->w_scale2_5(),2e3);
+      pnh.param("w_scale2_5",PWTController_->w_scale2_5(),1e0);
       pnh.param("k3",PWTController_->k3(),5.0);
       pnh.param("w3",PWTController_->w3(),1e0);
-      pnh.param("w_scale3",PWTController_->w_scale3(),5e3);
-      pnh.param("tau_scale3",PWTController_->tau_scale3(),2e3);
-      pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e1);
+      pnh.param("w_scale3",PWTController_->w_scale3(),1e1);
+      pnh.param("tau_scale3",PWTController_->tau_scale3(),1e0);
+      pnh.param("w_weight3",PWTController_->taumax_weight3(),1e0);
+      pnh.param("tau_weight3",PWTController_->taumax_weight3(),1e2);
+      pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e3);
     }
 
     // setup subscribers
@@ -390,6 +392,8 @@ namespace multicontact_controller {
     PWTController_->w3() = config.w3;
     PWTController_->w_scale3() = config.w_scale3;
     PWTController_->tau_scale3() = config.tau_scale3;
+    PWTController_->w_weight3() = config.w_weight3;
+    PWTController_->tau_weight3() = config.tau_weight3;
     PWTController_->taumax_weight3() = config.taumax_weight3;
   }
 
@@ -422,6 +426,8 @@ namespace multicontact_controller {
     config.w3 = PWTController_->w3();
     config.w_scale3 = PWTController_->w_scale3();
     config.tau_scale3 = PWTController_->tau_scale3();
+    config.w_weight3 = PWTController_->w_weight3();
+    config.tau_weight3 = PWTController_->tau_weight3();
     config.taumax_weight3 = PWTController_->taumax_weight3();
 
     return config;
