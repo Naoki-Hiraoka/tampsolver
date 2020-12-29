@@ -109,7 +109,7 @@ namespace multicontact_controller {
     // param
     double rate_;
     std::shared_ptr<ros::Rate> rosRate_;
-
+    double smooth_ratio_;
   };
 
 };

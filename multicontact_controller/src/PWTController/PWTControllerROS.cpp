@@ -124,6 +124,7 @@ namespace multicontact_controller {
 
     // setup PWTController from params
     {
+      pnh.param("smooth_ratio",smooth_ratio_,2.0);
       pnh.param("sv_ratio",PWTController_->sv_ratio(),1e-12);
       pnh.param("k0",PWTController_->k0(),0.1);
       pnh.param("tolerance0_1",PWTController_->tolerance0_1(),0.02);
@@ -133,8 +134,8 @@ namespace multicontact_controller {
       pnh.param("k1",PWTController_->k1(),5.0);
       pnh.param("w1",PWTController_->w1(),1e-2);
       pnh.param("we1",PWTController_->we1(),1e4);
-      pnh.param("w_scale1",PWTController_->w_scale1(),1e0);
-      pnh.param("tau_scale1",PWTController_->tau_scale1(),1e0);
+      pnh.param("w_scale1",PWTController_->w_scale1(),4e0);
+      pnh.param("tau_scale1",PWTController_->tau_scale1(),4e0);
       pnh.param("tolerance1_1",PWTController_->tolerance1_1(),0.04);
       pnh.param("k1_1",PWTController_->k1_1(),0.5);
       pnh.param("w1_1",PWTController_->w1_1(),1e-2);
@@ -144,14 +145,14 @@ namespace multicontact_controller {
       pnh.param("k2_5",PWTController_->k2_5(),5.0);
       pnh.param("w2_5",PWTController_->w2_5(),1e-2);
       pnh.param("we2_5",PWTController_->we2_5(),1e4);
-      pnh.param("w_scale2_5",PWTController_->w_scale2_5(),1e0);
+      pnh.param("w_scale2_5",PWTController_->w_scale2_5(),4e0);
       pnh.param("k3",PWTController_->k3(),5.0);
-      pnh.param("w3",PWTController_->w3(),1e0);
+      pnh.param("w3",PWTController_->w3(),1e1);
       pnh.param("w_scale3",PWTController_->w_scale3(),1e1);
-      pnh.param("tau_scale3",PWTController_->tau_scale3(),1e0);
-      pnh.param("w_weight3",PWTController_->taumax_weight3(),1e0);
-      pnh.param("tau_weight3",PWTController_->taumax_weight3(),1e2);
-      pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e3);
+      pnh.param("tau_scale3",PWTController_->tau_scale3(),1e1);
+      pnh.param("w_weight3",PWTController_->w_weight3(),1e-1);
+      pnh.param("tau_weight3",PWTController_->tau_weight3(),1e0);
+      pnh.param("taumax_weight3",PWTController_->taumax_weight3(),1e1);
     }
 
     // setup subscribers
@@ -256,7 +257,7 @@ namespace multicontact_controller {
         goal.trajectory.header.seq = seq;
         goal.trajectory.header.stamp = now;
         goal.trajectory.points.resize(1);
-        goal.trajectory.points[0].time_from_start = ros::Duration(dt * 1.1); // ちょっと長く
+        goal.trajectory.points[0].time_from_start = ros::Duration(dt * smooth_ratio_); // ちょっと長く
         for(size_t i=0;i<jointInfos_.size();i++){
           if(jointInfos_[i]->controllable()){
             goal.trajectory.joint_names.push_back(jointInfos_[i]->name());
@@ -366,6 +367,7 @@ namespace multicontact_controller {
       this->rate_ = config.rate;
       this->rosRate_ = std::make_shared<ros::Rate>(this->rate_);
     }
+    this->smooth_ratio_ = config.smooth_ratio;
     PWTController_->debug_print() = config.debug_print;
     PWTController_->sv_ratio() = config.sv_ratio;
     PWTController_->k0() = config.k0;
@@ -400,6 +402,7 @@ namespace multicontact_controller {
   multicontact_controller_msgs::PWTControllerConfig PWTControllerROS::getCurrentConfig(){
     multicontact_controller_msgs::PWTControllerConfig config;
     config.rate = this->rate_;
+    config.smooth_ratio = this->smooth_ratio_;
     config.debug_print = PWTController_->debug_print();
     config.sv_ratio = PWTController_->sv_ratio();
     config.k0 = PWTController_->k0();

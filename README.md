@@ -10,6 +10,7 @@ You need
 - https://github.com/fkanehiro/hrpsys-base/pull/1295
 - https://github.com/jsk-ros-pkg/jsk_roseus/pull/652
 - https://github.com/choreonoid/choreonoid/pull/12
+- https://github.com/start-jsk/rtmros_common/pull/1103
 
 Then,
 
