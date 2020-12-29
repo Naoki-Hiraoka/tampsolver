@@ -142,7 +142,6 @@ namespace multicontact_controller {
       pnh.param("we1_1",PWTController_->we1_1(),1e6);
       pnh.param("w2",PWTController_->w2(),1e-2);
       pnh.param("we2",PWTController_->we2(),1e4);
-      pnh.param("k2_5",PWTController_->k2_5(),5.0);
       pnh.param("w2_5",PWTController_->w2_5(),1e-2);
       pnh.param("we2_5",PWTController_->we2_5(),1e4);
       pnh.param("w_scale2_5",PWTController_->w_scale2_5(),4e0);
@@ -204,6 +203,7 @@ namespace multicontact_controller {
 
       for(std::map<std::string,std::shared_ptr<EndEffectorPWTCROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
         if(it->second->isValid()){
+          it->second->contactPoint()->contact()->dt() = dt;
           it->second->contactPoint()->interaction()->T() = it->second->contactPoint()->parent()->T() * it->second->contactPoint()->T_local();
           it->second->contactPoint()->interaction()->dt() = dt;
         }
@@ -386,7 +386,6 @@ namespace multicontact_controller {
     PWTController_->we1_1() = config.we1_1;
     PWTController_->w2() = config.w2;
     PWTController_->we2() = config.we2;
-    PWTController_->k2_5() = config.k2_5;
     PWTController_->w2_5() = config.w2_5;
     PWTController_->we2_5() = config.we2_5;
     PWTController_->w_scale2_5() = config.w_scale2_5;
@@ -421,7 +420,6 @@ namespace multicontact_controller {
     config.we1_1 = PWTController_->we1_1();
     config.w2 = PWTController_->w2();
     config.we2 = PWTController_->we2();
-    config.k2_5 = PWTController_->k2_5();
     config.w2_5 = PWTController_->w2_5();
     config.we2_5 = PWTController_->we2_5();
     config.w_scale2_5 = PWTController_->w_scale2_5();

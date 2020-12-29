@@ -13,13 +13,17 @@ namespace multicontact_controller {
     // S J dqa = 0 となるSを返す. ? x 6
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrixForKinematicsConstraint();
     // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
+    // 無次元
     void contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
     // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
+    // /iterの次元
     void desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
     // KinematicsConstraint による拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
+    // 無次元
     void bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
+    // rad m / iter
     void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A_A, cnoid::VectorX& b_A, cnoid::VectorX& wa_A, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_A, cnoid::VectorX& dl_A, cnoid::VectorXd& du_A, cnoid::VectorX& wc_A,
                                    Eigen::SparseMatrix<double,Eigen::RowMajor>& A_B, cnoid::VectorX& b_B, cnoid::VectorX& wa_B, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_B, cnoid::VectorX& dl_B, cnoid::VectorXd& du_B, cnoid::VectorX& wc_B);
 
@@ -178,7 +182,6 @@ namespace multicontact_controller {
         we1_1_(1e6),
         w2_(1e-2),
         we2_(1e4),
-        k2_5_(5.0),
         w2_5_(1e-2),
         we2_5_(1e4),
         w_scale2_5_(4e0),
@@ -237,8 +240,6 @@ namespace multicontact_controller {
     double& w2() { return w2_;}
     double we2() const { return we2_;}
     double& we2() { return we2_;}
-    double k2_5() const { return k2_5_;}
-    double& k2_5() { return k2_5_;}
     double w2_5() const { return w2_5_;}
     double& w2_5() { return w2_5_;}
     double we2_5() const { return we2_5_;}
@@ -336,7 +337,6 @@ namespace multicontact_controller {
                       std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                       const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                       double w_scale,//次元の大きさを揃え、計算を安定化する
-                      double k,
                       double dt,
                       double w,
                       double we);
@@ -397,7 +397,6 @@ namespace multicontact_controller {
     double w2_;
     double we2_;
     //   setupTask2_5
-    double k2_5_;
     double w2_5_;
     double we2_5_;
     double w_scale2_5_;

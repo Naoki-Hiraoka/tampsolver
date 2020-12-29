@@ -9,7 +9,8 @@ namespace multicontact_controller{
     SurfaceContact::SurfaceContact()
       : mu_trans_(0.1),
         max_fz_(200),
-        min_fz_(50)
+        min_fz_(50),
+        break_contact_f_v_limit_(25.0)
     {
       type_ = "SURFACE";
 
@@ -159,7 +160,8 @@ namespace multicontact_controller{
     }
 
     //Ax = b, dl <= Cx <= du
-    //各行は無次元化される
+    //各行は/iterの次元化される
+    // xはfの変化量であり、fの絶対量ではない
     void SurfaceContact::getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       A = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6);
       b = Eigen::VectorXd(1);
@@ -173,7 +175,12 @@ namespace multicontact_controller{
 
       double scale = std::max(this->max_fz_,1e-4);
       A.insert(0,2) = 1.0 / scale;
-      b[0] = 0.0;
+      if(dt_ > 0.0 && break_contact_f_v_limit_ > 0.0){
+        b[0] = - break_contact_f_v_limit_ * dt_ / scale;
+      }else{
+        std::cerr << "!(dt_ > 0.0 && break_contact_f_v_limit_ = 0.0)" << std::endl;
+        b[0] = 0.0;
+      }
       wa[0] = 1.0;
     }
 
@@ -291,6 +298,8 @@ namespace multicontact_controller{
         surface_contact->mu_trans() = info.mu_trans;
         surface_contact->max_fz() = info.max_fz;
         surface_contact->min_fz() = info.min_fz;
+        surface_contact->contact_v_limit() = info.contact_v_limit;
+        surface_contact->break_contact_f_v_limit() = info.break_contact_f_v_limit;
       }else{
         ROS_ERROR("%s is not defined", info.type.c_str());
       }

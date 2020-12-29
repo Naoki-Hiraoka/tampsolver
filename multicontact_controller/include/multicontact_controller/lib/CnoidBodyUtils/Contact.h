@@ -11,6 +11,12 @@ namespace multicontact_controller{
   namespace cnoidbodyutils{
     class Contact {
     public:
+      Contact()
+        : contact_v_limit_(0.02),
+          dt_(0.01)
+      {
+      }
+
       // ? x 6. 力や幾何制約の存在する成分を抽出
       virtual const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrix()=0;
       // local座標系，localまわり Ax = b, dl <= Cx <= du. xの次元数はselectMatrixと同じ
@@ -24,6 +30,7 @@ namespace multicontact_controller{
       virtual const cnoid::VectorX& contactDirection()=0;
 
       // local座標系，localまわり Ax = b, dl <= Cx <= du. xの次元数はselectMatrixと同じ
+      // xはfの変化量であり、fの絶対量ではない
       virtual void getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) = 0;
 
 
@@ -40,8 +47,14 @@ namespace multicontact_controller{
 
       std::string type() const { return type_;}
       std::string& type() { return type_;}
+      double dt() const { return dt_;}
+      double& dt() { return dt_;}
+      double contact_v_limit() const { return contact_v_limit_;}
+      double& contact_v_limit() { return contact_v_limit_;}
     protected:
       std::string type_;
+      double dt_;
+      double contact_v_limit_;
     };
 
     class SurfaceContact : public Contact {
@@ -66,6 +79,8 @@ namespace multicontact_controller{
       double& max_fz() { return max_fz_;}
       double min_fz() const { return min_fz_;}
       double& min_fz() { return min_fz_;}
+      double break_contact_f_v_limit() const { return break_contact_f_v_limit_;}
+      double& break_contact_f_v_limit() { return break_contact_f_v_limit_;}
 
     protected:
       double calcFarthestVertexDistance(cnoid::SgPolygonMeshPtr surface);
@@ -74,6 +89,7 @@ namespace multicontact_controller{
       double mu_trans_;
       double max_fz_;
       double min_fz_;
+      double break_contact_f_v_limit_;
 
       cnoid::SgLineSetPtr lines_;//for visualization
 

@@ -124,6 +124,20 @@ protected:
         nh.getParam(contact_ns+"/contact_decision_threshold2",endEffectorInfo->contact.contact_decision_threshold2);
       }
 
+      if(!nh.hasParam(contact_ns+"/contact_v_limit")){
+        ROS_WARN("rosparam %s not found",(ns+"/contact_v_limit").c_str());
+        endEffectorInfo->contact.contact_v_limit=0.02;
+      }else{
+        nh.getParam(contact_ns+"/contact_v_limit",endEffectorInfo->contact.contact_v_limit);
+      }
+
+      if(!nh.hasParam(contact_ns+"/break_contact_f_v_limit")){
+        ROS_WARN("rosparam %s not found",(ns+"/break_contact_f_v_limit").c_str());
+        endEffectorInfo->contact.break_contact_f_v_limit=25.0;
+      }else{
+        nh.getParam(contact_ns+"/break_contact_f_v_limit",endEffectorInfo->contact.break_contact_f_v_limit);
+      }
+
     }
 
     {
@@ -248,6 +262,8 @@ protected:
     endEffectorInfo_->contact.min_fz = config.min_fz;
     endEffectorInfo_->contact.contact_decision_threshold1 = config.contact_decision_threshold1;
     endEffectorInfo_->contact.contact_decision_threshold2 = config.contact_decision_threshold2;
+    endEffectorInfo_->contact.contact_v_limit = config.contact_v_limit;
+    endEffectorInfo_->contact.break_contact_f_v_limit = config.break_contact_f_v_limit;
     endEffectorInfo_->interaction.M_p = config.M_p;
     endEffectorInfo_->interaction.D_p = config.D_p;
     endEffectorInfo_->interaction.K_p = config.K_p;
@@ -279,6 +295,8 @@ protected:
     config.min_fz = endEffectorInfo_->contact.min_fz;
     config.contact_decision_threshold1 = endEffectorInfo_->contact.contact_decision_threshold1;
     config.contact_decision_threshold2 = endEffectorInfo_->contact.contact_decision_threshold2;
+    config.contact_v_limit = endEffectorInfo_->contact.contact_v_limit;
+    config.break_contact_f_v_limit = endEffectorInfo_->contact.break_contact_f_v_limit;
     config.M_p = endEffectorInfo_->interaction.M_p;
     config.D_p = endEffectorInfo_->interaction.D_p;
     config.K_p = endEffectorInfo_->interaction.K_p;

@@ -5,3 +5,5 @@ float64 max_fz
 float64 min_fz
 float64 contact_decision_threshold1
 float64 contact_decision_threshold2
+float64 contact_v_limit
+float64 break_contact_f_v_limit
