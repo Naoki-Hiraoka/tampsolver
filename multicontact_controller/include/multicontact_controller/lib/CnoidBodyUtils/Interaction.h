@@ -13,7 +13,8 @@ namespace multicontact_controller{
       Interaction();
 
       // A, Cのcolは6次元のlocal系,eefまわりの変位
-      void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+      void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A_A, cnoid::VectorX& b_A, cnoid::VectorX& wa_A, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_A, cnoid::VectorX& dl_A, cnoid::VectorXd& du_A, cnoid::VectorX& wc_A,
+                                     Eigen::SparseMatrix<double,Eigen::RowMajor>& A_B, cnoid::VectorX& b_B, cnoid::VectorX& wa_B, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_B, cnoid::VectorX& dl_B, cnoid::VectorXd& du_B, cnoid::VectorX& wc_B);
 
       // odom系の座標のref値
       cnoid::Position T_ref() const { return T_ref_; }//world系
@@ -55,10 +56,6 @@ namespace multicontact_controller{
       cnoid::Vector3& force_gain() { return force_gain_;}
       cnoid::Vector3 moment_gain() const { return moment_gain_;}//local系
       cnoid::Vector3& moment_gain() { return moment_gain_;}
-      double weight_trans() const { return weight_trans_;}
-      double& weight_trans() { return weight_trans_;}
-      double weight_rot() const { return weight_rot_;}
-      double& weight_rot() { return weight_rot_;}
       double v_limit() const { return v_limit_;}
       double& v_limit() { return v_limit_;}
       double w_limit() const { return w_limit_;}
@@ -87,8 +84,6 @@ namespace multicontact_controller{
       double K_r_;
       cnoid::Vector3 force_gain_;
       cnoid::Vector3 moment_gain_;
-      double weight_trans_;
-      double weight_rot_;
       double v_limit_;
       double w_limit_;
 

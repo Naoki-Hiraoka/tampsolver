@@ -83,15 +83,21 @@ namespace multicontact_controller {
 
   // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
   // 各行はm / iter, rad / iter
-  void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+  void ContactPointPWTC::desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A_A, cnoid::VectorX& b_A, cnoid::VectorX& wa_A, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_A, cnoid::VectorX& dl_A, cnoid::VectorXd& du_A, cnoid::VectorX& wc_A,
+                                                   Eigen::SparseMatrix<double,Eigen::RowMajor>& A_B, cnoid::VectorX& b_B, cnoid::VectorX& wa_B, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_B, cnoid::VectorX& dl_B, cnoid::VectorXd& du_B, cnoid::VectorX& wc_B){
     if(this->state() == "AIR" || this->state() == "NEAR_CONTACT"){
-      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
-      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
-      this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local_A;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local_A;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local_B;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local_B;
+      this->interaction()->desiredPositionConstraint(A_local_A,b_A,wa_A,C_local_A,dl_A,du_A,wc_A,
+                                                     A_local_B,b_B,wa_B,C_local_B,dl_B,du_B,wc_B);
       const Eigen::SparseMatrix<double,Eigen::RowMajor>& J = this->calcJacobian();//world系,contactpoint周り
       const Eigen::SparseMatrix<double,Eigen::RowMajor>& Rinv = this->calcRinv();//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
-      A = A_local * Rinv * J;
-      C = C_local * Rinv * J;
+      A_A = A_local_A * Rinv * J;
+      C_A = C_local_A * Rinv * J;
+      A_B = A_local_B * Rinv * J;
+      C_B = C_local_B * Rinv * J;
     } else if(this->state() == "TOWARD_MAKE_CONTACT"){
       cnoid::Vector6 contactDirection = this->contact()->selectMatrix().transpose() * this->contact()->contactDirection();
       if(contactDirection.head<3>().norm() > 0){
@@ -102,20 +108,33 @@ namespace multicontact_controller {
         contactDirection.tail<3>() = contactDirection.tail<3>().normalized() * this->interaction()->w_limit() * this->interaction()->dt();
         this->interaction()->T_ref().linear() = (this->interaction()->T_ref().linear() * cnoid::AngleAxis(contactDirection.tail<3>().norm(),contactDirection.tail<3>().normalized())).eval();
       }
-      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local;
-      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local;
-      this->interaction()->desiredPositionConstraint(A_local,b,wa,C_local,dl,du,wc);
-      Eigen::SparseMatrix<double,Eigen::RowMajor> J = this->calcJacobian();
-      A = A_local * J;
-      C = C_local * J;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local_A;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local_A;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> A_local_B;
+      Eigen::SparseMatrix<double,Eigen::RowMajor> C_local_B;
+      this->interaction()->desiredPositionConstraint(A_local_A,b_A,wa_A,C_local_A,dl_A,du_A,wc_A,
+                                                     A_local_B,b_B,wa_B,C_local_B,dl_B,du_B,wc_B);
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>& J = this->calcJacobian();//world系,contactpoint周り
+      const Eigen::SparseMatrix<double,Eigen::RowMajor>& Rinv = this->calcRinv();//calcJacobianの左から掛けるとcontactpoint系,contactpoint周りになる
+      A_A = A_local_A * Rinv * J;
+      C_A = C_local_A * Rinv * J;
+      A_B = A_local_B * Rinv * J;
+      C_B = C_local_B * Rinv * J;
     }else{
-      A.resize(0,6+this->parent()->body()->numJoints());
-      b.resize(0);
-      wa.resize(0);
-      C.resize(0,6+this->parent()->body()->numJoints());
-      dl.resize(0);
-      du.resize(0);
-      wc.resize(0);
+      A_A.resize(0,6+this->parent()->body()->numJoints());
+      b_A.resize(0);
+      wa_A.resize(0);
+      C_A.resize(0,6+this->parent()->body()->numJoints());
+      dl_A.resize(0);
+      du_A.resize(0);
+      wc_A.resize(0);
+      A_B.resize(0,6+this->parent()->body()->numJoints());
+      b_B.resize(0);
+      wa_B.resize(0);
+      C_B.resize(0,6+this->parent()->body()->numJoints());
+      dl_B.resize(0);
+      du_B.resize(0);
+      wc_B.resize(0);
     }
 
     return;
@@ -382,8 +401,10 @@ namespace multicontact_controller {
 
     {
       // priority 2
-      std::shared_ptr<prioritized_qp::Task> task2;
-      if(!this->setupTask2(task2,
+      std::shared_ptr<prioritized_qp::Task> task2_A;
+      std::shared_ptr<prioritized_qp::Task> task2_B;
+      if(!this->setupTask2(task2_A,
+                           task2_B,
                            robot_,
                            jointInfos_,
                            contactPoints,
@@ -394,7 +415,8 @@ namespace multicontact_controller {
         std::cerr << "setupTask2 failed" << std::endl;
         return false;
       }
-      tasks.push_back(task2);
+      tasks.push_back(task2_A);
+      tasks.push_back(task2_B);
     }
 
     {
@@ -1046,7 +1068,8 @@ namespace multicontact_controller {
       return true;
   }
 
-  bool PWTController::setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+  bool PWTController::setupTask2(std::shared_ptr<prioritized_qp::Task>& taskA, //返り値
+                                 std::shared_ptr<prioritized_qp::Task>& taskB, //返り値
                                  cnoid::Body* robot,
                                  std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
@@ -1054,23 +1077,43 @@ namespace multicontact_controller {
                                  double dt,
                                  double w,
                                  double we){
-      if(!this->task2_) {
-        this->task2_ = std::make_shared<prioritized_qp::Task>();
-        task = this->task2_;
-        task->name() = "Task2: Interacting EndEffector";
-        task->solver().settings()->resetDefaultSettings();
-        task->solver().settings()->setVerbosity(debug_print_);
-        task->solver().settings()->setWarmStart(true);
-        task->solver().settings()->setMaxIteration(4000);
-        task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
-        task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
-        task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
-        task->toSolve() = true;
+      if(!this->task2_A_) {
+        this->task2_A_ = std::make_shared<prioritized_qp::Task>();
+        taskA = this->task2_A_;
+        taskA->name() = "Task2_A: Interacting EndEffector";
+        taskA->solver().settings()->resetDefaultSettings();
+        taskA->solver().settings()->setVerbosity(debug_print_);
+        taskA->solver().settings()->setWarmStart(true);
+        taskA->solver().settings()->setMaxIteration(4000);
+        taskA->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskA->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskA->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        taskA->toSolve() = true;
       }else{
-        task = this->task2_;
-        if(task->solver().settings()->getSettings()->verbose != debug_print_){
-          task->solver().settings()->setVerbosity(debug_print_);
-          task->solver().clearSolver();
+        taskA = this->task2_A_;
+        if(taskA->solver().settings()->getSettings()->verbose != debug_print_){
+          taskA->solver().settings()->setVerbosity(debug_print_);
+          taskA->solver().clearSolver();
+        }
+      }
+
+      if(!this->task2_B_) {
+        this->task2_B_ = std::make_shared<prioritized_qp::Task>();
+        taskB = this->task2_B_;
+        taskB->name() = "Task2_B: Interacting EndEffector";
+        taskB->solver().settings()->resetDefaultSettings();
+        taskB->solver().settings()->setVerbosity(debug_print_);
+        taskB->solver().settings()->setWarmStart(true);
+        taskB->solver().settings()->setMaxIteration(4000);
+        taskB->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskB->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+        taskB->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+        taskB->toSolve() = true;
+      }else{
+        taskB = this->task2_B_;
+        if(taskB->solver().settings()->getSettings()->verbose != debug_print_){
+          taskB->solver().settings()->setVerbosity(debug_print_);
+          taskB->solver().clearSolver();
         }
       }
 
@@ -1079,75 +1122,144 @@ namespace multicontact_controller {
         if(jointInfos[i]->controllable()) cols++;
       }
 
-      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > As;
-      std::vector<cnoid::VectorXd> bs;
-      std::vector<cnoid::VectorXd> was;
-      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > Cs;
-      std::vector<cnoid::VectorXd> dls;
-      std::vector<cnoid::VectorXd> dus;
-      std::vector<cnoid::VectorXd> wcs;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_As;
+      std::vector<cnoid::VectorXd> b_As;
+      std::vector<cnoid::VectorXd> wa_As;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_As;
+      std::vector<cnoid::VectorXd> dl_As;
+      std::vector<cnoid::VectorXd> du_As;
+      std::vector<cnoid::VectorXd> wc_As;
+
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_Bs;
+      std::vector<cnoid::VectorXd> b_Bs;
+      std::vector<cnoid::VectorXd> wa_Bs;
+      std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_Bs;
+      std::vector<cnoid::VectorXd> dl_Bs;
+      std::vector<cnoid::VectorXd> du_Bs;
+      std::vector<cnoid::VectorXd> wc_Bs;
 
       {
         // interaction end_effector
         // 各行はm,radのオーダ
         for(size_t i=0;i<contactPoints.size();i++){
-          Eigen::SparseMatrix<double,Eigen::RowMajor> A;
-          cnoid::VectorX b;
-          cnoid::VectorX wa;
-          Eigen::SparseMatrix<double,Eigen::RowMajor> C;
-          cnoid::VectorX dl;
-          cnoid::VectorX du;
-          cnoid::VectorX wc;
-          contactPoints[i]->desiredPositionConstraint(A,b,wa,C,dl,du,wc);
-          As.push_back(A*Dqa);
-          bs.push_back(b);
-          was.push_back(wa);
-          Cs.push_back(C*Dqa);
-          dls.push_back(dl);
-          dus.push_back(du);
-          wcs.push_back(wc);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A_A;
+          cnoid::VectorX b_A;
+          cnoid::VectorX wa_A;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C_A;
+          cnoid::VectorX dl_A;
+          cnoid::VectorX du_A;
+          cnoid::VectorX wc_A;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> A_B;
+          cnoid::VectorX b_B;
+          cnoid::VectorX wa_B;
+          Eigen::SparseMatrix<double,Eigen::RowMajor> C_B;
+          cnoid::VectorX dl_B;
+          cnoid::VectorX du_B;
+          cnoid::VectorX wc_B;
+          contactPoints[i]->desiredPositionConstraint(A_A,b_A,wa_A,C_A,dl_A,du_A,wc_A,
+                                                      A_B,b_B,wa_B,C_B,dl_B,du_B,wc_B);
+          A_As.push_back(A_A*Dqa);
+          b_As.push_back(b_A);
+          wa_As.push_back(wa_A);
+          C_As.push_back(C_A*Dqa);
+          dl_As.push_back(dl_A);
+          du_As.push_back(du_A);
+          wc_As.push_back(wc_A);
+          A_Bs.push_back(A_B*Dqa);
+          b_Bs.push_back(b_B);
+          wa_Bs.push_back(wa_B);
+          C_Bs.push_back(C_B*Dqa);
+          dl_Bs.push_back(dl_B);
+          du_Bs.push_back(du_B);
+          wc_Bs.push_back(wc_B);
         }
       }
 
-      task->A().resize(task->A().rows(),cols);
-      cnoidbodyutils::appendRow(As, task->A());
-      cnoidbodyutils::appendRow(bs, task->b());
-      cnoidbodyutils::appendRow(was, task->wa());
-      task->C().resize(task->C().rows(),cols);
-      cnoidbodyutils::appendRow(Cs, task->C());
-      cnoidbodyutils::appendRow(dls, task->dl());
-      cnoidbodyutils::appendRow(dus, task->du());
-      cnoidbodyutils::appendRow(wcs, task->wc());
+      {
+        taskA->A().resize(taskA->A().rows(),cols);
+        cnoidbodyutils::appendRow(A_As, taskA->A());
+        cnoidbodyutils::appendRow(b_As, taskA->b());
+        cnoidbodyutils::appendRow(wa_As, taskA->wa());
+        taskA->C().resize(taskA->C().rows(),cols);
+        cnoidbodyutils::appendRow(C_As, taskA->C());
+        cnoidbodyutils::appendRow(dl_As, taskA->dl());
+        cnoidbodyutils::appendRow(du_As, taskA->du());
+        cnoidbodyutils::appendRow(wc_As, taskA->wc());
 
-      // damping factor
-      double damping_factor = this->dampingFactor(w,
-                                                  we,
-                                                  task->b(),
-                                                  task->wa(),
-                                                  task->dl(),
-                                                  task->du(),
-                                                  task->wc());
-      task->w().resize(cols);
-      for(size_t i=0;i<task->w().size();i++)task->w()[i] = damping_factor;
+        // damping factor
+        double damping_factor = this->dampingFactor(w,
+                                                    we,
+                                                    taskA->b(),
+                                                    taskA->wa(),
+                                                    taskA->dl(),
+                                                    taskA->du(),
+                                                    taskA->wc());
+        taskA->w().resize(cols);
+        for(size_t i=0;i<taskA->w().size();i++)taskA->w()[i] = damping_factor;
+      }
+
+      {
+        taskB->A().resize(taskB->A().rows(),cols);
+        cnoidbodyutils::appendRow(A_Bs, taskB->A());
+        cnoidbodyutils::appendRow(b_Bs, taskB->b());
+        cnoidbodyutils::appendRow(wa_Bs, taskB->wa());
+        taskB->C().resize(taskB->C().rows(),cols);
+        cnoidbodyutils::appendRow(C_Bs, taskB->C());
+        cnoidbodyutils::appendRow(dl_Bs, taskB->dl());
+        cnoidbodyutils::appendRow(du_Bs, taskB->du());
+        cnoidbodyutils::appendRow(wc_Bs, taskB->wc());
+
+        // damping factor
+        double damping_factor = this->dampingFactor(w,
+                                                    we,
+                                                    taskB->b(),
+                                                    taskB->wa(),
+                                                    taskB->dl(),
+                                                    taskB->du(),
+                                                    taskB->wc());
+        taskB->w().resize(cols);
+        for(size_t i=0;i<taskB->w().size();i++)taskB->w()[i] = damping_factor;
+
+      }
+
 
       if(debug_print_){
-        std::cerr << task->name() << std::endl;
+        std::cerr << taskA->name() << std::endl;
         std::cerr << "A" << std::endl;
-        std::cerr << task->A() << std::endl;
+        std::cerr << taskA->A() << std::endl;
         std::cerr << "b" << std::endl;
-        std::cerr << task->b() << std::endl;
+        std::cerr << taskA->b() << std::endl;
         std::cerr << "C" << std::endl;
-        std::cerr << task->C() << std::endl;
+        std::cerr << taskA->C() << std::endl;
         std::cerr << "dl" << std::endl;
-        std::cerr << task->dl() << std::endl;
+        std::cerr << taskA->dl() << std::endl;
         std::cerr << "du" << std::endl;
-        std::cerr << task->du() << std::endl;
+        std::cerr << taskA->du() << std::endl;
         std::cerr << "wa" << std::endl;
-        std::cerr << task->wa() << std::endl;
+        std::cerr << taskA->wa() << std::endl;
         std::cerr << "wc" << std::endl;
-        std::cerr << task->wc() << std::endl;
+        std::cerr << taskA->wc() << std::endl;
         std::cerr << "w" << std::endl;
-        std::cerr << task->w() << std::endl;
+        std::cerr << taskA->w() << std::endl;
+
+        std::cerr << taskB->name() << std::endl;
+        std::cerr << "A" << std::endl;
+        std::cerr << taskB->A() << std::endl;
+        std::cerr << "b" << std::endl;
+        std::cerr << taskB->b() << std::endl;
+        std::cerr << "C" << std::endl;
+        std::cerr << taskB->C() << std::endl;
+        std::cerr << "dl" << std::endl;
+        std::cerr << taskB->dl() << std::endl;
+        std::cerr << "du" << std::endl;
+        std::cerr << taskB->du() << std::endl;
+        std::cerr << "wa" << std::endl;
+        std::cerr << taskB->wa() << std::endl;
+        std::cerr << "wc" << std::endl;
+        std::cerr << taskB->wc() << std::endl;
+        std::cerr << "w" << std::endl;
+        std::cerr << taskB->w() << std::endl;
+
       }
 
       return true;

@@ -20,7 +20,8 @@ namespace multicontact_controller {
     void bestEffortForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
     // 位置の目標値を返す。主に遊脚用. colは[root6dof + numJoint]
-    void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+    void desiredPositionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A_A, cnoid::VectorX& b_A, cnoid::VectorX& wa_A, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_A, cnoid::VectorX& dl_A, cnoid::VectorXd& du_A, cnoid::VectorX& wc_A,
+                                   Eigen::SparseMatrix<double,Eigen::RowMajor>& A_B, cnoid::VectorX& b_B, cnoid::VectorX& wa_B, Eigen::SparseMatrix<double,Eigen::RowMajor>& C_B, cnoid::VectorX& dl_B, cnoid::VectorXd& du_B, cnoid::VectorX& wc_B);
 
     void update(const cnoid::VectorX& dqa){
       cnoid::Vector6 vel = this->calcRinv() * this->calcJacobian() * dqa; //local系
@@ -317,8 +318,9 @@ namespace multicontact_controller {
                       double w,
                       double we);
 
-    // メンバ変数はdebug_print_とTask2_しか使わない
-    bool setupTask2(std::shared_ptr<prioritized_qp::Task>& task, //返り値
+    // メンバ変数はdebug_print_とTask2_A_, task2_B_しか使わない
+    bool setupTask2(std::shared_ptr<prioritized_qp::Task>& taskA, //返り値
+                    std::shared_ptr<prioritized_qp::Task>& taskB, //返り値
                     cnoid::Body* robot,
                     std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                     std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
@@ -414,7 +416,8 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> task0_1_; // setupTask0_1
     std::shared_ptr<prioritized_qp::Task> task1_; // setupTask1
     std::shared_ptr<prioritized_qp::Task> task1_1_; // setupTask1_1
-    std::shared_ptr<prioritized_qp::Task> task2_; // setupTask2
+    std::shared_ptr<prioritized_qp::Task> task2_A_; // setupTask2
+    std::shared_ptr<prioritized_qp::Task> task2_B_; // setupTask2
     std::shared_ptr<prioritized_qp::Task> task2_5_; // setupTas2_5
     std::shared_ptr<prioritized_qp::Task> task3Helper_; // setupTask3_Helper
     std::shared_ptr<prioritized_qp::Task> task3_; // setupTask3
