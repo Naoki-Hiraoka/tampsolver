@@ -308,8 +308,8 @@ namespace multicontact_controller {
                                      std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& pclCollisions,
                                      double dt){
 
-    std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > > Js;Js.reserve(contactPoints.size());
-    for(size_t i=0;i<contactPoints.size();i++) Js.emplace_back(contactPoints[i]->calcJacobian());
+    std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Js;Js.reserve(contactPoints.size());//contactpoint系,contactpoint周り
+    for(size_t i=0;i<contactPoints.size();i++) Js.push_back(contactPoints[i]->calcRinv() * contactPoints[i]->calcJacobian());
 
     // calc PWT Jacobian
     Eigen::SparseMatrix<double,Eigen::RowMajor> Dqa;
@@ -474,7 +474,7 @@ namespace multicontact_controller {
 
     // Solve
     cnoid::VectorX result;
-    bool solved = prioritized_qp::solve(tasks,result);
+    bool solved = prioritized_qp::solve(tasks,result, debug_print_);
     if(!solved) {
       std::cerr << "prioritized_qp::solve failed" << std::endl;
       return false;
@@ -496,10 +496,6 @@ namespace multicontact_controller {
 
     }
 
-    if(debug_print_){
-      std::cerr << "result" << result << std::endl;
-    }
-
     return true;
   }
 
@@ -510,7 +506,7 @@ namespace multicontact_controller {
                                       std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                                       cnoidbodyutils::TorqueJacobianCalculator& torqueJacobianCalculator,
                                       std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
-                                      std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
+                                      std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Js,
                                       double sv_ratio){
 
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dg = torqueJacobianCalculator.calcDg();
@@ -524,7 +520,7 @@ namespace multicontact_controller {
     Eigen::SparseMatrix<double,Eigen::RowMajor> Jbal(0,6+robot->numJoints());
     std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> > Jbals;
     for(size_t i=0;i<contactPoints.size();i++) {
-      Jbals.push_back(contactPoints[i]->selectMatrixForKinematicsConstraint() * Js[i].get());
+      Jbals.push_back(contactPoints[i]->selectMatrixForKinematicsConstraint() * Js[i]);
     }
     cnoidbodyutils::appendRow(Jbals, Jbal);
 
@@ -594,7 +590,7 @@ namespace multicontact_controller {
       if(!this->task0_) {
         this->task0_ = std::make_shared<prioritized_qp::Task>();
         task = this->task0_;
-        task->name() = "Task0: Joint Limit, Self Collision";
+        task->name() = "Task0: Joint Limit";
         task->solver().settings()->resetDefaultSettings();
         task->solver().settings()->setVerbosity(false);
         task->solver().settings()->setWarmStart(true);
@@ -672,10 +668,6 @@ namespace multicontact_controller {
             idx++;
           }
         }
-      }
-
-      {
-        // self collision TODO
       }
 
       task->A().resize(task->A().rows(),cols);

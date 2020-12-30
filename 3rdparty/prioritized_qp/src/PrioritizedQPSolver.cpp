@@ -110,8 +110,14 @@ namespace prioritized_qp{
           }
         }
         taskC = taskC_ColMajor;
-        w_exts.resize(w_exts.size() + tasks[i]->w_ext().size());
-        w_exts.tail(tasks[i]->w_ext().size()) = tasks[i]->w_ext();
+        w_exts.conservativeResize(w_exts.size() + additionalCols);
+        if(tasks[i]->id_ext().size() == 0){
+          w_exts.tail(tasks[i]->w_ext().size()) = tasks[i]->w_ext();
+        }else{
+          for(size_t j=0;j<tasks[i]->w_ext().size();j++){
+            w_exts[id_exts[tasks[i]->id_ext()[j]] - dim] = tasks[i]->w_ext()[j];
+          }
+        }
       }
 
       As.conservativeResize(As.rows()+taskA.rows(),taskA.cols());
@@ -127,18 +133,26 @@ namespace prioritized_qp{
       lBs.tail(tasks[i]->dl().size()) = tasks[i]->dl();
       uBs.tail(tasks[i]->du().size()) = tasks[i]->du();
 
-      if(tasks[i]->toSolve()){
-        // std::cerr << "As" << std::endl;
-        // std::cerr << As << std::endl;
-        // std::cerr << "lBs" << std::endl;
-        // std::cerr << lBs << std::endl;
-        // std::cerr << "uBs" << std::endl;
-        // std::cerr << uBs << std::endl;
-        // std::cerr << "w_exts" << std::endl;
-        // std::cerr << w_exts << std::endl;
-
-        if(tasks[i]->A().rows()==0 && tasks[i]->C().rows()==0)continue;
-
+      if(!tasks[i]->toSolve() ||
+         (tasks[i]->A().rows()==0 && tasks[i]->C().rows()==0)){
+        if(debuglevel){
+          std::cerr << tasks[i]->name() << std::endl;
+          std::cerr << "A" << std::endl;
+          std::cerr << taskA << std::endl;
+          std::cerr << "b" << std::endl;
+          std::cerr << tasks[i]->b() << std::endl;
+          std::cerr << "C" << std::endl;
+          std::cerr << taskC << std::endl;
+          std::cerr << "dl du" << std::endl;
+          for(size_t j=0;j<taskC.rows();j++){
+            std::cerr << tasks[i]->dl()[j] << " " << tasks[i]->du()[j] << std::endl;
+          }
+          std::cerr << "w" << std::endl;
+          std::cerr << tasks[i]->w() << std::endl;
+          std::cerr << "w_exts" << std::endl;
+          std::cerr << w_exts << std::endl;
+        }
+      }else{
         int num = As.cols() + tasks[i]->A().rows() + tasks[i]->C().rows();
 
         /*
@@ -188,7 +202,30 @@ namespace prioritized_qp{
           tasks[i]->solver().clearSolverVariables();
           solved = tasks[i]->solver().solve();
         }
-        if(!solved) return false;
+        if(!solved) {
+          if(debuglevel){
+            std::cerr << tasks[i]->name() << std::endl;
+            std::cerr << "A" << std::endl;
+            std::cerr << taskA << std::endl;
+            std::cerr << "b wa" << std::endl;
+            for(size_t j=0;j<taskA.rows();j++){
+              std::cerr << tasks[i]->b()[j] << " " << tasks[i]->wa()[j] << std::endl;
+            }
+            std::cerr << "C" << std::endl;
+            std::cerr << taskC << std::endl;
+            std::cerr << "dl du wc" << std::endl;
+            for(size_t j=0;j<taskC.rows();j++){
+              std::cerr << tasks[i]->dl()[j] << " " << tasks[i]->du()[j] << " " << tasks[i]->wc()[j] <<std::endl;
+            }
+            std::cerr << "w" << std::endl;
+            std::cerr << tasks[i]->w() << std::endl;
+            std::cerr << "w_exts" << std::endl;
+            std::cerr << w_exts << std::endl;
+            std::cerr << "!solved" << std::endl;
+          }
+
+          return false;
+        }
 
         solution = tasks[i]->solver().getSolution().head(As.cols());
 
@@ -202,10 +239,44 @@ namespace prioritized_qp{
           if(this_d(j)>tasks[i]->du()(j)) uBs(uBs.rows() - tasks[i]->C().rows() + j) = this_d(j);
           if(this_d(j)<tasks[i]->dl()(j)) lBs(lBs.rows() - tasks[i]->C().rows() + j) = this_d(j);
         }
+
+        if(debuglevel){
+          std::cerr << tasks[i]->name() << std::endl;
+          std::cerr << "solution" << std::endl;
+          std::cerr << solution << std::endl;
+          std::cerr << "A" << std::endl;
+          std::cerr << taskA << std::endl;
+          std::cerr << "b this_b wa" << std::endl;
+          for(size_t j=0;j<taskA.rows();j++){
+            std::cerr << tasks[i]->b()[j] << " " << this_b[j] << " " << tasks[i]->wa()[j] << std::endl;
+          }
+          std::cerr << "C" << std::endl;
+          std::cerr << taskC << std::endl;
+          std::cerr << "dl this_d du wc" << std::endl;
+          for(size_t j=0;j<taskC.rows();j++){
+            std::cerr << tasks[i]->dl()[j] << " " << this_d[j] << " " << tasks[i]->du()[j] << " "  << tasks[i]->wc()[j] <<std::endl;
+          }
+          std::cerr << "w" << std::endl;
+          std::cerr << tasks[i]->w() << std::endl;
+          std::cerr << "w_exts" << std::endl;
+          std::cerr << w_exts << std::endl;
+        }
       }
     }
 
     result = solution.head(dim);
+
+    if(debuglevel){
+      std::cerr << "result" << std::endl;
+      std::cerr << solution << std::endl;
+      std::cerr << "As" << std::endl;
+      std::cerr << As << std::endl;
+      std::cerr << "lBs result_b uBs" << std::endl;
+      Eigen::VectorXd result_b = As * solution;
+      for(size_t i=0;i<As.rows();i++){
+        std::cerr << lBs[i] << " " << result_b[i] << " " << uBs[i] << std::endl;
+      }
+    }
     return true;
   }
 

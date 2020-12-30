@@ -275,7 +275,7 @@ namespace multicontact_controller {
                          std::vector<std::shared_ptr<JointInfo> >& jointInfos,
                          cnoidbodyutils::TorqueJacobianCalculator& torqueJacobianCalculator,
                          std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
-                         std::vector<std::reference_wrapper<const Eigen::SparseMatrix<double,Eigen::RowMajor> > >& Js,
+                         std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Js,
                          double sv_ratio);
 
     // 各行はm/iter, rad/iterのオーダーにそろえる
