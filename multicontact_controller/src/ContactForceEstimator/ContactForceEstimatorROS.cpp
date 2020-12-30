@@ -130,6 +130,13 @@ namespace multicontact_controller {
           offsetForcePub[forceSensors[i]->name()].publish(msg);
         }
 
+        {
+          cnoid::Vector6 rootForceOffset = contactForceEstimator.getRootForceOffset();
+          if(std::abs(rootForceOffset[2]) > forceOffsetUpdateThre) {
+            robot_->rootLink()->setMass(robot_->rootLink()->m() + 1.0/offsetUpdaterate*(now-stamp).toSec() * rootForceOffset[2]);
+          }
+        }
+
       }
 
       seq++;

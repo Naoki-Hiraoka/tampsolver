@@ -110,6 +110,8 @@ namespace multicontact_controller {
       forceSensorOffsets_.push_back(cnoid::Vector6::Zero());
     }
 
+    rootForceOffset_ = cnoid::Vector6::Zero();
+
     return true;
   }
 
@@ -365,6 +367,8 @@ namespace multicontact_controller {
     for(size_t i=0;i<forceSensorOffsets_.size();i++){
       forceSensorOffsets_[i] = - forceOffsets.segment<6>(i*6); //符号が逆であることに注意
     }
+
+    rootForceOffset_ = tasks_[1]->A() * result - tasks_[1]->b();
 
     return true;
   }

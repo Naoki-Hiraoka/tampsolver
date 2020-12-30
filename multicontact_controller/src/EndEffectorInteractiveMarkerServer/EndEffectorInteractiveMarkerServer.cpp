@@ -180,16 +180,24 @@ public:
   void addMarkerControl(int highlight=0){
     visualization_msgs::Marker marker;
     std::shared_ptr<const urdf::Link> link = robot_model_->getLink(info_->header.frame_id);
+    Eigen::Affine3d localtrans; localtrans.setIdentity();
     if(link){
-      // TODO local poseが考慮されなかったり、frame_idがメッシュのあるリンクを指していない場合エラーになったりするはず
+      // TODO frame_idがメッシュのあるリンクを指していない場合エラーになったりするはず
       marker.type = visualization_msgs::Marker::MESH_RESOURCE;
       std::shared_ptr<const urdf::Mesh> mesh = std::dynamic_pointer_cast<const urdf::Mesh >(link->visual->geometry);
       marker.mesh_resource = mesh->filename;
+      localtrans.translation() = Eigen::Vector3d(link->visual->origin.position.x,
+                                                 link->visual->origin.position.y,
+                                                 link->visual->origin.position.z);
+      localtrans.linear() = Eigen::Matrix3d(Eigen::Quaterniond(link->visual->origin.rotation.w,
+                                                               link->visual->origin.rotation.x,
+                                                               link->visual->origin.rotation.y,
+                                                               link->visual->origin.rotation.z));
     }
     Eigen::Affine3d trans;
     tf::transformMsgToEigen(info_->transform,trans);
     Eigen::Affine3d trans_inv = trans.inverse();
-    tf::poseEigenToMsg(trans_inv,marker.pose);
+    tf::poseEigenToMsg(trans_inv * localtrans,marker.pose);
     marker.scale.x = marker.scale.y = marker.scale.z = 1.0;
     marker.mesh_use_embedded_materials = true;
     switch(highlight){
