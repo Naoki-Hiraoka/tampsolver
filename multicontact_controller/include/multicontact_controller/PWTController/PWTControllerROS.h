@@ -76,8 +76,6 @@ namespace multicontact_controller {
     ros::Subscriber targetPoseSub_;
   };
 
-  void setupJointInfoFromParam(const std::string& ns, std::shared_ptr<JointInfo>& jointinfo, std::map<std::string, std::shared_ptr<JointInfo> >& jointInfoMap);
-
   class PWTControllerROS : public choreonoid_cpp::ChoreonoidCpp {
   public:
     virtual void main(int argc, char** argv) override;
@@ -98,8 +96,8 @@ namespace multicontact_controller {
 
     cnoid::Body* robot_;
     std::map<std::string, std::shared_ptr<EndEffectorPWTCROS> > endEffectors_;
-    std::map<std::string, std::shared_ptr<JointInfo> > jointInfoMap_;
-    std::vector<std::shared_ptr<JointInfo> > jointInfos_;
+    std::map<std::string, std::shared_ptr<cnoidbodyutils::JointInfo> > jointInfoMap_;
+    std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> > jointInfos_;
     std::vector<std::shared_ptr<cnoidbodyutils::Collision> > selfCollisions_;
     std::vector<std::shared_ptr<cnoidbodyutils::Collision> > pclCollisions_;
     std::shared_ptr<PWTController> PWTController_;

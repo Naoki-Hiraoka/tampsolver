@@ -21,80 +21,6 @@ namespace multicontact_controller {
     }
   }
 
-  void setupJointInfoFromParam(const std::string& ns, std::shared_ptr<JointInfo>& jointInfo, std::map<std::string, std::shared_ptr<JointInfo> >& jointInfoMap){
-    ros::NodeHandle nh;
-
-    if(!nh.hasParam(ns+"/controllable")){
-      ROS_WARN("rosparam %s not found",(ns+"/controllable").c_str());
-    }else{
-      nh.getParam(ns+"/controllable",jointInfo->controllable());
-    }
-    if(!nh.hasParam(ns+"/care_torque")){
-      ROS_WARN("rosparam %s not found",(ns+"/care_torque").c_str());
-    }else{
-      nh.getParam(ns+"/care_torque",jointInfo->care_torque());
-    }
-    if(!nh.hasParam(ns+"/hardware_pgain")){
-      ROS_WARN("rosparam %s not found",(ns+"/hardware_pgain").c_str());
-    }else{
-      nh.getParam(ns+"/hardware_pgain",jointInfo->hardware_pgain());
-      jointInfo->pgain() = jointInfo->hardware_pgain();
-    }
-
-
-    std::string limits_ns = ns + "/limits";
-
-    if(nh.hasParam(limits_ns+"/ulimit")){
-      ROS_INFO("rosparam %s found",(ns+"/ulimit").c_str());
-      nh.getParam(limits_ns+"/ulimit",jointInfo->ulimit());
-    }
-    if(nh.hasParam(limits_ns+"/llimit")){
-      ROS_INFO("rosparam %s found",(ns+"/llimit").c_str());
-      nh.getParam(limits_ns+"/llimit",jointInfo->llimit());
-    }
-    if(nh.hasParam(limits_ns+"/uvlimit")){
-      ROS_INFO("rosparam %s found",(ns+"/uvlimit").c_str());
-      nh.getParam(limits_ns+"/uvlimit",jointInfo->uvlimit());
-    }
-    if(nh.hasParam(limits_ns+"/lvlimit")){
-      ROS_INFO("rosparam %s found",(ns+"/lvlimit").c_str());
-      nh.getParam(limits_ns+"/lvlimit",jointInfo->lvlimit());
-    }
-
-    if(nh.hasParam(limits_ns+"/limit_table/target_joint") &&
-       nh.hasParam(limits_ns+"/limit_table/target_llimit_angle") &&
-       nh.hasParam(limits_ns+"/limit_table/target_ulimit_angle") &&
-       nh.hasParam(limits_ns+"/limit_table/llimit_table") &&
-       nh.hasParam(limits_ns+"/limit_table/ulimit_table")){
-      ROS_INFO("load limit table %s",(limits_ns+"/limit_table").c_str());
-      std::string target_joint_name;
-      nh.getParam(limits_ns+"/limit_table/target_joint",target_joint_name);
-      int target_llimit_angle;
-      nh.getParam(limits_ns+"/limit_table/target_llimit_angle",target_llimit_angle);
-      int target_ulimit_angle;
-      nh.getParam(limits_ns+"/limit_table/target_ulimit_angle",target_ulimit_angle);
-      std::vector<double> llimit_table;
-      nh.getParam(limits_ns+"/limit_table/llimit_table",llimit_table);
-      std::vector<double> ulimit_table;
-      nh.getParam(limits_ns+"/limit_table/ulimit_table",ulimit_table);
-      cnoid::Link* self_joint = jointInfo->joint();
-      cnoid::Link* target_joint = jointInfo->joint()->body()->link(target_joint_name);
-      std::shared_ptr<JointInfo> target_joint_info = jointInfoMap[target_joint_name];
-      if(!target_joint || !target_joint_info){
-        ROS_ERROR("target_joint %s not found", target_joint_name.c_str());
-      }else{
-        jointInfo->jointLimitTable() = std::make_shared<cnoidbodyutils::JointLimitTable>(self_joint,
-                                                                                         target_joint,
-                                                                                         target_llimit_angle,
-                                                                                         target_ulimit_angle,
-                                                                                         llimit_table,
-                                                                                         ulimit_table);
-        jointInfo->jointLimitTableTargetJointInfo() = target_joint_info;
-      }
-    }
-
-  }
-
   void PWTControllerROS::main(int argc, char** argv) {
 
     ros::init(argc,argv,"pwt_controller");
@@ -108,17 +34,7 @@ namespace multicontact_controller {
     }
     objects(robot_);
 
-    for(size_t i=0;i<robot_->numJoints();i++){
-      std::string name = robot_->joint(i)->name();
-      std::shared_ptr<JointInfo> jointInfo = std::make_shared<JointInfo>();
-      jointInfo->name() = name;
-      jointInfo->joint() = robot_->joint(i);
-      jointInfos_.push_back(jointInfo);
-      jointInfoMap_[name] = jointInfo;
-    }
-    for(size_t i=0;i<jointInfos_.size();i++){
-      setupJointInfoFromParam("joint_config/"+jointInfos_[i]->name(), jointInfos_[i], jointInfoMap_);
-    }
+    cnoidbodyutils::setupJointInfosFromParam(robot_, jointInfos_, jointInfoMap_);
 
     PWTController_ = std::make_shared<PWTController>(robot_, jointInfos_);
 
@@ -303,7 +219,7 @@ namespace multicontact_controller {
   void PWTControllerROS::motorTemperatureStateCallback(const multicontact_controller_msgs::MotorTemperatureState::ConstPtr& msg){
     for(size_t i=0;i<msg->name.size();i++){
       if(jointInfoMap_.find(msg->name[i]) != jointInfoMap_.end()){
-        std::shared_ptr<JointInfo> info = jointInfoMap_[msg->name[i]];
+        std::shared_ptr<cnoidbodyutils::JointInfo> info = jointInfoMap_[msg->name[i]];
         if(msg->coil_temperature_limit.size() == msg->name.size()) info->coil_temperature_limit() = msg->coil_temperature_limit[i];
         if(msg->housing_temperature.size() == msg->name.size()) info->housing_temperature() = msg->housing_temperature[i];
         if(msg->coil_temperature.size() == msg->name.size()) info->coil_temperature() = msg->coil_temperature[i];

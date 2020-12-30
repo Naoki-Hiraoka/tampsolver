@@ -18,6 +18,7 @@ add_library(CnoidBodyUtils
   JointLimitTable.cpp
   Interaction.cpp
   Collision.cpp
+  JointInfo.cpp
   )
 
 target_include_directories(CnoidBodyUtils PUBLIC

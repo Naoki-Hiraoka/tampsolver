@@ -166,143 +166,6 @@ namespace multicontact_controller {
     return drawOnObjects;
   }
 
-  JointInfo::JointInfo()
-    : name_(),
-      joint_(nullptr),
-      controllable_(false),
-      care_torque_(false),
-      command_angle_(0.0),
-      dt_(0.02),
-      coil_temperature_limit_(150.0),
-      housing_temperature_(25.0),
-      coil_temperature_(25.0),
-      maximum_effort_soft_(std::numeric_limits<double>::max()),
-      maximum_effort_hard_(std::numeric_limits<double>::max()),
-      balance_effort_(std::numeric_limits<double>::max()),
-      remaining_time_(std::numeric_limits<double>::max()),
-      pgain_(1e4),
-      hardware_pgain_(1e0),
-      ulimit_(std::numeric_limits<double>::max()),
-      llimit_(-std::numeric_limits<double>::max()),
-      uvlimit_(std::numeric_limits<double>::max()),
-      lvlimit_(-std::numeric_limits<double>::max())
-  {
-  }
-
-  // 指令関節角度上下限に関する制約を返す.破損防止
-  void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    double ulimit = joint_->q_upper();
-    double llimit = joint_->q_lower();
-
-    // angle
-    if(jointLimitTable_){
-      double min_angle = jointLimitTable_->getLlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
-      double max_angle = jointLimitTable_->getUlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
-      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
-      llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
-    }else{
-      double min_angle = joint_->q_lower() + 0.0001;//少しマージン
-      double max_angle = joint_->q_upper() - 0.0001;//少しマージン
-      ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
-      llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
-    }
-
-    A.resize(0,1);
-    b.resize(0);
-    wa.resize(0);
-    C.resize(1,1);C.coeffRef(0,0) = 1.0;
-    dl.resize(1);dl[0] = llimit;
-    du.resize(1);du[0] = ulimit;
-    wc.resize(1);wc[0] = 1.0;
-    return;
-  }
-
-  // 指令関節角速度上下限に関する制約を返す.破損防止
-  void JointInfo::JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    // velocity
-    double ulimit = joint_->q_upper() * dt_;
-    double llimit = joint_->q_lower() * dt_;
-    ulimit = std::max(llimit, std::min(ulimit, joint_->dq_upper() * dt_ - 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
-    llimit = std::min(ulimit, std::max(llimit, joint_->dq_lower() * dt_ + 0.000175));// 0.01 deg / sec (same as SoftErrorLimiter)
-    ulimit = std::max(llimit, std::min(ulimit, uvlimit_)); //上限が下限を下回ることを防ぐ
-    llimit = std::min(ulimit, std::max(llimit, lvlimit_));
-
-    A.resize(0,1);
-    b.resize(0);
-    wa.resize(0);
-    C.resize(1,1);C.coeffRef(0,0) = 1.0;
-    dl.resize(1);dl[0] = llimit;
-    du.resize(1);du[0] = ulimit;
-    wc.resize(1);wc[0] = 1.0;
-    return;
-  }
-
-  // M \tau によってこのJointの成分を抽出できるM(select matrix). \tauは[numJoints]
-  const Eigen::SparseMatrix<double,Eigen::RowMajor>& JointInfo::torqueSelectMatrix(){
-    if(torqueSelectMatrix_.cols() != joint_->body()->numJoints() || torqueSelectMatrix_.rows() != 1){
-      torqueSelectMatrix_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,joint_->body()->numJoints());
-      torqueSelectMatrix_.insert(0,joint_->jointId()) = 1.0;
-    }
-    return torqueSelectMatrix_;
-  }
-
-  // 関節トルク上下限に関する制約を返す.破損防止
-  // 各行は無次元化されている
-  void JointInfo::JointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
-    if(care_torque_){
-      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
-      double scale = std::max(std::min(maximum_effort_hard_, max_torque), 1e-4);
-      A.resize(0,1);
-      b.resize(0);
-      wa.resize(0);
-      C.resize(1,1); C.coeffRef(0,0) = 1.0/scale;
-      dl.resize(1);
-      du.resize(1);
-      wc.resize(1);
-
-      du[0] = std::min(maximum_effort_hard_, max_torque)/scale - C.coeffRef(0,0) * joint_->u();
-      dl[0] = std::max(-maximum_effort_hard_, -max_torque)/scale - C.coeffRef(0,0) * joint_->u();
-      wc[0] = 1.0;
-    }else{
-      A.resize(0,1);
-      b.resize(0);
-      wa.resize(0);
-      C.resize(0,1);
-      dl.resize(0);
-      du.resize(0);
-      wc.resize(0);
-    }
-    return;
-  }
-
-  // 各行は無次元化されている
-  void JointInfo::bestEffortJointTorqueConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-    if(care_torque_){
-      double max_torque = joint_->info<double>("climit") * joint_->info<double>("torqueConst") * joint_->info<double>("gearRatio");
-      double scale = std::max(std::min(maximum_effort_soft_, max_torque), 1e-4);
-      A.resize(1,1); A.coeffRef(0,0) = 1.0/scale;
-      b.resize(1);
-      wa.resize(1);
-      C.resize(0,1);
-      dl.resize(0);
-      du.resize(0);
-      wc.resize(0);
-
-      b[0] = 0 - A.coeffRef(0,0) * joint_->u();
-      wa[0] = 1.0;
-    }else{
-      A.resize(0,1);
-      b.resize(0);
-      wa.resize(0);
-      C.resize(0,1);
-      dl.resize(0);
-      du.resize(0);
-      wc.resize(0);
-    }
-
-    return;
-  }
-
   bool PWTController::calcPWTControl(std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                      std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
                                      std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& pclCollisions,
@@ -503,7 +366,7 @@ namespace multicontact_controller {
                                       std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,//返り値
                                       Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,//返り値
                                       cnoid::Body* robot,
-                                      std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                      std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                       cnoidbodyutils::TorqueJacobianCalculator& torqueJacobianCalculator,
                                       std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                       std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Js,
@@ -584,7 +447,7 @@ namespace multicontact_controller {
 
   bool PWTController::setupTask0(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,
-                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                  double k,
                                  double dt){
       if(!this->task0_) {
@@ -700,7 +563,7 @@ namespace multicontact_controller {
 
   bool PWTController::setupTask0_1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                    cnoid::Body* robot,
-                                   std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                   std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                    std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
                                    const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                                    double tolerance,
@@ -816,7 +679,7 @@ namespace multicontact_controller {
 
   bool PWTController::setupTask1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,
-                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                  const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,
@@ -952,7 +815,7 @@ namespace multicontact_controller {
 
   bool PWTController::setupTask1_1(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                    cnoid::Body* robot,
-                                   std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                   std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                    std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& pclCollisions,
                                    const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                                    double tolerance,
@@ -1068,7 +931,7 @@ namespace multicontact_controller {
   bool PWTController::setupTask2(std::shared_ptr<prioritized_qp::Task>& taskA, //返り値
                                  std::shared_ptr<prioritized_qp::Task>& taskB, //返り値
                                  cnoid::Body* robot,
-                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dqa,
                                  double dt,
@@ -1264,7 +1127,7 @@ namespace multicontact_controller {
 
   bool PWTController::setupTask2_5(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                    cnoid::Body* robot,
-                                   std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                   std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                    std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                    const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                                    double w_scale,
@@ -1373,7 +1236,7 @@ namespace multicontact_controller {
   bool PWTController::setupTask3(std::shared_ptr<prioritized_qp::Task>& taskHelper, //返り値
                                  std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                  cnoid::Body* robot,
-                                 std::vector<std::shared_ptr<JointInfo> >& jointInfos,
+                                 std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
                                  std::vector<std::shared_ptr<ContactPointPWTC> >& contactPoints,
                                  const std::vector<Eigen::SparseMatrix<double,Eigen::RowMajor> >& Dwas,
                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& Dtaua,

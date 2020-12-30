@@ -15,6 +15,7 @@
 #include <multicontact_controller/lib/CnoidBodyUtils/JointLimitTable.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/Interaction.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/Collision.h>
+#include <multicontact_controller/lib/CnoidBodyUtils/JointInfo.h>
 
 namespace multicontact_controller {
   namespace cnoidbodyutils {
