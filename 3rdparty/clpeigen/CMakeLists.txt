@@ -13,18 +13,18 @@ pkg_check_modules(clp REQUIRED clp)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES clpeigen
+  DEPENDS EIGEN
 )
 
-include_directories(
+add_library(clpeigen SHARED src/clpeigen.cpp)
+target_link_libraries(clpeigen PUBLIC
+  ${clp_LIBRARIES}
+  ${EIGEN_LIBRARIES})
+target_include_directories(clpeigen PUBLIC
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN_INCLUDE_DIRS}
   )
-
-add_library(clpeigen SHARED src/clpeigen.cpp)
-target_link_libraries(clpeigen
-  ${clp_LIBRARIES}
-  ${EIGEN_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
