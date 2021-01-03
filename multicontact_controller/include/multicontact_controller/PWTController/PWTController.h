@@ -265,14 +265,6 @@ namespace multicontact_controller {
                     double dt,
                     double w);
 
-    double dampingFactor(double w,
-                         double we,
-                         const cnoid::VectorX& b,
-                         const cnoid::VectorX& wa,
-                         const cnoid::VectorX& dl,
-                         const cnoid::VectorX& du,
-                         const cnoid::VectorX& wc);
-
   private:
     cnoid::Body* robot_;
     std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos_;

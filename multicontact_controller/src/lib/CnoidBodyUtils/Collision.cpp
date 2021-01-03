@@ -227,25 +227,18 @@ namespace multicontact_controller{
     Collision::Collision(cnoid::Body* robot)
       : robot_(robot),
         tolerance_(0.02),
-        maxDistance_(0.2),
-        distance_(0.1)
+        maxDistance_(0.2)
     {
       collisionLinkPair_.collisions.resize(2);
     }
 
     void Collision::getCollisionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
       //distanceを更新
-      p0_ = collisionLinkPair_.link[0] ? collisionLinkPair_.link[0]->T() * collisionLinkPair_.collisions[0].point : collisionLinkPair_.collisions[0].point;
-      p1_ = collisionLinkPair_.link[1] ? collisionLinkPair_.link[1]->T() * collisionLinkPair_.collisions[1].point : collisionLinkPair_.collisions[1].point;
-      cnoid::Vector3 normal01 = (collisionLinkPair_.link[0] ? collisionLinkPair_.link[0]->R() * collisionLinkPair_.collisions[0].normal : collisionLinkPair_.collisions[0].normal).normalized();//p1がこの方向に動くと離れる
-      if(collisionLinkPair_.collisions[0].depth > -1e5){
-        distance_ = (p1_ - p0_).norm() * ((p1_ - p0_).dot(normal01) >= 0 ? 1.0 : -1.0);
-      }else{
-        //非常に遠い. このときp0, p1にはでたらめな値が入っている場合があるので、distanceは計算しない
-        distance_ = - collisionLinkPair_.collisions[0].depth;
-      }
+      cnoid::Vector3 p0, p1, normal01;
+      double distance;
+      calcCurrentDistance(collisionLinkPair_, p0, p1, distance, normal01);
 
-      if(distance_ > maxDistance_){
+      if(distance > maxDistance_){
         //考慮しない
         A.resize(0,6+robot_->numJoints());
         b.resize(0);
@@ -262,7 +255,7 @@ namespace multicontact_controller{
       wa.resize(0);
       C = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6+robot_->numJoints());
       dl.resize(1);
-      dl[0] = - distance_ + tolerance_;
+      dl[0] = - distance + tolerance_;
       du.resize(1);
       du[0] = std::numeric_limits<double>::max();
       wc.resize(1);
@@ -281,7 +274,7 @@ namespace multicontact_controller{
           int col = 6+path_.joint(j)->jointId();
           cnoid::Vector3 omega = path_.joint(j)->R() * path_.joint(j)->a();
           if(!path_.isJointDownward(j)) omega = -omega;
-          cnoid::Vector3 dp = omega.cross(p1_ - path_.joint(j)->p());
+          cnoid::Vector3 dp = omega.cross(p1 - path_.joint(j)->p());
           C.insert(0,col)=normal01.dot(dp);
         }
       }else{
@@ -296,7 +289,7 @@ namespace multicontact_controller{
           for(size_t j=0;j<3;j++){
             C.coeffRef(0,j) = -1.0 * normal01[j];
           }
-          cnoid::Vector3 dp = p0_ - robot_->rootLink()->p();
+          cnoid::Vector3 dp = p0 - robot_->rootLink()->p();
           Eigen::Matrix<double, 1, 3> normal01_minusdphat = normal01.transpose() * - cnoid::hat(dp);
           C.coeffRef(0,3)=-1.0*normal01_minusdphat[0];
           C.coeffRef(0,4)=-1.0*normal01_minusdphat[1];
@@ -307,7 +300,7 @@ namespace multicontact_controller{
             int col = 6+path0_.joint(j)->jointId();
             cnoid::Vector3 omega = path0_.joint(j)->R() * path0_.joint(j)->a();
             if(!path0_.isJointDownward(j)) omega = -omega;
-            cnoid::Vector3 dp = omega.cross(p0_ - path0_.joint(j)->p());
+            cnoid::Vector3 dp = omega.cross(p0 - path0_.joint(j)->p());
             C.coeffRef(0,col)=-1.0*normal01.dot(dp);
           }
         }
@@ -322,7 +315,7 @@ namespace multicontact_controller{
           for(size_t j=0;j<3;j++){
             C.coeffRef(0,j) = +1.0 * normal01[j];
           }
-          cnoid::Vector3 dp = p1_ - robot_->rootLink()->p();
+          cnoid::Vector3 dp = p1 - robot_->rootLink()->p();
           Eigen::Matrix<double, 1, 3> normal01_minusdphat = normal01.transpose() * - cnoid::hat(dp);
           C.coeffRef(0,3)=+1.0*normal01_minusdphat[0];
           C.coeffRef(0,4)=+1.0*normal01_minusdphat[1];
@@ -333,141 +326,149 @@ namespace multicontact_controller{
             int col = 6+path1_.joint(j)->jointId();
             cnoid::Vector3 omega = path1_.joint(j)->R() * path1_.joint(j)->a();
             if(!path1_.isJointDownward(j)) omega = -omega;
-            cnoid::Vector3 dp = omega.cross(p1_ - path1_.joint(j)->p());
+            cnoid::Vector3 dp = omega.cross(p1 - path1_.joint(j)->p());
             C.coeffRef(0,col)=+1.0*normal01.dot(dp);
           }
         }
       }
     }
 
+    void collisionLinkPairToMsg(const std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, multicontact_controller_msgs::Collision& msg, const ros::Time& stamp, size_t seq){
+      msg.point1.header.stamp = stamp;
+      msg.point1.header.seq = seq;
+      msg.point1.header.frame_id = collisionLinkPair->link[0]->name();
+      tf::pointEigenToMsg(collisionLinkPair->collisions[0].point,msg.point1.point);
+      msg.normal1.header.frame_id = collisionLinkPair->link[0]->name();
+      tf::vectorEigenToMsg(collisionLinkPair->collisions[0].normal,msg.normal1.vector);
+      msg.point2.header.stamp = stamp;
+      msg.point2.header.seq = seq;
+      msg.point2.header.frame_id = "odom";
+      tf::pointEigenToMsg(collisionLinkPair->collisions[1].point,msg.point2.point);
+      msg.normal2.header.frame_id = "odom";
+      tf::vectorEigenToMsg(collisionLinkPair->collisions[1].normal,msg.normal2.vector);
+
+      msg.distance = - collisionLinkPair->collisions[0].depth;
+    }
+
+    void collisionMsgToLinkPair(cnoid::Body* robot, const multicontact_controller_msgs::Collision& msg, cnoid::CollisionLinkPair& collisionLinkPair){
+      if(msg.point1.header.frame_id == "odom"){
+        collisionLinkPair.body[0] = nullptr;
+        collisionLinkPair.link[0] = nullptr;
+      }else if(collisionLinkPair.link[0] &&
+               msg.point1.header.frame_id == collisionLinkPair.link[0]->name()){
+        //do nothing
+      }else if(robot->link(msg.point1.header.frame_id)){
+        collisionLinkPair.body[0] = robot;
+        collisionLinkPair.link[0] = robot->link(msg.point1.header.frame_id);
+      }else{
+        ROS_ERROR("%s not found", msg.point1.header.frame_id.c_str());
+        collisionLinkPair.body[0] = nullptr;
+        collisionLinkPair.link[0] = nullptr;
+      }
+      if(msg.point2.header.frame_id == "odom"){
+        collisionLinkPair.body[1] = nullptr;
+        collisionLinkPair.link[1] = nullptr;
+      }else if(collisionLinkPair.link[1] &&
+               msg.point2.header.frame_id == collisionLinkPair.link[1]->name()){
+        //do nothing
+      }else if(robot->link(msg.point2.header.frame_id)){
+        collisionLinkPair.body[1] = robot;
+        collisionLinkPair.link[1] = robot->link(msg.point2.header.frame_id);
+      }else{
+        ROS_ERROR("%s not found", msg.point2.header.frame_id.c_str());
+        collisionLinkPair.body[1] = nullptr;
+        collisionLinkPair.link[1] = nullptr;
+      }
+
+      collisionLinkPair.collisions.resize(2);
+      tf::pointMsgToEigen(msg.point1.point, collisionLinkPair.collisions[0].point);
+      tf::pointMsgToEigen(msg.point2.point, collisionLinkPair.collisions[1].point);
+      tf::vectorMsgToEigen(msg.normal1.vector, collisionLinkPair.collisions[0].normal);
+      tf::vectorMsgToEigen(msg.normal2.vector, collisionLinkPair.collisions[1].normal);
+      collisionLinkPair.collisions[0].depth = - msg.distance;
+      collisionLinkPair.collisions[1].depth = - msg.distance;
+    }
+
+
     void collisionArrayMsgToCnoid(cnoid::Body* robot, const multicontact_controller_msgs::CollisionArray& msg, std::vector<std::shared_ptr<Collision> >& collisions){
       collisions.resize(msg.collisions.size());
       for(size_t i=0;i<msg.collisions.size();i++){
         if(!collisions[i]) collisions[i] = std::make_shared<Collision>(robot);
-        if(msg.collisions[i].point1.header.frame_id == "odom"){
-          collisions[i]->collisionLinkPair().body[0] = nullptr;
-          collisions[i]->collisionLinkPair().link[0] = nullptr;
-        }else if(collisions[i]->collisionLinkPair().link[0] &&
-                 msg.collisions[i].point1.header.frame_id == collisions[i]->collisionLinkPair().link[0]->name()){
-          //do nothing
-        }else if(robot->link(msg.collisions[i].point1.header.frame_id)){
-          collisions[i]->collisionLinkPair().body[0] = robot;
-          collisions[i]->collisionLinkPair().link[0] = robot->link(msg.collisions[i].point1.header.frame_id);
-        }else{
-          ROS_ERROR("%s not found", msg.collisions[i].point1.header.frame_id.c_str());
-          collisions[i]->collisionLinkPair().body[0] = nullptr;
-          collisions[i]->collisionLinkPair().link[0] = nullptr;
-        }
-        if(msg.collisions[i].point2.header.frame_id == "odom"){
-          collisions[i]->collisionLinkPair().body[1] = nullptr;
-          collisions[i]->collisionLinkPair().link[1] = nullptr;
-        }else if(collisions[i]->collisionLinkPair().link[1] &&
-                 msg.collisions[i].point2.header.frame_id == collisions[i]->collisionLinkPair().link[1]->name()){
-          //do nothing
-        }else if(robot->link(msg.collisions[i].point2.header.frame_id)){
-          collisions[i]->collisionLinkPair().body[1] = robot;
-          collisions[i]->collisionLinkPair().link[1] = robot->link(msg.collisions[i].point2.header.frame_id);
-        }else{
-          ROS_ERROR("%s not found", msg.collisions[i].point2.header.frame_id.c_str());
-          collisions[i]->collisionLinkPair().body[1] = nullptr;
-          collisions[i]->collisionLinkPair().link[1] = nullptr;
-        }
-
-        collisions[i]->collisionLinkPair().collisions.resize(2);
-        tf::pointMsgToEigen(msg.collisions[i].point1.point, collisions[i]->collisionLinkPair().collisions[0].point);
-        tf::pointMsgToEigen(msg.collisions[i].point2.point, collisions[i]->collisionLinkPair().collisions[1].point);
-        tf::vectorMsgToEigen(msg.collisions[i].normal1.vector, collisions[i]->collisionLinkPair().collisions[0].normal);
-        tf::vectorMsgToEigen(msg.collisions[i].normal2.vector, collisions[i]->collisionLinkPair().collisions[1].normal);
-        collisions[i]->collisionLinkPair().collisions[0].depth = - msg.collisions[i].distance;
-        collisions[i]->collisionLinkPair().collisions[1].depth = - msg.collisions[i].distance;
+        collisionMsgToLinkPair(robot,msg.collisions[i],collisions[i]->collisionLinkPair());
       }
     }
 
     std::vector<cnoid::SgNodePtr> Collision::getDrawOnObjects(){
-      if(!this->lines_){
-        this->lines_ = new cnoid::SgLineSet;
-        this->lines_->setLineWidth(1.0);
-        this->lines_->getOrCreateColors()->resize(3);
-        {
-          if(collisionLinkPair_.link[0] && collisionLinkPair_.link[1]){
-            this->lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
-            this->lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(0.6,0.0,0.0);
-            this->lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(1.0,0.0,0.0);
-          }else{
-            this->lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(0.0,0.0,0.3);
-            this->lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(0.0,0.0,0.6);
-            this->lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(0.0,0.0,1.0);
-          }
-        }
-
-        // A, B
-        this->lines_->getOrCreateVertices()->resize(2);
-        this->lines_->colorIndices().resize(0);
-        this->lines_->addLine(0,1); this->lines_->colorIndices().push_back(0); this->lines_->colorIndices().push_back(0);
-      }
-
-      cnoid::Vector3 A_v = p0_;
-      cnoid::Vector3 B_v = p1_;
-      double d = distance_;
-
-      if(distance_ > maxDistance_) return std::vector<cnoid::SgNodePtr>();
-
-      this->lines_->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
-      this->lines_->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
-      if (d < tolerance_) {
-        this->lines_->setLineWidth(3.0);
-        this->lines_->colorIndices().at(0) = 2;
-        this->lines_->colorIndices().at(1) = 2;
-      } else if (d < tolerance_ * 2) {
-        this->lines_->setLineWidth(2.0);
-        this->lines_->colorIndices().at(0) = 1;
-        this->lines_->colorIndices().at(1) = 1;
-      } else {
-        this->lines_->setLineWidth(1.0);
-        this->lines_->colorIndices().at(0) = 0;
-        this->lines_->colorIndices().at(1) = 0;
-      }
-
-      return std::vector<cnoid::SgNodePtr>{this->lines_};
+      return collisionLinkPairToDrawOnObjects(collisionLinkPair_,maxDistance_,tolerance_,lines_);
     }
 
-    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, double thre){
-      std::vector<cnoid::SgNodePtr> objects;
-      for(size_t i=0;i<collisionLinkPair->collisions.size()/2;i++){
-        cnoid::Vector3 A_v = collisionLinkPair->collisions[i*2+0].point;
-        cnoid::Vector3 B_v = collisionLinkPair->collisions[i*2+1].point;
-        double d = - collisionLinkPair->collisions[i*2+0].depth;
-        if(d>thre)continue;
-
-        cnoid::SgLineSetPtr lines(new cnoid::SgLineSet);
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(const cnoid::CollisionLinkPair& collisionLinkPair, double maxDistance, double tolerance, cnoid::SgLineSetPtr& lines){
+      if(!lines){
+        lines = new cnoid::SgLineSet;
         lines->setLineWidth(1.0);
-        lines->getOrCreateColors()->resize(1);
+        lines->getOrCreateColors()->resize(3);
         {
-          cnoid::Vector3f color;
-          if(collisionLinkPair->link[0] && collisionLinkPair->link[1]){
-            color = cnoid::Vector3f(0.3,0.0,0.0);
+          if(collisionLinkPair.link[0] && collisionLinkPair.link[1]){
+            lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.3,0.0,0.0);
+            lines->getOrCreateColors()->at(1) = cnoid::Vector3f(0.6,0.0,0.0);
+            lines->getOrCreateColors()->at(2) = cnoid::Vector3f(1.0,0.0,0.0);
           }else{
-            color = cnoid::Vector3f(0.0,0.0,0.3);
+            lines->getOrCreateColors()->at(0) = cnoid::Vector3f(0.0,0.0,0.3);
+            lines->getOrCreateColors()->at(1) = cnoid::Vector3f(0.0,0.0,0.6);
+            lines->getOrCreateColors()->at(2) = cnoid::Vector3f(0.0,0.0,1.0);
           }
-          lines->getOrCreateColors()->at(0) = color;
         }
+
         // A, B
         lines->getOrCreateVertices()->resize(2);
         lines->colorIndices().resize(0);
         lines->addLine(0,1); lines->colorIndices().push_back(0); lines->colorIndices().push_back(0);
+      }
 
-        lines->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
-        lines->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
+      cnoid::Vector3 A_v;
+      cnoid::Vector3 B_v;
+      double d;
+      cnoid::Vector3 n;
+      calcCurrentDistance(collisionLinkPair, A_v, B_v, d, n);
+
+      if(d > maxDistance) return std::vector<cnoid::SgNodePtr>();
+
+      lines->vertices()->at(0) = A_v.cast<cnoid::Vector3f::Scalar>();
+      lines->vertices()->at(1) = B_v.cast<cnoid::Vector3f::Scalar>();
+      if (d < tolerance) {
+        lines->setLineWidth(3.0);
+        lines->colorIndices().at(0) = 2;
+        lines->colorIndices().at(1) = 2;
+      } else if (d < tolerance * 2) {
+        lines->setLineWidth(2.0);
+        lines->colorIndices().at(0) = 1;
+        lines->colorIndices().at(1) = 1;
+      } else {
         lines->setLineWidth(1.0);
         lines->colorIndices().at(0) = 0;
         lines->colorIndices().at(1) = 0;
-
-        objects.push_back(lines);
       }
 
-      return objects;
+      return std::vector<cnoid::SgNodePtr>{lines};
+
     }
 
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(const cnoid::CollisionLinkPair& collisionLinkPair, double maxDistance, double tolerance){
+      cnoid::SgLineSetPtr lines;
+      return collisionLinkPairToDrawOnObjects(collisionLinkPair, maxDistance, tolerance, lines);
+    }
+
+    void calcCurrentDistance(const cnoid::CollisionLinkPair& collisionLinkPair, cnoid::Vector3& p0, cnoid::Vector3& p1, double& distance, cnoid::Vector3& normal01){
+      p0 = collisionLinkPair.link[0] ? collisionLinkPair.link[0]->T() * collisionLinkPair.collisions[0].point : collisionLinkPair.collisions[0].point;
+      p1 = collisionLinkPair.link[1] ? collisionLinkPair.link[1]->T() * collisionLinkPair.collisions[1].point : collisionLinkPair.collisions[1].point;
+      normal01 = (collisionLinkPair.link[0] ? collisionLinkPair.link[0]->R() * collisionLinkPair.collisions[0].normal : collisionLinkPair.collisions[0].normal).normalized();//p1がこの方向に動くと離れる
+      if(collisionLinkPair.collisions[0].depth > -1e5){
+        distance = (p1 - p0).norm() * ((p1 - p0).dot(normal01) >= 0 ? 1.0 : -1.0);
+      }else{
+        //非常に遠い. このときp0, p1にはでたらめな値が入っている場合があるので、distanceは計算しない
+        distance = - collisionLinkPair.collisions[0].depth;
+      }
+    }
   };
 };
 

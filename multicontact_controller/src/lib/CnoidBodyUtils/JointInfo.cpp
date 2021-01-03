@@ -30,21 +30,29 @@ namespace multicontact_controller{
     }
 
     // 指令関節角度上下限に関する制約を返す.破損防止
-    void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+    void JointInfo::JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc, bool use_command_angle){
       double ulimit = joint_->q_upper();
       double llimit = joint_->q_lower();
 
+      double current_angle;
+      if(use_command_angle) current_angle = command_angle_;
+      else current_angle = joint_->q();
+
       // angle
       if(jointLimitTable_){
-        double min_angle = jointLimitTable_->getLlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
-        double max_angle = jointLimitTable_->getUlimit(jointLimitTableTargetJointInfo_.lock()->command_angle()) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
-        ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
-        llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
+        double target_angle;
+        if(use_command_angle) target_angle = jointLimitTableTargetJointInfo_.lock()->command_angle();
+        else target_angle = jointLimitTableTargetJointInfo_.lock()->joint()->q();
+
+        double min_angle = jointLimitTable_->getLlimit(target_angle) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
+        double max_angle = jointLimitTable_->getUlimit(target_angle) + 0.001;//今回のqpの結果超えることを防ぐため、少しマージン
+        ulimit = std::max(llimit, std::min(ulimit, max_angle - current_angle)); //上限が下限を下回ることを防ぐ
+        llimit = std::min(ulimit, std::max(llimit, min_angle - current_angle));
       }else{
         double min_angle = joint_->q_lower() + 0.0001;//少しマージン
         double max_angle = joint_->q_upper() - 0.0001;//少しマージン
-        ulimit = std::max(llimit, std::min(ulimit, max_angle - command_angle_)); //上限が下限を下回ることを防ぐ
-        llimit = std::min(ulimit, std::max(llimit, min_angle - command_angle_));
+        ulimit = std::max(llimit, std::min(ulimit, max_angle - current_angle)); //上限が下限を下回ることを防ぐ
+        llimit = std::min(ulimit, std::max(llimit, min_angle - current_angle));
       }
 
       A.resize(0,1);

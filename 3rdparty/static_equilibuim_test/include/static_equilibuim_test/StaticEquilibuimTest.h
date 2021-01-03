@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 
 namespace static_equilibuim_test{
+  // Testing Static Equilibuium for Legged Robots (2008)の方法
   // Ax = b
   // dl <= Cx <= du
   // x の 0,1番目の要素を投影

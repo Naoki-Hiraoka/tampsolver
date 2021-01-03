@@ -19,6 +19,11 @@ namespace multicontact_controller{
 
       // ? x 6. 力や幾何制約の存在する成分を抽出
       virtual const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrix()=0;
+
+      // 幾何エラーを返す. このContactPointがどのくらい動けば目標に到達するか.
+      // SelectMatrixの次元. m, rad
+      virtual Eigen::VectorXd calcError (const cnoid::Position& current, const cnoid::Position& target)=0;
+
       // local座標系，localまわり Ax = b, dl <= Cx <= du. xの次元数はselectMatrixと同じ
       virtual void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc, bool allow_break_contact=false) = 0;
       virtual void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, Eigen::VectorXd& b, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, Eigen::VectorXd& dl, Eigen::VectorXd& du){
@@ -30,8 +35,12 @@ namespace multicontact_controller{
       virtual const cnoid::VectorX& contactDirection()=0;
 
       // local座標系，localまわり Ax = b, dl <= Cx <= du. xの次元数はselectMatrixと同じ
-      // xはfの変化量であり、fの絶対量ではない
+      // 各行は無次元化されている
       virtual void getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) = 0;
+
+      // local座標系，localまわり Ax = b, dl <= Cx <= du. xの次元数はselectMatrixと同じ
+      // xはfの変化量であり、fの絶対量ではない
+      virtual void getBreakContactMotionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) = 0;
 
 
       // 拘束力のベストエフォートタスクを返す。主に負荷低減、安定余裕増大用
@@ -61,10 +70,17 @@ namespace multicontact_controller{
     public:
       SurfaceContact();
       const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrix() override;
+
+      // 幾何エラーを返す. このContactPointがどのくらい動けば目標に到達するか.
+      // local系,localまわり. SelectMatrixの次元. m, rad
+      cnoid::VectorX calcError (const cnoid::Position& current, const cnoid::Position& target) override;
+
       // local座標系，localまわり Ax = b, dl <= Cx <= du
       void getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc, bool allow_break_contact=false) override;
 
       void getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) override;
+
+      void getBreakContactMotionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) override;
 
       void getStabilityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorXd& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorXd& dl, cnoid::VectorXd& du, cnoid::VectorX& wc) override;
 

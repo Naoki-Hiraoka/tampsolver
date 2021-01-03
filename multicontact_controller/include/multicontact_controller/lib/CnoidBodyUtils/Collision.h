@@ -71,9 +71,6 @@ namespace multicontact_controller{
       double maxDistance_;
 
       // for visualization
-      double distance_;
-      cnoid::Vector3 p0_;
-      cnoid::Vector3 p1_;
       cnoid::SgLineSetPtr lines_;
 
       // cache
@@ -82,9 +79,16 @@ namespace multicontact_controller{
       cnoid::JointPath path1_;
     };
 
+    //collisionLinkPair.collisionのサイズは2.
+    void collisionLinkPairToMsg(const std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, multicontact_controller_msgs::Collision& msg, const ros::Time& stamp=ros::Time(0), size_t seq=0);
+    void collisionMsgToLinkPair(cnoid::Body* robot, const multicontact_controller_msgs::Collision& msg, cnoid::CollisionLinkPair& collisionLinkPair);
+
     void collisionArrayMsgToCnoid(cnoid::Body* robot, const multicontact_controller_msgs::CollisionArray& msg, std::vector<std::shared_ptr<Collision> >& collisions);
 
-    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair, double thre=10.0);
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(const cnoid::CollisionLinkPair& collisionLinkPair, double maxDistance, double tolerance, cnoid::SgLineSetPtr& lines);
+    std::vector<cnoid::SgNodePtr> collisionLinkPairToDrawOnObjects(const cnoid::CollisionLinkPair& collisionLinkPair, double maxDistance=10.0, double tolerance=0.0);
+
+    void calcCurrentDistance(const cnoid::CollisionLinkPair& collisionLinkPair, cnoid::Vector3& p0, cnoid::Vector3& p1, double& distance, cnoid::Vector3& normal01);
   };
 };
 

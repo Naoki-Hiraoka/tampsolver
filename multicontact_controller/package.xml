@@ -74,6 +74,7 @@
   <depend>iir_filter</depend>
   <depend>vclip</depend>
   <depend>qhulleigen</depend>
+  <depend>static_equilibuim_test</depend>
   <depend>multicontact_controller_msgs</depend>
 
   <exec_depend>imu_filter_madgwick</exec_depend>

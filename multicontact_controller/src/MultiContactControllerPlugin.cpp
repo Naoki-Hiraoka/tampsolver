@@ -7,6 +7,7 @@
 #include <multicontact_controller/PWTController/PWTControllerROSItem.h>
 #include <multicontact_controller/SelfCollisionDetector/SelfCollisionDetectorROSItem.h>
 #include <multicontact_controller/PCLCollisionDetector/PCLCollisionDetectorROSItem.h>
+#include <multicontact_controller/ContactBreakAbilityChecker/ContactBreakAbilityCheckerROSItem.h>
 
 using namespace cnoid;
 
@@ -26,6 +27,7 @@ public:
       PWTControllerROSItem::initializeClass(this);
       SelfCollisionDetectorROSItem::initializeClass(this);
       PCLCollisionDetectorROSItem::initializeClass(this);
+      ContactBreakAbilityCheckerROSItem::initializeClass(this);
       return true;
     }
 

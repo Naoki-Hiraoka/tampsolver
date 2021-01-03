@@ -54,6 +54,15 @@ namespace multicontact_controller{
       return selectMatrix_;
     }
 
+    // 幾何エラーを返す. このContactPointがどのくらい動けば目標に到達するか.
+    // SelectMatrixの次元. m, rad. local系,localまわり.
+    cnoid::VectorX SurfaceContact::calcError (const cnoid::Position& current, const cnoid::Position& target){
+      cnoid::Vector6 error;
+      error.head<3>() = current.linear().transpose() * (target.translation() - current.translation());
+      error.tail<3>() = cnoid::omegaFromRot(current.linear().transpose() * target.linear());
+      return error;
+    }
+
     //Ax = b, dl <= Cx <= du
     //各行は無次元化されている
     void SurfaceContact::getContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc, bool allow_break_contact){
@@ -160,28 +169,49 @@ namespace multicontact_controller{
     }
 
     //Ax = b, dl <= Cx <= du
-    //各行は/iterの次元化される
-    // xはfの変化量であり、fの絶対量ではない
+    //各行は無次元化される
     void SurfaceContact::getBreakContactConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-      A = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6);
-      b = Eigen::VectorXd(1);
-      wa = Eigen::VectorXd(1);
+      // a,bはゼロ
+      A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+      b = Eigen::VectorXd(0);
+      wa = Eigen::VectorXd(0);
 
-      // C,dはゼロ．
-      C = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
-      dl = Eigen::VectorXd::Zero(0);
-      du = Eigen::VectorXd::Zero(0);
-      wc = Eigen::VectorXd::Zero(0);
+      C = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6);
+      dl = Eigen::VectorXd::Zero(1);
+      du = Eigen::VectorXd::Zero(1);
+      wc = Eigen::VectorXd::Zero(1);
 
       double scale = std::max(this->max_fz_,1.0);
-      A.insert(0,2) = 1.0 / scale;
+      C.insert(0,2) = 1.0 / scale;
+      du[0] = 0.0;
+      dl[0] = -std::numeric_limits<double>::max();
+      wc[0] = 1.0;
+    }
+
+    //Ax = b, dl <= Cx <= du
+    //各行は/iterの次元化される
+    // xはfの変化量であり、fの絶対量ではない
+    void SurfaceContact::getBreakContactMotionConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+      // a,bはゼロ
+      A = Eigen::SparseMatrix<double,Eigen::RowMajor>(0,6);
+      b = Eigen::VectorXd(0);
+      wa = Eigen::VectorXd(0);
+
+      C = Eigen::SparseMatrix<double,Eigen::RowMajor>(1,6);
+      dl = Eigen::VectorXd::Zero(1);
+      du = Eigen::VectorXd::Zero(1);
+      wc = Eigen::VectorXd::Zero(1);
+
+      double scale = std::max(this->max_fz_,1.0);
+      C.insert(0,2) = 1.0 / scale;
       if(dt_ > 0.0 && break_contact_f_v_limit_ > 0.0){
-        b[0] = - break_contact_f_v_limit_ * dt_ / scale;
+        du[0] = - break_contact_f_v_limit_ * dt_ / scale;
       }else{
         std::cerr << "!(dt_ > 0.0 && break_contact_f_v_limit_ = 0.0)" << std::endl;
-        b[0] = 0.0;
+        du[0] = 0.0;
       }
-      wa[0] = 1.0;
+      dl[0] = -std::numeric_limits<double>::max();
+      wc[0] = 1.0;
     }
 
     //Ax = b, dl <= Cx <= du

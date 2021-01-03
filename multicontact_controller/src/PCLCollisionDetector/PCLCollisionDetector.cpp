@@ -152,8 +152,8 @@ namespace multicontact_controller {
 
       double sign = (distance_min >= 0)? 1.0 : -1.0;
       collisionLinkPair->collisions.resize(2);
-      collisionLinkPair->collisions[0].point = p0_min;
-      collisionLinkPair->collisions[0].normal = sign * (p1_min - p0_min).normalized();
+      collisionLinkPair->collisions[0].point = collisionLinkPair->link[0]->T().inverse() * p0_min;
+      collisionLinkPair->collisions[0].normal = collisionLinkPair->link[0]->R().inverse() * sign * (p1_min - p0_min).normalized();
       collisionLinkPair->collisions[0].depth = - distance_min;
       collisionLinkPair->collisions[1].point = p1_min;
       collisionLinkPair->collisions[1].normal = sign * (p0_min - p1_min).normalized();
@@ -170,7 +170,7 @@ namespace multicontact_controller {
     std::vector<cnoid::SgNodePtr> drawOnObjects;
     {
       for(size_t i=0;i<collisionLinkPairs_.size();i++){
-        std::vector<cnoid::SgNodePtr> objects = cnoidbodyutils::collisionLinkPairToDrawOnObjects(collisionLinkPairs_[i],1e5);
+        std::vector<cnoid::SgNodePtr> objects = cnoidbodyutils::collisionLinkPairToDrawOnObjects(*collisionLinkPairs_[i],1e5);
         std::copy(objects.begin(), objects.end(), std::back_inserter(drawOnObjects));
       }
     }

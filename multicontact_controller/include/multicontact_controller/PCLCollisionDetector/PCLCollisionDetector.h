@@ -27,7 +27,7 @@ namespace multicontact_controller {
     // linksそれぞれについて、obstacle_modelとのcollisionを計算。
     bool solve();
 
-    // solveした結果が入っている. collisionsのサイズは2で、0番目にはlink上の近傍点と接触方向が入る(world系), 1番目には障害物の近傍点と接触方向が入る(world系). 1番目のlinkとbodyはnullptr
+    // solveした結果が入っている. collisionsのサイズは2で、0番目にはlink上の近傍点と接触方向が入る(local系), 1番目には障害物の近傍点と接触方向が入る(world系). 1番目のlinkとbodyはnullptr
     std::vector<std::shared_ptr<cnoid::CollisionLinkPair> > collisionLinkPairs() const { return collisionLinkPairs_;}
 
     std::vector<cnoid::SgNodePtr> getDrawOnObjects();

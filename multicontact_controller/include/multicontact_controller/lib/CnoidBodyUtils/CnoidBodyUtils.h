@@ -39,7 +39,34 @@ namespace multicontact_controller {
 
     bool appendRow(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Ms, Eigen::SparseMatrix<double, Eigen::RowMajor>& Mout);
     bool appendRow(const std::vector<cnoid::VectorX>& vs, cnoid::VectorX& vout);
+    bool appendCol(const std::vector<Eigen::SparseMatrix<double, Eigen::ColMajor> >& Ms, Eigen::SparseMatrix<double, Eigen::ColMajor>& Mout);
+    bool appendDiag(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Ms, Eigen::SparseMatrix<double, Eigen::RowMajor>& Mout);
 
+    double dampingFactor(double w,
+                         double we,
+                         const cnoid::VectorX& b,
+                         const cnoid::VectorX& wa,
+                         const cnoid::VectorX& dl,
+                         const cnoid::VectorX& du,
+                         const cnoid::VectorX& wc);
+
+    // colは[rootlink, numJoints]. rootlinkはworld系, rootlinkまわり. rowはworld系
+    void calcCMJacobian(cnoid::Body* robot, Eigen::SparseMatrix<double, Eigen::RowMajor>& CMJ);
+
+    bool defineMaximumError(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& As,
+                            const std::vector<Eigen::VectorXd>& bs,
+                            const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Cs,
+                            const std::vector<Eigen::VectorXd>& dls,
+                            const std::vector<Eigen::VectorXd>& dus,
+                            std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& CsHelper,
+                            std::vector<Eigen::VectorXd>& dlsHelper,
+                            std::vector<Eigen::VectorXd>& dusHelper,
+                            std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& C_extsHelper,
+                            size_t As_begin_idx = 0,//Asのいくつ目からを見るか
+                            size_t As_end_idx = -1,//Asのいくつ目までを見るか. 負なら最後まで
+                            size_t Cs_begin_idx = 0,//Csのいくつ目からを見るか
+                            size_t Cs_end_idx = -1//Csのいくつ目までを見るか. 負なら最後まで
+                            );
   };
 };
 

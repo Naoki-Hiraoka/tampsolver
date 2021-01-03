@@ -13,7 +13,7 @@ namespace multicontact_controller{
       JointInfo();
 
       // 指令関節角度上下限に関する制約を返す.破損防止
-      void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
+      void JointAngleConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc, bool use_command_angle = false);
 
       // 指令関節角速度上下限に関する制約を返す.破損防止
       void JointVelocityConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
@@ -37,30 +37,6 @@ namespace multicontact_controller{
       // 関節トルク低減を考慮するか
       bool& care_torque() { return care_torque_;}
       bool care_torque() const { return care_torque_;}
-      double& command_angle() {return command_angle_;}
-      double command_angle() const {return command_angle_;}
-      double dt() const { return dt_;}
-      double& dt() { return dt_;}
-
-      double& coil_temperature_limit() { return coil_temperature_limit_;}
-      double coil_temperature_limit() const { return coil_temperature_limit_;}
-      double& housing_temperature() { return housing_temperature_;}
-      double housing_temperature() const { return housing_temperature_;}
-      double& coil_temperature() { return coil_temperature_;}
-      double coil_temperature() const { return coil_temperature_;}
-      double& maximum_effort_soft() { return maximum_effort_soft_;}
-      double maximum_effort_soft() const { return maximum_effort_soft_;}
-      double& maximum_effort_hard() { return maximum_effort_hard_;}
-      double maximum_effort_hard() const { return maximum_effort_hard_;}
-      double& balance_effort() { return balance_effort_;}
-      double balance_effort() const { return balance_effort_;}
-      double& remaining_time() { return remaining_time_;}
-      double remaining_time() const { return remaining_time_;}
-
-      double& pgain() { return pgain_;}
-      double pgain() const { return pgain_;}
-      double& hardware_pgain() { return hardware_pgain_;}
-      double hardware_pgain() const { return hardware_pgain_;}
 
       double& llimit() { return llimit_;}
       double llimit() const { return llimit_;}
@@ -75,6 +51,35 @@ namespace multicontact_controller{
       std::shared_ptr<JointLimitTable> jointLimitTable() const { return jointLimitTable_;}
       std::weak_ptr<JointInfo> jointLimitTableTargetJointInfo() const { return jointLimitTableTargetJointInfo_;}
       std::weak_ptr<JointInfo>& jointLimitTableTargetJointInfo() { return jointLimitTableTargetJointInfo_;}
+
+      // ここから下は、setupJointInfoFromParamではセットされない
+      //  motor_temperature_state
+      double& coil_temperature_limit() { return coil_temperature_limit_;}
+      double coil_temperature_limit() const { return coil_temperature_limit_;}
+      double& housing_temperature() { return housing_temperature_;}
+      double housing_temperature() const { return housing_temperature_;}
+      double& coil_temperature() { return coil_temperature_;}
+      double coil_temperature() const { return coil_temperature_;}
+      double& maximum_effort_soft() { return maximum_effort_soft_;}
+      double maximum_effort_soft() const { return maximum_effort_soft_;}
+      double& maximum_effort_hard() { return maximum_effort_hard_;}
+      double maximum_effort_hard() const { return maximum_effort_hard_;}
+      double& balance_effort() { return balance_effort_;}
+      double balance_effort() const { return balance_effort_;}
+      double& remaining_time() { return remaining_time_;}
+      double remaining_time() const { return remaining_time_;}
+      //  motor_state
+      double& pgain() { return pgain_;}
+      double pgain() const { return pgain_;}
+      double& hardware_pgain() { return hardware_pgain_;}
+      double hardware_pgain() const { return hardware_pgain_;}
+      //  ros::Time::now
+      double dt() const { return dt_;}
+      double& dt() { return dt_;}
+      //  controller/state/desired
+      double& command_angle() {return command_angle_;}
+      double command_angle() const {return command_angle_;}
+
     protected:
       std::string name_;
       cnoid::Link* joint_;

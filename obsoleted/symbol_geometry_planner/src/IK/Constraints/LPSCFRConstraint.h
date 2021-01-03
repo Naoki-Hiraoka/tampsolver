@@ -5,7 +5,7 @@
 #include <clpeigen/clpeigen.h>
 
 namespace IK{
-  // Testin Static Equilibuium for Legged Robots (2008)の方法
+  // Testing Static Equilibuium for Legged Robots (2008)の方法
 
   class LPSCFRConstraint : public SCFRConstraint
   {

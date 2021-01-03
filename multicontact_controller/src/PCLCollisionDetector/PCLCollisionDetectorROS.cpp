@@ -190,35 +190,10 @@ namespace multicontact_controller {
           msg.header.stamp = now;
 
           std::vector<std::shared_ptr<cnoid::CollisionLinkPair> > collisionLinkPairs = pclCollisionDetector_->collisionLinkPairs();
-          {
-            size_t idx = 0;
-            for(size_t i=0;i<collisionLinkPairs.size();i++){
-              idx+=collisionLinkPairs[i]->collisions.size()/2;
-            }
-            msg.collisions.resize(idx);
-          }
-          size_t idx = 0;
+          msg.collisions.resize(collisionLinkPairs.size());
           for(size_t i=0;i<collisionLinkPairs.size();i++){
             const std::shared_ptr<cnoid::CollisionLinkPair>& collisionLinkPair = collisionLinkPairs[i];
-            for(size_t j=0;j<collisionLinkPairs[i]->collisions.size()/2;j++){
-              multicontact_controller_msgs::Collision& collision = msg.collisions[idx];
-              collision.point1.header.stamp = now;
-              collision.point1.header.seq = seq;
-              collision.point1.header.frame_id = collisionLinkPair->link[0]->name();
-              tf::pointEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[j*2+0].point,collision.point1.point);
-              collision.normal1.header.frame_id = collisionLinkPair->link[0]->name();
-              tf::vectorEigenToMsg(collisionLinkPair->link[0]->R().inverse() * collisionLinkPair->collisions[j*2+0].normal,collision.normal1.vector);
-              collision.point2.header.stamp = now;
-              collision.point2.header.seq = seq;
-              collision.point2.header.frame_id = "odom";
-              tf::pointEigenToMsg(collisionLinkPair->collisions[j*2+1].point,collision.point2.point);
-              collision.normal2.header.frame_id = "odom";
-              tf::vectorEigenToMsg(collisionLinkPair->collisions[j*2+1].normal,collision.normal2.vector);
-
-              collision.distance = - collisionLinkPair->collisions[j*2+0].depth;
-
-              idx++;
-            }
+            cnoidbodyutils::collisionLinkPairToMsg(collisionLinkPairs[i],msg.collisions[i]);
           }
 
           collisionArrayPub.publish(msg);
