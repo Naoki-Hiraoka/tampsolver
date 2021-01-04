@@ -173,6 +173,17 @@ namespace prioritized_qp{
         for(size_t j=0;j<tasks[i]->A().rows() + tasks[i]->C().rows();j++){
           A.insert(As.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j, As.cols() + j) = 1;
         }
+          std::cerr << "hogehoge" << std::endl;
+          std::cerr << "H" << std::endl;
+          std::cerr << H << std::endl;
+          std::cerr << "A" << std::endl;
+          std::cerr << A << std::endl;
+          std::cerr << "gradient" << std::endl;
+          std::cerr << gradient << std::endl;
+          std::cerr << "lowerBound upperBound" << std::endl;
+          for(size_t j=0;j<A.rows();j++){
+            std::cerr << upperBound[j] << " " << lowerBound[j] << std::endl;
+          }
 
         if(!tasks[i]->solver().isInitialized() ||
            tasks[i]->solver().workspace()->data->n != H.rows() ||
@@ -189,8 +200,20 @@ namespace prioritized_qp{
           tasks[i]->solver().data()->setLinearConstraintsMatrix(A);
           tasks[i]->solver().data()->setLowerBound(lowerBound);
           tasks[i]->solver().data()->setUpperBound(upperBound);
+
           tasks[i]->solver().initSolver();
         }else{
+          // OsqpEigenのsolver.data()はsetGradientとsetUpperBound, setLowerBound時にEigenの配列のポインタをそのまま保持する。solver.data()は、initSolver時にosqpにコピーされる.問題は、updateHessianMatrixやupdateLinearConstraintsMatrixの時に、配列の埋まっている部分が変化した場合にもinitSolverが呼ばれることである. このときにeigenの配列がデストラクトされていたらメモリ外にアクセスしてしまう)
+          // solver.data()は、initSolver時にosqpにコピーされ, update関数はosqpにコピーされた方の値を直接操作する。結果,配列の埋まっている部分が変化した場合にinitSolverが呼ばれたときに、古いsolver.data()の値で初期化されてしまう。
+          // これら2つのバグを避けるためには、solver.dataを毎回セットし直すしかない。これらの処理は、通常のupdate時には必要ないものである
+          tasks[i]->solver().data()->clearHessianMatrix();
+          tasks[i]->solver().data()->clearLinearConstraintsMatrix();
+          tasks[i]->solver().data()->setHessianMatrix(H);
+          tasks[i]->solver().data()->setGradient(gradient);
+          tasks[i]->solver().data()->setLinearConstraintsMatrix(A);
+          tasks[i]->solver().data()->setLowerBound(lowerBound);
+          tasks[i]->solver().data()->setUpperBound(upperBound);
+
           tasks[i]->solver().updateHessianMatrix(Eigen::SparseMatrix<double,Eigen::ColMajor>(H)); // OsqpEigenの実装の都合上，ColMajorでないとサイレントにバグが起こる
           tasks[i]->solver().updateGradient(gradient);
           tasks[i]->solver().updateLinearConstraintsMatrix(Eigen::SparseMatrix<double,Eigen::ColMajor>(A)); // OsqpEigenの実装の都合上，ColMajorでないとサイレントにバグが起こる
