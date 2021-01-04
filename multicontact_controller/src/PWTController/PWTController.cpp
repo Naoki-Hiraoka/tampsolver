@@ -1243,76 +1243,10 @@ namespace multicontact_controller {
 
         // すでにA b C dの行がm,radの次元にそろえてあるため、ここではそろえる必要はない
         double maximum = 0.0;
-        for(size_t i=0;i<jointInfos.size();i++){
-          const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
-          for(size_t j=0;j<b.size();j++){
-            double e = std::abs(b[j]);
-            if(e > maximum) maximum = e;
-          }
-          const cnoid::VectorX& du = dus[dus.size()-jointInfos.size()+i];
-          for(size_t j=0;j<du.size();j++){
-            double e = std::abs(std::min(0.0,du[j]));
-            if(e > maximum) maximum = e;
-          }
-          const cnoid::VectorX& dl = dls[dls.size()-jointInfos.size()+i];
-          for(size_t j=0;j<dl.size();j++){
-            double e = std::abs(std::max(0.0,dl[j]));
-            if(e > maximum) maximum = e;
-          }
-        }
-
-        // define taumax
-        for(size_t i=0;i<jointInfos.size();i++){
-          {
-            const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[As.size()-jointInfos.size()+i];
-            const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
-            CsHelper.push_back(A);
-            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
-            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
-            C_extsHelper.push_back(tmpC_ext);
-            cnoid::VectorX tmpdl(b.size());
-            for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = - std::numeric_limits<double>::max();
-            dlsHelper.push_back(tmpdl);
-            dusHelper.push_back(b - tmpC_ext * maximum);
-          }
-          {
-            const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[As.size()-jointInfos.size()+i];
-            const cnoid::VectorX& b = bs[bs.size()-jointInfos.size()+i];
-            CsHelper.push_back(A);
-            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
-            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
-            C_extsHelper.push_back(tmpC_ext);
-            cnoid::VectorX tmpdu(b.size());
-            for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
-            dusHelper.push_back(tmpdu);
-            dlsHelper.push_back(b - tmpC_ext * maximum);
-          }
-          {
-            const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[Cs.size()-jointInfos.size()+i];
-            const cnoid::VectorX& du = dus[dus.size()-jointInfos.size()+i];
-            CsHelper.push_back(C);
-            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
-            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
-            C_extsHelper.push_back(tmpC_ext);
-            cnoid::VectorX tmpdl(du.size());
-            for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = -std::numeric_limits<double>::max();
-            dlsHelper.push_back(tmpdl);
-            dusHelper.push_back(du - tmpC_ext * maximum);
-          }
-          {
-            const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[Cs.size()-jointInfos.size()+i];
-            const cnoid::VectorX& dl = dls[dls.size()-jointInfos.size()+i];
-            CsHelper.push_back(C);
-            Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
-            for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
-            C_extsHelper.push_back(tmpC_ext);
-            cnoid::VectorX tmpdu(dl.size());
-            for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
-            dusHelper.push_back(tmpdu);
-            dlsHelper.push_back(dl - tmpC_ext * maximum);
-          }
-          wcsHelper.push_back(wcs[wcs.size()-jointInfos.size()+i]);//解かないので使わない
-        }
+        cnoidbodyutils::defineMaximumError(As,bs,Cs,dls,dus,
+                                           CsHelper,dlsHelper,dusHelper,wcsHelper,C_extsHelper,maximum,
+                                           As.size()-jointInfos.size(),As.size(),
+                                           Cs.size()-jointInfos.size(),Cs.size());
 
         //reduce taumax
         {

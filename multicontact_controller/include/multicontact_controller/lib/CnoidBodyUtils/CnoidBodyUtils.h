@@ -9,6 +9,7 @@
 #include <nav_msgs/Odometry.h>
 #include <Eigen/Sparse>
 
+#include <multicontact_controller/lib/CnoidBodyUtils/Drawing.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/Contact.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/ContactPoint.h>
 #include <multicontact_controller/lib/CnoidBodyUtils/TorqueJacobianCalculator.h>
@@ -53,6 +54,7 @@ namespace multicontact_controller {
     // colは[rootlink, numJoints]. rootlinkはworld系, rootlinkまわり. rowはworld系
     void calcCMJacobian(cnoid::Body* robot, Eigen::SparseMatrix<double, Eigen::RowMajor>& CMJ);
 
+    // extに、最大値の増減を表す変数が設定される. Asが空なら、maximumは負の値になりうる
     bool defineMaximumError(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& As,
                             const std::vector<Eigen::VectorXd>& bs,
                             const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Cs,
@@ -61,12 +63,16 @@ namespace multicontact_controller {
                             std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& CsHelper,
                             std::vector<Eigen::VectorXd>& dlsHelper,
                             std::vector<Eigen::VectorXd>& dusHelper,
+                            std::vector<Eigen::VectorXd>& wcsHelper,
                             std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& C_extsHelper,
+                            double& maximum,
                             size_t As_begin_idx = 0,//Asのいくつ目からを見るか
                             size_t As_end_idx = -1,//Asのいくつ目までを見るか. 負なら最後まで
                             size_t Cs_begin_idx = 0,//Csのいくつ目からを見るか
                             size_t Cs_end_idx = -1//Csのいくつ目までを見るか. 負なら最後まで
                             );
+
+    bool copyBodyKinematicsState(const cnoid::Body* robot_in, cnoid::Body* robot_out);
   };
 };
 

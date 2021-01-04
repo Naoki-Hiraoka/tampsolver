@@ -110,8 +110,26 @@ namespace multicontact_controller {
     }
   }
 
+  std::vector<cnoid::SgNodePtr> ContactPointCBAC::getDrawOnObjects(){
+    std::vector<cnoid::SgNodePtr> drawOnObjects;
+    if(state_ == "CONTACT" || state_ == "TOWARD_BREAK_CONTACT"){
+      if(contact_ && parent_){
+        std::vector<cnoid::SgNodePtr> objects = contact_->getDrawOnObjects(parent_->T() * T_local_);
+        std::copy(objects.begin(), objects.end(), std::back_inserter(drawOnObjects));
+      }
+    }
+    if(state_ == "TOWARD_MAKE_CONTACT" || state_ == "NEAR_CONTACT" || state_ == "AIR"){
+      if(parent_){
+        cnoidbodyutils::drawCoordsLineCoords(this->lines_,this->parent_->T() * this->T_local_, T_act_);
+        std::vector<cnoid::SgNodePtr> objects{this->lines_};
+        std::copy(objects.begin(), objects.end(), std::back_inserter(drawOnObjects));
+      }
+    }
+    return drawOnObjects;
+  }
+
   // 現在のcontactPointsの状態でbreakContactPointのcontactをbreakできるかどうかを調べ、重心位置の余裕を返す
-  bool ContactBreakAbilityChecker::Check(double& margin, //返り値
+  bool ContactBreakAbilityChecker::check(double& margin, //返り値
                                          std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                                          std::shared_ptr<ContactPointCBAC>& breakContactPoint,
                                          bool fixInteraction,
@@ -120,16 +138,23 @@ namespace multicontact_controller {
                                          ){
     robot_->calcForwardKinematics();
     robot_->calcCenterOfMass();
-    cnoid::Vector2 currentCenterOfMass = robot_->centerOfMass().head(2);
-    // currentCenterOfMassからの変化に対する制約
+    cnoid::Vector3 initialCenterOfMass = robot_->centerOfMass();
+    // initialCenterOfMassからの変化に対する制約
     Eigen::SparseMatrix<double,Eigen::RowMajor> SCFR_M;
     cnoid::VectorXd SCFR_l;
     cnoid::VectorX SCFR_u;
-    this->calcSCFR(contactPoints,nullptr,SCFR_M,SCFR_l,SCFR_u);
+    std::vector<cnoid::Vector2> SCFR_vertices;
+    this->calcSCFR(contactPoints,nullptr,SCFR_M,SCFR_l,SCFR_u,SCFR_vertices);
     Eigen::SparseMatrix<double,Eigen::RowMajor> SCFR_M_break;
     cnoid::VectorXd SCFR_l_break;
     cnoid::VectorX SCFR_u_break;
-    this->calcSCFR(contactPoints,breakContactPoint,SCFR_M_break,SCFR_l_break,SCFR_u_break);
+    std::vector<cnoid::Vector2> SCFR_break_vertices;
+    this->calcSCFR(contactPoints,breakContactPoint,SCFR_M_break,SCFR_l_break,SCFR_u_break,SCFR_break_vertices);
+
+    // for visualize
+    sCFRCenterOfMass_ = initialCenterOfMass;
+    sCFRVertices_ = SCFR_vertices;
+    sCFRBreakVertices_ = SCFR_break_vertices;
 
     for(size_t i=0;i<contactPoints.size();i++){
       contactPoints[i]->T_act() = contactPoints[i]->parent()->T() * contactPoints[i]->T_local();
@@ -197,6 +222,7 @@ namespace multicontact_controller {
                                 SCFR_M,
                                 SCFR_l,
                                 SCFR_u,
+                                initialCenterOfMass,
                                 w_SCFR_,
                                 we_SCFR_)){
           std::cerr << "setupSCFRTask failed" << std::endl;
@@ -234,6 +260,7 @@ namespace multicontact_controller {
                                      SCFR_M_break,
                                      SCFR_l_break,
                                      SCFR_u_break,
+                                     initialCenterOfMass,
                                      w_SCFR_break_)){
           std::cerr << "setupSCFRBreakTask failed" << std::endl;
           return false;
@@ -249,6 +276,9 @@ namespace multicontact_controller {
         std::cerr << "prioritized_qp::solve failed" << std::endl;
         return false;
       }
+
+      // draw
+      if(ikLoopCb_) ikLoopCb_();
 
       //reflect result
       {
@@ -271,6 +301,14 @@ namespace multicontact_controller {
       robot_->calcCenterOfMass();
     }
 
+    cnoid::VectorX current_m = SCFR_M * (robot_->centerOfMass() - initialCenterOfMass).head<2>();
+    cnoid::VectorX current_l = current_m - SCFR_l;
+    cnoid::VectorX current_u = SCFR_u - current_m;
+
+    margin = std::numeric_limits<double>::max();
+    if(current_l.size() != 0) margin = std::min(margin, current_l.minCoeff());
+    if(current_u.size() != 0) margin = std::min(margin, current_u.minCoeff());
+
     return true;
   }
 
@@ -280,6 +318,7 @@ namespace multicontact_controller {
                                             Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,//返り値
                                             cnoid::VectorXd& SCFR_l,//返り値
                                             cnoid::VectorX& SCFR_u,//返り値
+                                            std::vector<cnoid::Vector2>& vertices,//返り値
                                             double g
                                             ){
     Eigen::SparseMatrix<double,Eigen::RowMajor> A;
@@ -437,20 +476,12 @@ namespace multicontact_controller {
       du = du_contact;
     }
 
-    if(!static_equilibuim_test::calcProjection(A,b,C,dl,du,SCFR_M,SCFR_l,SCFR_u,debug_print_)){
+    // SCFRの各要素はx[0:1]の次元の大きさに揃っている
+    if(!static_equilibuim_test::calcProjection(A,b,C,dl,du,SCFR_M,SCFR_l,SCFR_u,vertices,debug_print_)){
       std::cerr << "[ContactBreakAbilityChecker::calcSCFR] projection failed" << std::endl;
       return false;
     }
 
-    // 各要素を正規化
-    for(size_t i=0;i<SCFR_M.rows();i++){
-      double norm = SCFR_M.row(i).norm();
-      if(norm == 0) continue;
-      SCFR_M.coeffRef(i,0) /= norm;
-      SCFR_M.coeffRef(i,1) /= norm;
-      SCFR_l[i] /= norm;
-      SCFR_u[i] /= norm;
-    }
 
     return true;
   }
@@ -753,6 +784,7 @@ namespace multicontact_controller {
                                                  const Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,
                                                  const cnoid::VectorXd& SCFR_l,
                                                  const cnoid::VectorX& SCFR_u,
+                                                 const cnoid::Vector3& initialCenterOfMass,
                                                  double w,
                                                  double we){
     if(!this->sCFRTask_) {
@@ -806,12 +838,14 @@ namespace multicontact_controller {
       Eigen::SparseMatrix<double, Eigen::RowMajor> CMJ;
       cnoidbodyutils::calcCMJacobian(robot,CMJ);
 
+      cnoid::Vector3 currentCenterOfMassOffset = robot->centerOfMass() - initialCenterOfMass;
+
       cnoid::VectorXd wc(SCFR_M.rows());
       for(size_t i=0;i<wc.size();i++) wc[i] = 1.0;
 
       Cs.push_back(SCFR_M * CMJ.topRows<2>() * S);
-      dls.push_back(SCFR_l);
-      dus.push_back(SCFR_u);
+      dls.push_back(SCFR_l - SCFR_M * currentCenterOfMassOffset.head(2));
+      dus.push_back(SCFR_u - SCFR_M * currentCenterOfMassOffset.head(2));
       wcs.push_back(wc);
     }
 
@@ -949,6 +983,7 @@ namespace multicontact_controller {
                                                       const Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,
                                                       const cnoid::VectorXd& SCFR_l,
                                                       const cnoid::VectorX& SCFR_u,
+                                                      const cnoid::Vector3& initialCenterOfMass,
                                                       double w){
     if(!this->sCFRBreakTaskHelper_) {
       this->sCFRBreakTaskHelper_ = std::make_shared<prioritized_qp::Task>();
@@ -1013,21 +1048,79 @@ namespace multicontact_controller {
     std::vector<cnoid::VectorXd> dls;
     std::vector<cnoid::VectorXd> dus;
     std::vector<cnoid::VectorXd> wcs;
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_exts;
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_exts;
+
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > AsHelper;
+    std::vector<cnoid::VectorXd> bsHelper;
+    std::vector<cnoid::VectorXd> wasHelper;
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > CsHelper;
+    std::vector<cnoid::VectorXd> dlsHelper;
+    std::vector<cnoid::VectorXd> dusHelper;
+    std::vector<cnoid::VectorXd> wcsHelper;
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > A_extsHelper;
+    std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > C_extsHelper;
 
     {
       // 重心変位
       // 各行はm,radのオーダ
-      // calc CM jacobian
-      Eigen::SparseMatrix<double, Eigen::RowMajor> CMJ;
-      cnoidbodyutils::calcCMJacobian(robot,CMJ);
+      {
+        std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > tmpAs;
+        std::vector<cnoid::VectorXd> tmpbs;
+        std::vector<cnoid::VectorXd> tmpwas;
+        std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> > tmpCs;
+        std::vector<cnoid::VectorXd> tmpdls;
+        std::vector<cnoid::VectorXd> tmpdus;
+        std::vector<cnoid::VectorXd> tmpwcs;
 
-      cnoid::VectorXd wc(SCFR_M.rows());
-      for(size_t i=0;i<wc.size();i++) wc[i] = 1.0;
+        // calc CM jacobian
+        Eigen::SparseMatrix<double, Eigen::RowMajor> CMJ;
+        cnoidbodyutils::calcCMJacobian(robot,CMJ);
 
-      Cs.push_back(SCFR_M * CMJ.topRows<2>() * S);
-      dls.push_back(SCFR_l);
-      dus.push_back(SCFR_u);
-      wcs.push_back(wc);
+        cnoid::Vector3 currentCenterOfMassOffset = robot->centerOfMass() - initialCenterOfMass;
+
+        cnoid::VectorXd wc(SCFR_M.rows());
+        for(size_t i=0;i<wc.size();i++) wc[i] = 1.0;
+
+        tmpCs.push_back(SCFR_M * CMJ.topRows<2>() * S);
+        tmpdls.push_back(SCFR_l - SCFR_M * currentCenterOfMassOffset.head(2));
+        tmpdus.push_back(SCFR_u - SCFR_M * currentCenterOfMassOffset.head(2));
+        tmpwcs.push_back(wc);
+
+        // define maximum error
+        double maximum;
+        cnoidbodyutils::defineMaximumError(tmpAs, tmpbs, tmpCs, tmpdls, tmpdus,
+                                           CsHelper, dlsHelper, dusHelper, wcsHelper, C_extsHelper, maximum);
+      }
+
+      //reduce taumax
+      {
+        Eigen::SparseMatrix<double,Eigen::RowMajor> A(0,cols);
+        cnoid::VectorX b(0);
+        cnoid::VectorX wa(0);
+        Eigen::SparseMatrix<double,Eigen::RowMajor> C(1,cols);
+        cnoid::VectorX dl(1);
+        cnoid::VectorX du(1);
+        cnoid::VectorX wc(1);
+        Eigen::SparseMatrix<double,Eigen::RowMajor> A_ext(0,1);
+        Eigen::SparseMatrix<double,Eigen::RowMajor> C_ext(1,1);
+
+        C_ext.insert(0,0) = 1.0;
+        du[0] = - 0.02;
+        dl[0] = - std::numeric_limits<double>::max();
+        wc[0] = 1.0;
+
+        As.push_back(A);
+        bs.push_back(b);
+        was.push_back(wa);
+        Cs.push_back(C);
+        dls.push_back(dl);
+        dus.push_back(du);
+        wcs.push_back(wc);
+        A_exts.push_back(A_ext);
+        C_exts.push_back(C_ext);
+
+      }
     }
 
     task->A().resize(task->A().rows(),cols);
@@ -1039,11 +1132,67 @@ namespace multicontact_controller {
     cnoidbodyutils::appendRow(dls, task->dl());
     cnoidbodyutils::appendRow(dus, task->du());
     cnoidbodyutils::appendRow(wcs, task->wc());
+    task->A_ext().resize(task->A_ext().rows(),1);
+    cnoidbodyutils::appendRow(A_exts, task->A_ext());
+    task->C_ext().resize(task->C_ext().rows(),1);
+    cnoidbodyutils::appendRow(C_exts, task->C_ext());
+
+    taskHelper->A().resize(taskHelper->A().rows(),cols);
+    cnoidbodyutils::appendRow(AsHelper, taskHelper->A());
+    cnoidbodyutils::appendRow(bsHelper, taskHelper->b());
+    cnoidbodyutils::appendRow(wasHelper, taskHelper->wa());
+    taskHelper->C().resize(taskHelper->C().rows(),cols);
+    cnoidbodyutils::appendRow(CsHelper, taskHelper->C());
+    cnoidbodyutils::appendRow(dlsHelper, taskHelper->dl());
+    cnoidbodyutils::appendRow(dusHelper, taskHelper->du());
+    cnoidbodyutils::appendRow(wcsHelper, taskHelper->wc());
+    taskHelper->A_ext().resize(taskHelper->A_ext().rows(),1);
+    cnoidbodyutils::appendRow(A_extsHelper, taskHelper->A_ext());
+    taskHelper->C_ext().resize(taskHelper->C_ext().rows(),1);
+    cnoidbodyutils::appendRow(C_extsHelper, taskHelper->C_ext());
 
     task->w().resize(cols);
     for(size_t i=0;i<task->w().size();i++)task->w()[i] = w;
+    task->w_ext().resize(1);
+    for(size_t i=0;i<task->w_ext().size();i++)task->w_ext()[i] = w;
+    taskHelper->w().resize(cols);//解かないので使わない
+    for(size_t i=0;i<taskHelper->w().size();i++)taskHelper->w()[i] = w;//解かないので使わない
+    taskHelper->w_ext().resize(1);//解かないので使わない
+    for(size_t i=0;i<taskHelper->w_ext().size();i++)taskHelper->w_ext()[i] = w;//解かないので使わない
+
+    //id
+    task->id_ext() = std::vector<std::string>{"SCFRbreakmax"};
+    taskHelper->id_ext() = std::vector<std::string>{"SCFRbreakmax"};
 
     return true;
   }
 
+  std::vector<cnoid::SgNodePtr> ContactBreakAbilityChecker::getDrawOnObjects(){
+    std::vector<cnoid::SgNodePtr> drawOnObjects;
+
+    {
+      if(!this->comMarker_){
+        this->comMarker_ = new cnoid::CrossMarker(0.2/*size*/,cnoid::Vector3f(0.5,1.0,0.0)/*color*/,10/*width*/);
+      }
+      this->comMarker_->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
+      drawOnObjects.push_back(this->comMarker_);
+    }
+
+    {
+      cnoidbodyutils::drawPolygon(this->sCFRLines_,sCFRVertices_,cnoid::Vector3f(0.0,0.3,0.0));
+      cnoid::SgPosTransformPtr transform(new cnoid::SgPosTransform);
+      transform->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
+      transform->addChild(this->sCFRLines_);
+      drawOnObjects.push_back(transform);
+    }
+
+    {
+      cnoidbodyutils::drawPolygon(this->sCFRBreakLines_,sCFRBreakVertices_,cnoid::Vector3f(0.0,1.0,0.0));
+      cnoid::SgPosTransformPtr transform(new cnoid::SgPosTransform);
+      transform->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
+      transform->addChild(this->sCFRBreakLines_);
+      drawOnObjects.push_back(transform);
+    }
+
+  }
 };

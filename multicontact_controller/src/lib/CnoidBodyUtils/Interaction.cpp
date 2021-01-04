@@ -1,4 +1,5 @@
 #include <multicontact_controller/lib/CnoidBodyUtils/Interaction.h>
+#include <multicontact_controller/lib/CnoidBodyUtils/Drawing.h>
 
 #include <cnoid/EigenUtil>
 #include <limits>
@@ -96,40 +97,8 @@ namespace multicontact_controller{
     }
 
     std::vector<cnoid::SgNodePtr> Interaction::getDrawOnObjects(){
-      if(!this->lines_){
-        lines_ = new cnoid::SgLineSet;
-        lines_->setLineWidth(1.0);
-        lines_->getOrCreateColors()->resize(4);
-        lines_->getOrCreateColors()->at(0) = cnoid::Vector3f(1.0,1.0,1.0);
-        lines_->getOrCreateColors()->at(1) = cnoid::Vector3f(1.0,0.0,0.0);
-        lines_->getOrCreateColors()->at(2) = cnoid::Vector3f(0.0,1.0,0.0);
-        lines_->getOrCreateColors()->at(3) = cnoid::Vector3f(0.0,0.0,1.0);
-        // A, A_x, A_y, A_z, B, B_x, B_y, B_z
-        lines_->getOrCreateVertices()->resize(8);
-        lines_->colorIndices().resize(0);
-        lines_->addLine(0,1); lines_->colorIndices().push_back(1); lines_->colorIndices().push_back(1);
-        lines_->addLine(0,2); lines_->colorIndices().push_back(2); lines_->colorIndices().push_back(2);
-        lines_->addLine(0,3); lines_->colorIndices().push_back(3); lines_->colorIndices().push_back(3);
-        lines_->addLine(4,5); lines_->colorIndices().push_back(1); lines_->colorIndices().push_back(1);
-        lines_->addLine(4,6); lines_->colorIndices().push_back(2); lines_->colorIndices().push_back(2);
-        lines_->addLine(4,7); lines_->colorIndices().push_back(3); lines_->colorIndices().push_back(3);
-        lines_->addLine(0,4); lines_->colorIndices().push_back(0); lines_->colorIndices().push_back(0);
-
-      }
-
-      const cnoid::Position& A_pos = T_;
-      const cnoid::Position& B_pos = T_ref_;
-
-      lines_->getOrCreateVertices()->at(0) = A_pos.translation().cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(1) = (A_pos * (0.05 * cnoid::Vector3::UnitX())).cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(2) = (A_pos * (0.05 * cnoid::Vector3::UnitY())).cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(3) = (A_pos * (0.05 * cnoid::Vector3::UnitZ())).cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(4) = B_pos.translation().cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(5) = (B_pos * (0.05 * cnoid::Vector3::UnitX())).cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(6) = (B_pos * (0.05 * cnoid::Vector3::UnitY())).cast<cnoid::Vector3f::Scalar>();
-      lines_->getOrCreateVertices()->at(7) = (B_pos * (0.05 * cnoid::Vector3::UnitZ())).cast<cnoid::Vector3f::Scalar>();
-
-      return std::vector<cnoid::SgNodePtr>{this->lines_};;
+      cnoidbodyutils::drawCoordsLineCoords(this->lines_,T_, T_ref_);
+      return std::vector<cnoid::SgNodePtr>{this->lines_};
     }
 
     bool loadInteractionFromInfo(const multicontact_controller_msgs::InteractionInfo& info, std::shared_ptr<Interaction>& interaction){

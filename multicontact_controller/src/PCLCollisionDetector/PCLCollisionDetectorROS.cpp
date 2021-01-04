@@ -170,19 +170,7 @@ namespace multicontact_controller {
 
       if( this->isEnabled_ ){
         std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > > allowCollisionBoxFilters;
-        {
-          for(std::map<std::string,std::shared_ptr<EndEffectorPCLCDROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
-            if(!it->second->isValid()) continue;
-            std::vector<cnoid::Link*> allowCollisionLinks = it->second->allowCollisionLinks();
-            std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter = it->second->allowCollisionBoxFilter();
-            cnoid::Position allowCollisionBoxCenter = it->second->contactPoint()->parent()->T()* it->second->contactPoint()->T_local()* it->second->allowCollisionBoxCenter();
-            allowCollisionBoxFilter->setTransform(allowCollisionBoxCenter.inverse().cast<float>()); // Set a transformation that should be applied to the cloud before filtering. なのでinverse()
-            for(size_t i=0;i<allowCollisionLinks.size();i++){
-              allowCollisionBoxFilters[allowCollisionLinks[i]].push_back(allowCollisionBoxFilter);
-            }
-          }
-        }
-
+        getAllowCollisionBoxFilters(endEffectors_,allowCollisionBoxFilters);
         pclCollisionDetector_->setLinks(environmentCollisionLinks);
         pclCollisionDetector_->setAllowCollisionBoxFilters(allowCollisionBoxFilters);
         if(pclCollisionDetector_->solve()){

@@ -18,6 +18,7 @@ namespace static_equilibuim_test{
                       Eigen::SparseMatrix<double,Eigen::RowMajor>& M_out,
                       Eigen::VectorXd& l_out,
                       Eigen::VectorXd& u_out,
+                      std::vector<Eigen::Vector2d>& vertices,
                       int debuglevel = 0,
                       double eps = 0.05,
                       size_t maxiter = 30

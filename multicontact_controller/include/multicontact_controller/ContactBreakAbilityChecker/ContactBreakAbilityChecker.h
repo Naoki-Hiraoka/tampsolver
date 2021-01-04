@@ -2,6 +2,7 @@
 #define CONTACT_BREAKABILITY_CHECKER_H
 
 #include <cnoid/Body>
+#include <cnoid/SceneMarkers>
 #include <memory>
 #include <Eigen/Sparse>
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
@@ -29,6 +30,8 @@ namespace multicontact_controller {
     // rad m / iter
     void desiredPositionConstraintInt(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
 
+    std::vector<cnoid::SgNodePtr> getDrawOnObjects();
+
     std::shared_ptr<cnoidbodyutils::Contact> contact() const { return contact_;}
     std::shared_ptr<cnoidbodyutils::Contact>& contact() { return contact_;}
 
@@ -40,6 +43,9 @@ namespace multicontact_controller {
     std::shared_ptr<cnoidbodyutils::Contact> contact_;
     cnoid::Position T_act_;
     std::string state_;
+
+    // visualize
+    cnoid::SgLineSetPtr lines_;
 
     //cache
     Eigen::SparseMatrix<double,Eigen::RowMajor> selectMatrixForKinematicsConstraint_;
@@ -59,13 +65,16 @@ namespace multicontact_controller {
     }
 
     // 現在のcontactPointsの状態でbreakContactPointのcontactをbreakできるかどうかを調べ、重心位置の余裕を返す
-    bool Check(double& margin, //返り値
+    bool check(double& margin, //返り値
                std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                std::shared_ptr<ContactPointCBAC>& breakContactPoint,
                bool fixInteraction,//interaction eefを固定するか
                std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
                std::shared_ptr<PCLCollisionDetector>& pCLCollisionDetector
                );
+
+    void setIKLoopCb(std::function<void()> f) {ikLoopCb_ = f; }
+    std::vector<cnoid::SgNodePtr> getDrawOnObjects();
 
     // IKを終了する回数
     size_t loopNum() const { return loopNum_;}
@@ -77,6 +86,7 @@ namespace multicontact_controller {
                   Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,//返り値
                   cnoid::VectorXd& SCFR_l,//返り値
                   cnoid::VectorX& SCFR_u,//返り値
+                  std::vector<cnoid::Vector2>& vertices,
                   double g = 9.80665
                   );
 
@@ -111,6 +121,7 @@ namespace multicontact_controller {
                        const Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,
                        const cnoid::VectorXd& SCFR_l,
                        const cnoid::VectorX& SCFR_u,
+                       const cnoid::Vector3& initialCenterOfMass,
                        double w,
                        double we);
 
@@ -131,12 +142,16 @@ namespace multicontact_controller {
                             const Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,
                             const cnoid::VectorXd& SCFR_l,
                             const cnoid::VectorX& SCFR_u,
+                            const cnoid::Vector3& initialCenterOfMass,
                             double w);
 
   private:
 
     cnoid::Body* robot_;
     std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> > jointInfos_;
+
+    // for visualize
+    std::function<void()> ikLoopCb_;
 
     // param
     size_t loopNum_;
@@ -162,6 +177,14 @@ namespace multicontact_controller {
     std::shared_ptr<prioritized_qp::Task> pCLCollisionTask_;
     std::shared_ptr<prioritized_qp::Task> sCFRBreakTaskHelper_;
     std::shared_ptr<prioritized_qp::Task> sCFRBreakTask_;
+
+    // visualize
+    cnoid::Vector3 sCFRCenterOfMass_;
+    std::vector<cnoid::Vector2> sCFRVertices_;
+    std::vector<cnoid::Vector2> sCFRBreakVertices_;
+    cnoid::SgLineSetPtr sCFRLines_;
+    cnoid::SgLineSetPtr sCFRBreakLines_;
+    cnoid::CrossMarkerPtr comMarker_;
   };
 
 };

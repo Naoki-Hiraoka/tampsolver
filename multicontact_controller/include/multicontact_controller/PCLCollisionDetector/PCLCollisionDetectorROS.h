@@ -33,25 +33,41 @@ namespace multicontact_controller {
     std::shared_ptr<cnoidbodyutils::ContactPoint>& contactPoint() { return contactPoint_;}
     std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint() const { return contactPoint_;}
 
-    void onInfoUpdated() override;
+    virtual void onInfoUpdated() override;
+    virtual void onStateUpdated() override {return;}
 
     bool isValid() override{
       return endeffectorutils::EndEffectorClient::isValid() && contactPoint_->isValid();
     }
 
-    std::vector<cnoid::SgNodePtr> getDrawOnObjects();
-  private:
+    virtual std::vector<cnoid::SgNodePtr> getDrawOnObjects();
+  protected:
     cnoid::Body* robot_;
+    std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint_;
+
+  private:
     std::vector<cnoid::Link*> allowCollisionLinks_;
     std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter_;
     cnoid::Position allowCollisionBoxCenter_;
-
-    std::shared_ptr<cnoidbodyutils::ContactPoint> contactPoint_;
 
     //for visualize
     cnoid::SgLineSetPtr lines;
   };
 
+  // EndEffectorPCLCDROSを想定
+  template <typename T>
+  void getAllowCollisionBoxFilters(std::map<std::string,std::shared_ptr<T> >& endEffectors, std::map<cnoid::Link*, std::vector<std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > > >& allowCollisionBoxFilters){
+    for(typename std::map<std::string,std::shared_ptr<T> >::iterator it=endEffectors.begin();it!=endEffectors.end();it++){
+      if(!it->second->isValid()) continue;
+      std::vector<cnoid::Link*> allowCollisionLinks = it->second->allowCollisionLinks();
+      std::shared_ptr<pcl::CropBox<pcl::PointXYZ> > allowCollisionBoxFilter = it->second->allowCollisionBoxFilter();
+      cnoid::Position allowCollisionBoxCenter = it->second->contactPoint()->parent()->T()* it->second->contactPoint()->T_local()* it->second->allowCollisionBoxCenter();
+      allowCollisionBoxFilter->setTransform(allowCollisionBoxCenter.inverse().cast<float>()); // Set a transformation that should be applied to the cloud before filtering. なのでinverse()
+      for(size_t i=0;i<allowCollisionLinks.size();i++){
+        allowCollisionBoxFilters[allowCollisionLinks[i]].push_back(allowCollisionBoxFilter);
+      }
+    }
+  }
 
   class PCLCollisionDetectorROS : public choreonoid_cpp::ChoreonoidCpp {
   public:

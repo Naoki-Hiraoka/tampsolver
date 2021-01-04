@@ -48,6 +48,7 @@ namespace static_equilibuim_test{
                       Eigen::SparseMatrix<double,Eigen::RowMajor>& M_out,
                       Eigen::VectorXd& l_out,
                       Eigen::VectorXd& u_out,
+                      std::vector<Eigen::Vector2d>& vertices,
                       int debuglevel,
                       double eps,
                       size_t maxiter
@@ -162,12 +163,14 @@ namespace static_equilibuim_test{
     M_out = Eigen::SparseMatrix<double,Eigen::RowMajor>(Y.size(),2);
     u_out = Eigen::VectorXd(Y.size());
     l_out = Eigen::VectorXd(Y.size());
+    vertices.resize(Y.size());
     size_t i=0;
     for(std::list<std::tuple<Eigen::Vector2d,Eigen::Vector2d,double> >::iterator it=Y.begin();it!=Y.end();it++){
       M_out.insert(i,0) = std::get<1>(*it)[0];
       M_out.insert(i,1) = std::get<1>(*it)[1];
       u_out[i] = std::get<1>(*it).dot(std::get<0>(*it));
       l_out[i] = -std::numeric_limits<double>::max();
+      vertices[i] = std::get<0>(*it);
       i++;
     }
 

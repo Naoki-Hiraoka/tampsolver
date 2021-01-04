@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_library(CnoidBodyUtils
   CnoidBodyUtils.cpp
+  Drawing.cpp
   Contact.cpp
   ContactPoint.cpp
   TorqueJacobianCalculator.cpp

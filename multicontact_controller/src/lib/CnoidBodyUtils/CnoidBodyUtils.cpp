@@ -255,5 +255,150 @@ namespace multicontact_controller {
         }
       }
     }
+
+    bool defineMaximumError(const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& As,
+                            const std::vector<Eigen::VectorXd>& bs,
+                            const std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& Cs,
+                            const std::vector<Eigen::VectorXd>& dls,
+                            const std::vector<Eigen::VectorXd>& dus,
+                            std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& CsHelper,
+                            std::vector<Eigen::VectorXd>& dlsHelper,
+                            std::vector<Eigen::VectorXd>& dusHelper,
+                            std::vector<Eigen::VectorXd>& wcsHelper,
+                            std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& C_extsHelper,
+                            double& maximum,
+                            size_t As_begin_idx,//Asのいくつ目からを見るか
+                            size_t As_end_idx,//Asのいくつ目までを見るか. 負なら最後まで
+                            size_t Cs_begin_idx,//Csのいくつ目からを見るか
+                            size_t Cs_end_idx//Csのいくつ目までを見るか. 負なら最後まで
+                            ){
+      if(As_end_idx < 0) As_end_idx = As.size();
+      if(Cs_end_idx < 0) Cs_end_idx = Cs.size();
+
+      if(As.size() != bs.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] As.size() != bs.size()" << std::endl;
+        return false;
+      }
+      if(As_begin_idx < 0 || As_begin_idx >= As.size() || As_end_idx > As.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] As_begin_idx < 0 || As_begin_idx >= As.size() || As_end_idx > As.size()" << std::endl;
+        return false;
+      }
+      if(Cs.size() != dls.size() || Cs.size() != dus.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] Cs.size() != dls.size() || Cs.size() != dus.size()" << std::endl;
+        return false;
+      }
+      if(Cs_begin_idx < 0 || Cs_begin_idx >= Cs.size() || Cs_end_idx > Cs.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] Cs_begin_idx < 0 || Cs_begin_idx >= Cs.size() || Cs_end_idx > Cs.size()" << std::endl;
+        return false;
+      }
+
+      // CsHelper.clear();
+      // dlsHelper.clear();
+      // dusHelper.clear();
+      // wcsHelper.clear();
+      // C_extsHelper.clear();
+
+      // calc maximum error
+      maximum = - std::numeric_limits<double>::max();
+      for(size_t i=As_begin_idx;i<As_end_idx;i++){
+        const cnoid::VectorX& b = bs[i];
+        for(size_t j=0;j<b.size();j++){
+          double e = std::abs(b[j]);
+          if(e > maximum) maximum = e;
+        }
+      }
+      for(size_t i=Cs_begin_idx;i<Cs_end_idx;i++){
+        const cnoid::VectorX& du = dus[i];
+        for(size_t j=0;j<du.size();j++){
+          double e = - du[j];
+          if(e > maximum) maximum = e;
+        }
+        const cnoid::VectorX& dl = dls[i];
+        for(size_t j=0;j<dl.size();j++){
+          double e = dl[j];
+          if(e > maximum) maximum = e;
+        }
+      }
+
+
+      // define max variable
+      for(size_t i=As_begin_idx;i<As_end_idx;i++){
+        {
+          const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[i];
+          const cnoid::VectorX& b = bs[i];
+          CsHelper.push_back(A);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
+          for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
+          C_extsHelper.push_back(tmpC_ext);
+          cnoid::VectorX tmpdl(b.size());
+          for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = - std::numeric_limits<double>::max();
+          dlsHelper.push_back(tmpdl);
+          dusHelper.push_back(b - tmpC_ext * maximum);
+          cnoid::VectorX tmpwc(b.size());
+          for(size_t j=0;j<tmpwc.size();j++) tmpwc[j] = 1.0;
+          wcsHelper.push_back(tmpwc);//解かないので使わない
+        }
+        {
+          const Eigen::SparseMatrix<double,Eigen::RowMajor>& A = As[i];
+          const cnoid::VectorX& b = bs[i];
+          CsHelper.push_back(A);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(A.rows(),1);
+          for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
+          C_extsHelper.push_back(tmpC_ext);
+          cnoid::VectorX tmpdu(b.size());
+          for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
+          dusHelper.push_back(tmpdu);
+          dlsHelper.push_back(b - tmpC_ext * maximum);
+          cnoid::VectorX tmpwc(b.size());
+          for(size_t j=0;j<tmpwc.size();j++) tmpwc[j] = 1.0;
+          wcsHelper.push_back(tmpwc);//解かないので使わない
+        }
+        {
+          const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[i];
+          const cnoid::VectorX& du = dus[i];
+          CsHelper.push_back(C);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
+          for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = -1.0;
+          C_extsHelper.push_back(tmpC_ext);
+          cnoid::VectorX tmpdl(du.size());
+          for(size_t j=0;j<tmpdl.size();j++) tmpdl[j] = -std::numeric_limits<double>::max();
+          dlsHelper.push_back(tmpdl);
+          dusHelper.push_back(du - tmpC_ext * maximum);
+          cnoid::VectorX tmpwc(du.size());
+          for(size_t j=0;j<tmpwc.size();j++) tmpwc[j] = 1.0;
+          wcsHelper.push_back(tmpwc);//解かないので使わない
+        }
+        {
+          const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[i];
+          const cnoid::VectorX& dl = dls[i];
+          CsHelper.push_back(C);
+          Eigen::SparseMatrix<double,Eigen::RowMajor> tmpC_ext(C.rows(),1);
+          for(size_t j=0;j<tmpC_ext.rows();j++) tmpC_ext.insert(j,0) = 1.0;
+          C_extsHelper.push_back(tmpC_ext);
+          cnoid::VectorX tmpdu(dl.size());
+          for(size_t j=0;j<tmpdu.size();j++) tmpdu[j] = std::numeric_limits<double>::max();
+          dusHelper.push_back(tmpdu);
+          dlsHelper.push_back(dl - tmpC_ext * maximum);
+          cnoid::VectorX tmpwc(dl.size());
+          for(size_t j=0;j<tmpwc.size();j++) tmpwc[j] = 1.0;
+          wcsHelper.push_back(tmpwc);//解かないので使わない
+        }
+      }
+
+      return true;
+    }
+
+    bool copyBodyKinematicsState(const cnoid::Body* robot_in, cnoid::Body* robot_out){
+      if(!robot_in || !robot_out || robot_in->numJoints() != robot_out->numJoints()){
+        std::cerr << "[cnoidbodyutils::copyBodyKinematicsState] !robot_in || !robot_out || robot_in->numJoints() != robot_out->numJoints()" << std::endl;
+        return false;
+      }
+
+      robot_out->rootLink()->T() = robot_in->rootLink()->T();
+      for(size_t i=0;i<robot_in->numJoints();i++){
+        robot_out->joint(i)->q() = robot_in->joint(i)->q();
+      }
+      robot_out->calcForwardKinematics(false,false);
+    }
   };
 };
