@@ -59,7 +59,20 @@ namespace multicontact_controller {
       : robot_(robot),
         jointInfos_(jointInfos),
         loopNum_(30),
-        debug_print_(false)
+        debug_print_(true),
+        w_JointLimit_(1e-2),
+        tolerance_SelfCollision_(0.02),
+        w_SelfCollision_(1e-2),
+        we_SelfCollision_(1e4),
+        w_Position_(1e-2),
+        we_Position_(1e4),
+        w_SCFR_(1e-2),
+        we_SCFR_(1e4),
+        tolerance_PCLCollision_(0.04),
+        w_PCLCollision_(1e-2),
+        we_PCLCollision_(1e4),
+        w_SCFR_break_(1e-2)
+
     {
       robot_->calcCenterOfMass();//mass()を有効にする
     }

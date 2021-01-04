@@ -66,10 +66,10 @@ namespace multicontact_controller {
                             std::vector<Eigen::VectorXd>& wcsHelper,
                             std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& C_extsHelper,
                             double& maximum,
-                            size_t As_begin_idx = 0,//Asのいくつ目からを見るか
-                            size_t As_end_idx = -1,//Asのいくつ目までを見るか. 負なら最後まで
-                            size_t Cs_begin_idx = 0,//Csのいくつ目からを見るか
-                            size_t Cs_end_idx = -1//Csのいくつ目までを見るか. 負なら最後まで
+                            int As_begin_idx = 0,//Asのいくつ目からを見るか
+                            int As_end_idx = -1,//Asのいくつ目までを見るか. 負なら最後まで
+                            int Cs_begin_idx = 0,//Csのいくつ目からを見るか
+                            int Cs_end_idx = -1//Csのいくつ目までを見るか. 負なら最後まで
                             );
 
     bool copyBodyKinematicsState(const cnoid::Body* robot_in, cnoid::Body* robot_out);

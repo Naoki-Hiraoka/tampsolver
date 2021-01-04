@@ -57,6 +57,10 @@ namespace static_equilibuim_test{
       std::cerr << "[static_equilibuim_test::calcProjection] A.cols() != C.cols()" << std::endl;
       return false;
     }
+    if(A.cols() < 2){
+      std::cerr << "[static_equilibuim_test::calcProjection] A.cols() < 2" << std::endl;
+      return false;
+    }
     if(A.rows() != b.size()){
       std::cerr << "[static_equilibuim_test::calcProjection] A.rows() != b.size()" << std::endl;
       return false;
@@ -64,6 +68,15 @@ namespace static_equilibuim_test{
     if(C.rows() != dl.size() || C.rows() != du.size()){
       std::cerr << "[static_equilibuim_test::calcProjection] C.rows() != dl.size() || C.rows() != du.size()" << std::endl;
       return false;
+    }
+
+    if(debuglevel){
+      std::cerr << "before projection" << std::endl;
+      std::cerr << "A" << std::endl << A << std::endl;
+      std::cerr << "b" << std::endl << b << std::endl;
+      std::cerr << "C" << std::endl << C << std::endl;
+      std::cerr << "dl" << std::endl << dl << std::endl;
+      std::cerr << "du" << std::endl << du << std::endl;
     }
 
     // initialize solver
@@ -172,6 +185,16 @@ namespace static_equilibuim_test{
       l_out[i] = -std::numeric_limits<double>::max();
       vertices[i] = std::get<0>(*it);
       i++;
+    }
+
+    if(debuglevel){
+      std::cerr << "M_out" << std::endl << M_out << std::endl;
+      std::cerr << "l_out" << std::endl << l_out << std::endl;
+      std::cerr << "u_out" << std::endl << u_out << std::endl;
+      std::cerr << "vertices" << std::endl;
+      for(size_t i=0;i<vertices.size();i++){
+        std::cerr << vertices[i] << std::endl;
+      }
     }
 
     return true;

@@ -136,6 +136,7 @@ namespace multicontact_controller {
                                          std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
                                          std::shared_ptr<PCLCollisionDetector>& pCLCollisionDetector
                                          ){
+
     robot_->calcForwardKinematics();
     robot_->calcCenterOfMass();
     cnoid::Vector3 initialCenterOfMass = robot_->centerOfMass();
@@ -295,6 +296,7 @@ namespace multicontact_controller {
             idx++;
           }
         }
+
       }
 
       robot_->calcForwardKinematics();
@@ -481,7 +483,6 @@ namespace multicontact_controller {
       std::cerr << "[ContactBreakAbilityChecker::calcSCFR] projection failed" << std::endl;
       return false;
     }
-
 
     return true;
   }
@@ -696,7 +697,7 @@ namespace multicontact_controller {
       }
     }
 
-    size_t cols = 0;
+    size_t cols = 6;
     for(size_t i=0;i<jointInfos.size();i++){
       if(jointInfos[i]->controllable()) cols++;
     }
@@ -807,7 +808,7 @@ namespace multicontact_controller {
       }
     }
 
-    size_t cols = 0;
+    size_t cols = 6;
     for(size_t i=0;i<jointInfos.size();i++){
       if(jointInfos[i]->controllable()) cols++;
     }
@@ -901,7 +902,7 @@ namespace multicontact_controller {
       }
     }
 
-    size_t cols = 0;
+    size_t cols = 6;
     for(size_t i=0;i<jointInfos.size();i++){
       if(jointInfos[i]->controllable()) cols++;
     }
@@ -987,21 +988,21 @@ namespace multicontact_controller {
                                                       double w){
     if(!this->sCFRBreakTaskHelper_) {
       this->sCFRBreakTaskHelper_ = std::make_shared<prioritized_qp::Task>();
-      task = this->sCFRBreakTaskHelper_;
-      task->name() = "SCFRBreakTask";
-      task->solver().settings()->resetDefaultSettings();
-      task->solver().settings()->setVerbosity(debug_print_);
-      task->solver().settings()->setWarmStart(true);
-      task->solver().settings()->setMaxIteration(4000);
-      task->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
-      task->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
-      task->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
-      task->toSolve() = false; //解かない
+      taskHelper = this->sCFRBreakTaskHelper_;
+      taskHelper->name() = "SCFRBreakTaskHelper";
+      taskHelper->solver().settings()->resetDefaultSettings();
+      taskHelper->solver().settings()->setVerbosity(debug_print_);
+      taskHelper->solver().settings()->setWarmStart(true);
+      taskHelper->solver().settings()->setMaxIteration(4000);
+      taskHelper->solver().settings()->setAbsoluteTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+      taskHelper->solver().settings()->setRelativeTolerance(1e-4);// 1e-5の方がいいかも．1e-4の方がやや速いが，やや不正確
+      taskHelper->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
+      taskHelper->toSolve() = false; //解かない
     }else{
-      task = this->sCFRBreakTaskHelper_;
-      if(task->solver().settings()->getSettings()->verbose != debug_print_){
-        task->solver().settings()->setVerbosity(debug_print_);
-        task->solver().clearSolver();
+      taskHelper = this->sCFRBreakTaskHelper_;
+      if(taskHelper->solver().settings()->getSettings()->verbose != debug_print_){
+        taskHelper->solver().settings()->setVerbosity(debug_print_);
+        taskHelper->solver().clearSolver();
       }
     }
 
@@ -1025,7 +1026,7 @@ namespace multicontact_controller {
       }
     }
 
-    size_t cols = 0;
+    size_t cols = 6;
     for(size_t i=0;i<jointInfos.size();i++){
       if(jointInfos[i]->controllable()) cols++;
     }
@@ -1174,25 +1175,26 @@ namespace multicontact_controller {
       if(!this->comMarker_){
         this->comMarker_ = new cnoid::CrossMarker(0.2/*size*/,cnoid::Vector3f(0.5,1.0,0.0)/*color*/,10/*width*/);
       }
+      robot_->calcCenterOfMass();
       this->comMarker_->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
       drawOnObjects.push_back(this->comMarker_);
     }
 
     {
-      cnoidbodyutils::drawPolygon(this->sCFRLines_,sCFRVertices_,cnoid::Vector3f(0.0,0.3,0.0));
+      cnoidbodyutils::drawPolygon(this->sCFRLines_,sCFRVertices_,cnoid::Vector3f(0.3,0.0,0.0));
       cnoid::SgPosTransformPtr transform(new cnoid::SgPosTransform);
-      transform->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
+      transform->setTranslation(sCFRCenterOfMass_.cast<Eigen::Vector3f::Scalar>());
       transform->addChild(this->sCFRLines_);
       drawOnObjects.push_back(transform);
     }
 
     {
-      cnoidbodyutils::drawPolygon(this->sCFRBreakLines_,sCFRBreakVertices_,cnoid::Vector3f(0.0,1.0,0.0));
+      cnoidbodyutils::drawPolygon(this->sCFRBreakLines_,sCFRBreakVertices_,cnoid::Vector3f(1.0,0.0,0.0));
       cnoid::SgPosTransformPtr transform(new cnoid::SgPosTransform);
-      transform->setTranslation(robot_->centerOfMass().cast<Eigen::Vector3f::Scalar>());
+      transform->setTranslation(sCFRCenterOfMass_.cast<Eigen::Vector3f::Scalar>());
       transform->addChild(this->sCFRBreakLines_);
       drawOnObjects.push_back(transform);
     }
-
+    return drawOnObjects;
   }
 };

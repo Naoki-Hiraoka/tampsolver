@@ -267,10 +267,10 @@ namespace multicontact_controller {
                             std::vector<Eigen::VectorXd>& wcsHelper,
                             std::vector<Eigen::SparseMatrix<double, Eigen::RowMajor> >& C_extsHelper,
                             double& maximum,
-                            size_t As_begin_idx,//Asのいくつ目からを見るか
-                            size_t As_end_idx,//Asのいくつ目までを見るか. 負なら最後まで
-                            size_t Cs_begin_idx,//Csのいくつ目からを見るか
-                            size_t Cs_end_idx//Csのいくつ目までを見るか. 負なら最後まで
+                            int As_begin_idx,//Asのいくつ目からを見るか
+                            int As_end_idx,//Asのいくつ目までを見るか. 負なら最後まで
+                            int Cs_begin_idx,//Csのいくつ目からを見るか
+                            int Cs_end_idx//Csのいくつ目までを見るか. 負なら最後まで
                             ){
       if(As_end_idx < 0) As_end_idx = As.size();
       if(Cs_end_idx < 0) Cs_end_idx = Cs.size();
@@ -279,16 +279,16 @@ namespace multicontact_controller {
         std::cerr << "[cnoidbodyutils::defineMaximumError] As.size() != bs.size()" << std::endl;
         return false;
       }
-      if(As_begin_idx < 0 || As_begin_idx >= As.size() || As_end_idx > As.size()){
-        std::cerr << "[cnoidbodyutils::defineMaximumError] As_begin_idx < 0 || As_begin_idx >= As.size() || As_end_idx > As.size()" << std::endl;
+      if(As_begin_idx < 0 || As_begin_idx > As.size() || As_end_idx > As.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] As_begin_idx < 0 || As_begin_idx > As.size() || As_end_idx > As.size()" << std::endl;
         return false;
       }
       if(Cs.size() != dls.size() || Cs.size() != dus.size()){
         std::cerr << "[cnoidbodyutils::defineMaximumError] Cs.size() != dls.size() || Cs.size() != dus.size()" << std::endl;
         return false;
       }
-      if(Cs_begin_idx < 0 || Cs_begin_idx >= Cs.size() || Cs_end_idx > Cs.size()){
-        std::cerr << "[cnoidbodyutils::defineMaximumError] Cs_begin_idx < 0 || Cs_begin_idx >= Cs.size() || Cs_end_idx > Cs.size()" << std::endl;
+      if(Cs_begin_idx < 0 || Cs_begin_idx > Cs.size() || Cs_end_idx > Cs.size()){
+        std::cerr << "[cnoidbodyutils::defineMaximumError] Cs_begin_idx < 0 || Cs_begin_idx > Cs.size() || Cs_end_idx > Cs.size()" << std::endl;
         return false;
       }
 
@@ -353,6 +353,8 @@ namespace multicontact_controller {
           for(size_t j=0;j<tmpwc.size();j++) tmpwc[j] = 1.0;
           wcsHelper.push_back(tmpwc);//解かないので使わない
         }
+      }
+      for(size_t i=Cs_begin_idx;i<Cs_end_idx;i++){
         {
           const Eigen::SparseMatrix<double,Eigen::RowMajor>& C = Cs[i];
           const cnoid::VectorX& du = dus[i];

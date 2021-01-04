@@ -47,12 +47,13 @@ namespace multicontact_controller{
       }
 
       lines->getOrCreateVertices()->resize(vertices.size());
-      lines->colorIndices().resize(vertices.size());
+      lines->colorIndices().resize(vertices.size()*2);
       lines->setNumLines(vertices.size());
       for(size_t i=0;i<vertices.size();i++){
         int next = (i+1 != vertices.size())? i+1 : 0;
         lines->vertices()->at(i) = cnoid::Vector3f(vertices[i][0],vertices[i][1],0);
-        lines->colorIndices()[i] = 0;
+        lines->colorIndices()[i*2+0] = 0;
+        lines->colorIndices()[i*2+1] = 0;
         lines->line(i)[0] = i;
         lines->line(i)[1] = next;
       }

@@ -88,7 +88,6 @@ namespace multicontact_controller {
     ros::Time stamp = ros::Time::now();
     while (ros::ok()) {
       ros::Time now = ros::Time::now();
-      std::vector<cnoid::Body*> drawRobots{robot_};
 
       // spin
       ros::spinOnce();
@@ -128,9 +127,8 @@ namespace multicontact_controller {
 
           if(this->hasViewer()){
             cnoidbodyutils::copyBodyKinematicsState(robot_,endEffectors_[contactPoints[i]->name()]->drawRobot());
-            drawRobots.push_back(endEffectors_[contactPoints[i]->name()]->drawRobot());
           }
-          for(size_t i=0;i<robot_->numJoints();i++) robot_->joint(i)->q() = initialAngleVector[i];
+          for(size_t j=0;j<robot_->numJoints();j++) robot_->joint(j)->q() = initialAngleVector[j];
           robot_->rootLink()->T() = initialRootPosition;
           robot_->calcForwardKinematics(false,false);
         }
@@ -141,8 +139,6 @@ namespace multicontact_controller {
       }
       seq++;
       stamp = now;
-
-      drawObjects();
 
       r.sleep();
     }
@@ -191,7 +187,9 @@ namespace multicontact_controller {
       this->objects(drawRobots);
       this->drawObjects(false);
     }
+
     this->flush();
+
   }
 
   void ContactBreakAbilityCheckerROS::jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg) {

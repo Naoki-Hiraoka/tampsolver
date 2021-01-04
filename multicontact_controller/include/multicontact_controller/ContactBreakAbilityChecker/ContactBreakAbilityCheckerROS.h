@@ -22,17 +22,31 @@ namespace multicontact_controller {
       EndEffectorPCLCDROS::EndEffectorPCLCDROS(name,robot)
     {
       contactPoint_ = std::make_shared<ContactPointCBAC>();
+      contactPoint_->name() = name_;
+      std::dynamic_pointer_cast<ContactPointCBAC>(contactPoint_)->state() = state_;
+
       drawRobot_ = robot_->clone();
+
+      ros::NodeHandle nh;
+      forceSub_ = nh.subscribe(name_ + "/force_filtered", 1, &EndEffectorCBACROS::forceCallback, this);
     }
 
     void onInfoUpdated() override;
     void onStateUpdated() override;
+
+    void forceCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg){
+      if(this->isValid()){
+        tf::wrenchMsgToEigen(msg->wrench,contactPoint_->F());
+      }
+    };
 
     std::shared_ptr<ContactPointCBAC> contactPoint() const { return std::dynamic_pointer_cast<ContactPointCBAC>(contactPoint_);}
 
     std::vector<cnoid::SgNodePtr> getDrawOnObjects() override;
     cnoid::Body* drawRobot() {return drawRobot_;}
   private:
+    ros::Subscriber forceSub_;
+
     //for visualize
     cnoid::SgLineSetPtr lines;
     cnoid::Body* drawRobot_;
