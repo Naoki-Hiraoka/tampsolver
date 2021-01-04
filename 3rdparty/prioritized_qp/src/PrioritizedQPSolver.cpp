@@ -173,17 +173,6 @@ namespace prioritized_qp{
         for(size_t j=0;j<tasks[i]->A().rows() + tasks[i]->C().rows();j++){
           A.insert(As.rows() - tasks[i]->A().rows() - tasks[i]->C().rows() + j, As.cols() + j) = 1;
         }
-          std::cerr << "hogehoge" << std::endl;
-          std::cerr << "H" << std::endl;
-          std::cerr << H << std::endl;
-          std::cerr << "A" << std::endl;
-          std::cerr << A << std::endl;
-          std::cerr << "gradient" << std::endl;
-          std::cerr << gradient << std::endl;
-          std::cerr << "lowerBound upperBound" << std::endl;
-          for(size_t j=0;j<A.rows();j++){
-            std::cerr << upperBound[j] << " " << lowerBound[j] << std::endl;
-          }
 
         if(!tasks[i]->solver().isInitialized() ||
            tasks[i]->solver().workspace()->data->n != H.rows() ||
