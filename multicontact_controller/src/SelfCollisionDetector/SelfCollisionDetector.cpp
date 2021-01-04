@@ -55,11 +55,11 @@ namespace multicontact_controller {
       double sign = (distance >= 0)? 1.0 : -1.0;
 
       collisionLinkPair->collisions.resize(2);
-      collisionLinkPair->collisions[0].point = p0;
-      collisionLinkPair->collisions[0].normal = sign * (p1 - p0).normalized();
+      collisionLinkPair->collisions[0].point = collisionLinkPair->link[0]->T().inverse() * p0;
+      collisionLinkPair->collisions[0].normal = collisionLinkPair->link[0]->R().inverse() * sign * (p1 - p0).normalized();
       collisionLinkPair->collisions[0].depth = - distance;
-      collisionLinkPair->collisions[1].point = p1;
-      collisionLinkPair->collisions[1].normal = sign * (p0 - p1).normalized();
+      collisionLinkPair->collisions[1].point = collisionLinkPair->link[1]->T().inverse() * p1;
+      collisionLinkPair->collisions[1].normal = collisionLinkPair->link[1]->R().inverse() * sign * (p0 - p1).normalized();
       collisionLinkPair->collisions[1].depth = - distance;
 
     }

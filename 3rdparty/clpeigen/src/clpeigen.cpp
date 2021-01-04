@@ -50,10 +50,13 @@ namespace clpeigen{
   bool solver::solve(){
     // Solve
     if(this->initial_solve){
-      this->model.initialSolve();
+      int status = this->model.initialSolve();
+      this->initial_solve = false;
+      return status == 0;
     }else{
       // Solve - primal as primal feasible
-      this->model.primal(1);
+      int status = this->model.primal(1);
+      return status == 0;
     }
   }
 

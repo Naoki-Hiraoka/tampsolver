@@ -112,7 +112,9 @@ namespace static_equilibuim_test{
     for(size_t i=0;i<outer.size();i++){
       o.head<2>() = outer[i];
       solver.updateObjective(o);
-      solver.solve();
+      if(!solver.solve()){
+        return false; // solution is infeasible
+      }
       solver.getSolution(solution);
       Y.push_back(std::tuple<Eigen::Vector2d,Eigen::Vector2d,double>(solution.head<2>(),outer[i],0));
     }
@@ -158,7 +160,9 @@ namespace static_equilibuim_test{
       // solve LP
       o.head<2>() = n;
       solver.updateObjective(o);
-      solver.solve();
+      if(!solver.solve()){
+        return false; // solution is infeasible
+      }
       solver.getSolution(solution);
       Eigen::Vector2d pX = solution.head<2>();
 

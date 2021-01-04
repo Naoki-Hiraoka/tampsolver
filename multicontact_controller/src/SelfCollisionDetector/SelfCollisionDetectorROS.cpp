@@ -6,6 +6,34 @@
 #include <multicontact_controller_msgs/CollisionArray.h>
 
 namespace multicontact_controller {
+  void setupCollisionPairFromParam(cnoid::Body* robot, std::vector<std::shared_ptr<cnoid::CollisionLinkPair> >& collisionLinkPairs){
+    ros::NodeHandle nh;
+
+    std::vector<std::string> collision_pair;
+    nh.param("collision_pair", collision_pair, std::vector<std::string>());
+    for(size_t i=0;i<collision_pair.size();i++){
+      std::stringstream ss(collision_pair[i]);
+      std::string link0_name, link1_name;
+      std::getline(ss,link0_name,':');
+      std::getline(ss,link1_name);
+
+      std::shared_ptr<cnoid::CollisionLinkPair> collisionLinkPair = std::make_shared<cnoid::CollisionLinkPair>();
+      collisionLinkPair->body[0] = robot;
+      collisionLinkPair->body[1] = robot;
+      collisionLinkPair->link[0] = robot->link(link0_name);
+      collisionLinkPair->link[1] = robot->link(link1_name);
+      if(!collisionLinkPair->link[0]){
+        ROS_ERROR("%s not found",link0_name.c_str());
+        continue;
+      }
+      if(!collisionLinkPair->link[1]){
+        ROS_ERROR("%s not found",link1_name.c_str());
+        continue;
+      }
+      collisionLinkPairs.push_back(collisionLinkPair);
+    }
+  }
+
   void SelfCollisionDetectorROS::main(int argc, char** argv) {
 
     ros::init(argc,argv,"self_collision_detector");
@@ -28,30 +56,7 @@ namespace multicontact_controller {
     ros::Publisher collisionArrayPub =  nh.advertise<multicontact_controller_msgs::CollisionArray>("self_collision", 100);
 
     selfCollisionDetector_ = std::make_shared<SelfCollisionDetector>(robot_);
-
-    std::vector<std::string> collision_pair;
-    nh.param("collision_pair", collision_pair, std::vector<std::string>());
-    for(size_t i=0;i<collision_pair.size();i++){
-      std::stringstream ss(collision_pair[i]);
-      std::string link0_name, link1_name;
-      std::getline(ss,link0_name,':');
-      std::getline(ss,link1_name);
-
-      std::shared_ptr<cnoid::CollisionLinkPair> collisionLinkPair = std::make_shared<cnoid::CollisionLinkPair>();
-      collisionLinkPair->body[0] = robot_;
-      collisionLinkPair->body[1] = robot_;
-      collisionLinkPair->link[0] = robot_->link(link0_name);
-      collisionLinkPair->link[1] = robot_->link(link1_name);
-      if(!collisionLinkPair->link[0]){
-        ROS_ERROR("%s not found",link0_name.c_str());
-        continue;
-      }
-      if(!collisionLinkPair->link[1]){
-        ROS_ERROR("%s not found",link1_name.c_str());
-        continue;
-      }
-      selfCollisionDetector_->collisionLinkPairs().push_back(collisionLinkPair);
-    }
+    setupCollisionPairFromParam(robot_, selfCollisionDetector_->collisionLinkPairs());
 
     pnh.param("start_enabled", isEnabled_, true);
     ros::ServiceServer enableService = pnh.advertiseService("enable",&SelfCollisionDetectorROS::enableCallback,this);
@@ -89,12 +94,12 @@ namespace multicontact_controller {
 
             collision.point1.header.stamp = now;
             collision.point1.header.seq = seq;
-            tf::pointEigenToMsg(collisionLinkPair->link[0]->T().inverse() * collisionLinkPair->collisions[0].point,collision.point1.point);
-            tf::vectorEigenToMsg(collisionLinkPair->link[0]->R().inverse() * collisionLinkPair->collisions[0].normal,collision.normal1.vector);
+            tf::pointEigenToMsg(collisionLinkPair->collisions[0].point,collision.point1.point);
+            tf::vectorEigenToMsg(collisionLinkPair->collisions[0].normal,collision.normal1.vector);
             collision.point2.header.stamp = now;
             collision.point2.header.seq = seq;
-            tf::pointEigenToMsg(collisionLinkPair->link[1]->T().inverse() * collisionLinkPair->collisions[1].point,collision.point2.point);
-            tf::vectorEigenToMsg(collisionLinkPair->link[1]->R().inverse() * collisionLinkPair->collisions[1].normal,collision.normal2.vector);
+            tf::pointEigenToMsg(collisionLinkPair->collisions[1].point,collision.point2.point);
+            tf::vectorEigenToMsg(collisionLinkPair->collisions[1].normal,collision.normal2.vector);
             collision.distance = - collisionLinkPair->collisions[0].depth;
           }
 

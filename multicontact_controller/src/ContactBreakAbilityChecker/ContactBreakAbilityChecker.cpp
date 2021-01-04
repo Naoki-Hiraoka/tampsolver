@@ -17,9 +17,9 @@ namespace multicontact_controller {
 
   // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
   // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
-  void ContactPointCBAC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc){
+  void ContactPointCBAC::contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc, bool force_allow_break_contact){
     if(this->state() == "CONTACT"){
-      this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc);
+      this->contact()->getContactConstraint(A,b,wa,C,dl,du,wc,force_allow_break_contact);
       b -= A * selectMatrixForKinematicsConstraint() * F_;
       dl -= C * selectMatrixForKinematicsConstraint() * F_;
       du -= C * selectMatrixForKinematicsConstraint() * F_;
@@ -37,16 +37,6 @@ namespace multicontact_controller {
       du.resize(0);
       wc.resize(0);
     }
-    return;
-  }
-
-  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
-  // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
-  void ContactPointCBAC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
-    this->contact()->getBreakContactConstraint(A,b,wa,C,dl,du,wc);
-    b -= A * selectMatrixForKinematicsConstraint() * F_;
-    dl -= C * selectMatrixForKinematicsConstraint() * F_;
-    du -= C * selectMatrixForKinematicsConstraint() * F_;
     return;
   }
 
@@ -133,7 +123,7 @@ namespace multicontact_controller {
                                          std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                                          std::shared_ptr<ContactPointCBAC>& breakContactPoint,
                                          bool fixInteraction,
-                                         std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                                         std::shared_ptr<SelfCollisionDetector>& selfCollisionDetector,
                                          std::shared_ptr<PCLCollisionDetector>& pCLCollisionDetector
                                          ){
 
@@ -145,12 +135,26 @@ namespace multicontact_controller {
     cnoid::VectorXd SCFR_l;
     cnoid::VectorX SCFR_u;
     std::vector<cnoid::Vector2> SCFR_vertices;
-    this->calcSCFR(contactPoints,nullptr,SCFR_M,SCFR_l,SCFR_u,SCFR_vertices);
+    if(!this->calcSCFR(contactPoints,breakContactPoint,SCFR_M,SCFR_l,SCFR_u,SCFR_vertices)){
+      // 今の姿勢は今にも転びそうであるということ
+      margin = -100;
+      return true;
+    }
     Eigen::SparseMatrix<double,Eigen::RowMajor> SCFR_M_break;
     cnoid::VectorXd SCFR_l_break;
     cnoid::VectorX SCFR_u_break;
     std::vector<cnoid::Vector2> SCFR_break_vertices;
-    this->calcSCFR(contactPoints,breakContactPoint,SCFR_M_break,SCFR_l_break,SCFR_u_break,SCFR_break_vertices);
+    {
+      std::vector<std::shared_ptr<ContactPointCBAC> > otherContactPoints;
+      for(size_t i=0;i<contactPoints.size();i++){
+        if(contactPoints[i] != breakContactPoint) otherContactPoints.push_back(contactPoints[i]);
+      }
+      if(!this->calcSCFR(otherContactPoints,nullptr,SCFR_M_break,SCFR_l_break,SCFR_u_break,SCFR_break_vertices)){
+        // このlimbは離せないということ
+        margin = -100;
+        return true;
+      }
+    }
 
     // for visualize
     sCFRCenterOfMass_ = initialCenterOfMass;
@@ -186,7 +190,7 @@ namespace multicontact_controller {
         if(!this->setupSelfCollisionTask(task,
                                          robot_,
                                          jointInfos_,
-                                         selfCollisions,
+                                         selfCollisionDetector,
                                          tolerance_SelfCollision_,
                                          w_SelfCollision_,
                                          we_SelfCollision_)){
@@ -427,21 +431,8 @@ namespace multicontact_controller {
               Eigen::VectorXd dl_i;
               Eigen::VectorXd du_i;
               Eigen::VectorXd wa_tmp, wc_tmp;
-              contactPoints[i]->contactForceConstraintForKinematicsConstraint(A_i,b_i,wa_tmp,C_i,dl_i,du_i,wc_tmp);
-              As_i.push_back(A_i);
-              bs_i.push_back(b_i);
-              Cs_i.push_back(C_i);
-              dls_i.push_back(dl_i);
-              dus_i.push_back(du_i);
-            }
-            if(contactPoints[i] == breakContactPoint) {
-              Eigen::SparseMatrix<double,Eigen::RowMajor> A_i;
-              Eigen::VectorXd b_i;
-              Eigen::SparseMatrix<double,Eigen::RowMajor> C_i;
-              Eigen::VectorXd dl_i;
-              Eigen::VectorXd du_i;
-              Eigen::VectorXd wa_tmp, wc_tmp;
-              contactPoints[i]->desiredForceConstraintForKinematicsConstraint(A_i,b_i,wa_tmp,C_i,dl_i,du_i,wc_tmp);
+              // break contactをこころみるeefは、接触が外れてもよいので緩める
+              contactPoints[i]->contactForceConstraintForKinematicsConstraint(A_i,b_i,wa_tmp,C_i,dl_i,du_i,wc_tmp, contactPoints[i]==breakContactPoint);
               As_i.push_back(A_i);
               bs_i.push_back(b_i);
               Cs_i.push_back(C_i);
@@ -479,8 +470,9 @@ namespace multicontact_controller {
     }
 
     // SCFRの各要素はx[0:1]の次元の大きさに揃っている
-    if(!static_equilibuim_test::calcProjection(A,b,C,dl,du,SCFR_M,SCFR_l,SCFR_u,vertices,debug_print_)){
-      std::cerr << "[ContactBreakAbilityChecker::calcSCFR] projection failed" << std::endl;
+    if(!static_equilibuim_test::calcProjection(A,b,C,dl,du,SCFR_M,SCFR_l,SCFR_u,vertices,debug_print_, 0.01)){
+      //std::cerr << "[ContactBreakAbilityChecker::calcSCFR] projection failed" << std::endl;
+      //このcontactpointは離すことができないということを意味する
       return false;
     }
 
@@ -572,7 +564,7 @@ namespace multicontact_controller {
   bool ContactBreakAbilityChecker::setupSelfCollisionTask(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                                           cnoid::Body* robot,
                                                           std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
-                                                          std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                                                          std::shared_ptr<SelfCollisionDetector>& selfCollisionDetector,
                                                           double tolerance,
                                                           double w,
                                                           double we){
@@ -621,11 +613,14 @@ namespace multicontact_controller {
     std::vector<cnoid::VectorXd> dus;
     std::vector<cnoid::VectorXd> wcs;
 
-    {
-      // self Collision
-      // 各行mのオーダ
-      // TODO アップデートされない
-      for(size_t i=0;i<selfCollisions.size();i++){
+    // self Collision
+    // 各行mのオーダ
+    if(selfCollisionDetector->solve()){
+      cnoidbodyutils::Collision collision(robot);
+      collision.tolerance() = tolerance;
+      for(size_t i=0;i<selfCollisionDetector->collisionLinkPairs().size();i++){
+        collision.collisionLinkPair() = *(selfCollisionDetector->collisionLinkPairs()[i]);
+
         Eigen::SparseMatrix<double,Eigen::RowMajor> A;
         cnoid::VectorX b;
         cnoid::VectorX wa;
@@ -633,8 +628,7 @@ namespace multicontact_controller {
         cnoid::VectorX dl;
         cnoid::VectorX du;
         cnoid::VectorX wc;
-        selfCollisions[i]->tolerance() = tolerance;
-        selfCollisions[i]->getCollisionConstraint(A,b,wa,C,dl,du,wc);
+        collision.getCollisionConstraint(A,b,wa,C,dl,du,wc);
         As.push_back(A*S);
         bs.push_back(b);
         was.push_back(wa);
@@ -1094,7 +1088,7 @@ namespace multicontact_controller {
                                            CsHelper, dlsHelper, dusHelper, wcsHelper, C_extsHelper, maximum);
       }
 
-      //reduce taumax
+      //reduce error
       {
         Eigen::SparseMatrix<double,Eigen::RowMajor> A(0,cols);
         cnoid::VectorX b(0);

@@ -45,6 +45,9 @@ namespace multicontact_controller {
       contactBreakAbilityChecker_->setIKLoopCb([this](){ this->draw(); });
     }
 
+    selfCollisionDetector_ = std::make_shared<SelfCollisionDetector>(robot_);
+    setupCollisionPairFromParam(robot_, selfCollisionDetector_->collisionLinkPairs());
+
     pclCollisionDetector_ = std::make_shared<PCLCollisionDetector>(robot_);
     {
       double boxelSize;
@@ -115,13 +118,12 @@ namespace multicontact_controller {
           if(contactPoints[i]->state() != "CONTACT" &&
              contactPoints[i]->state() != "TOWARD_BREAK_CONTACT") continue;
 
-          std::vector<std::shared_ptr<cnoidbodyutils::Collision> > todo;
           double margin;
           contactBreakAbilityChecker_->check(margin,
                                              contactPoints,
                                              contactPoints[i],
                                              true,
-                                             todo,
+                                             selfCollisionDetector_,
                                              pclCollisionDetector_);
           std::cerr << contactPoints[i]->name() << margin << std::endl;
 
@@ -164,6 +166,13 @@ namespace multicontact_controller {
 
       {
         std::vector<cnoid::SgNodePtr> objects = contactBreakAbilityChecker_->getDrawOnObjects();
+        for(size_t j=0;j<objects.size();j++){
+          this->drawOn(objects[j]);
+        }
+      }
+
+      {
+        std::vector<cnoid::SgNodePtr> objects = selfCollisionDetector_->getDrawOnObjects();
         for(size_t j=0;j<objects.size();j++){
           this->drawOn(objects[j]);
         }

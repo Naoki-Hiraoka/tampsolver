@@ -8,6 +8,7 @@
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
 
 namespace multicontact_controller {
+  void setupCollisionPairFromParam(cnoid::Body* robot, std::vector<std::shared_ptr<cnoid::CollisionLinkPair> >& collisionLinkPairs);
 
   class SelfCollisionDetector {
   public:

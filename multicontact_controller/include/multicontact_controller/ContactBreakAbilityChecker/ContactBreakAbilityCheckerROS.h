@@ -2,6 +2,8 @@
 #define CONTACT_BREAKABILITY_CHECKER_ROS_H
 
 #include <multicontact_controller/ContactBreakAbilityChecker/ContactBreakAbilityChecker.h>
+#include <multicontact_controller/PCLCollisionDetector/PCLCollisionDetectorROS.h>
+#include <multicontact_controller/SelfCollisionDetector/SelfCollisionDetectorROS.h>
 #include <choreonoid_cpp/ChoreonoidCpp.h>
 #include <std_msgs/String.h>
 #include <std_srvs/SetBool.h>
@@ -66,6 +68,7 @@ namespace multicontact_controller {
     std::map<std::string, std::shared_ptr<cnoidbodyutils::JointInfo> > jointInfoMap_;
     std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> > jointInfos_;
 
+    std::shared_ptr<SelfCollisionDetector> selfCollisionDetector_;
     std::shared_ptr<PCLCollisionDetector> pclCollisionDetector_;
     std::shared_ptr<ContactBreakAbilityChecker> contactBreakAbilityChecker_;
 

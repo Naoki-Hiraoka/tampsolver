@@ -25,6 +25,7 @@ target_include_directories(ContactBreakAbilityChecker PUBLIC
 target_link_libraries(ContactBreakAbilityChecker PUBLIC
   CnoidBodyUtils
   EndEffectorUtils
+  SelfCollisionDetector
   PCLCollisionDetector
   ${catkin_LIBRARIES}
   )

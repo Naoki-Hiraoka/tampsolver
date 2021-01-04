@@ -7,7 +7,8 @@
 #include <Eigen/Sparse>
 #include <multicontact_controller/lib/CnoidBodyUtils/CnoidBodyUtils.h>
 #include <prioritized_qp/PrioritizedQPSolver.h>
-#include <multicontact_controller/PCLCollisionDetector/PCLCollisionDetectorROS.h>
+#include <multicontact_controller/PCLCollisionDetector/PCLCollisionDetector.h>
+#include <multicontact_controller/SelfCollisionDetector/SelfCollisionDetector.h>
 
 namespace multicontact_controller {
   class ContactPointCBAC: public cnoidbodyutils::ContactPoint {
@@ -16,10 +17,7 @@ namespace multicontact_controller {
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& selectMatrixForKinematicsConstraint();
     // KinematicsConstraint による拘束力の接触維持に必要な制約を返す.
     // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
-    void contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc);
-    // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
-    // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
-    void desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+    void contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc, bool force_allow_break_contact=false);
 
     // 支持脚の場合位置の目標値を返す。 colは[root6dof + numJoint]
     // T_actが必要
@@ -59,7 +57,7 @@ namespace multicontact_controller {
       : robot_(robot),
         jointInfos_(jointInfos),
         loopNum_(30),
-        debug_print_(true),
+        debug_print_(false),
         w_JointLimit_(1e-2),
         tolerance_SelfCollision_(0.02),
         w_SelfCollision_(1e-2),
@@ -82,7 +80,7 @@ namespace multicontact_controller {
                std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                std::shared_ptr<ContactPointCBAC>& breakContactPoint,
                bool fixInteraction,//interaction eefを固定するか
-               std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+               std::shared_ptr<SelfCollisionDetector>& selfCollisionDetectror,
                std::shared_ptr<PCLCollisionDetector>& pCLCollisionDetector
                );
 
@@ -113,7 +111,7 @@ namespace multicontact_controller {
     bool setupSelfCollisionTask(std::shared_ptr<prioritized_qp::Task>& task, //返り値
                                 cnoid::Body* robot,
                                 std::vector<std::shared_ptr<cnoidbodyutils::JointInfo> >& jointInfos,
-                                std::vector<std::shared_ptr<cnoidbodyutils::Collision> >& selfCollisions,
+                                std::shared_ptr<SelfCollisionDetector>& selfCollisionDetectror,
                                 double tolerance,
                                 double w,
                                 double we);
