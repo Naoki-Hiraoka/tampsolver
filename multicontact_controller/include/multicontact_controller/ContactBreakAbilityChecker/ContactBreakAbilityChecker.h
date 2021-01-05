@@ -19,6 +19,10 @@ namespace multicontact_controller {
     // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
     void contactForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorX& du, cnoid::VectorX& wc, bool force_allow_break_contact=false);
 
+    // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
+    // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
+    void desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc);
+
     // 支持脚の場合位置の目標値を返す。 colは[root6dof + numJoint]
     // T_actが必要
     // rad m / iter
@@ -57,6 +61,7 @@ namespace multicontact_controller {
       : robot_(robot),
         jointInfos_(jointInfos),
         loopNum_(30),
+        convergeThre_(0.0001),
         debug_print_(false),
         w_JointLimit_(1e-2),
         tolerance_SelfCollision_(0.02),
@@ -90,10 +95,14 @@ namespace multicontact_controller {
     // IKを終了する回数
     size_t loopNum() const { return loopNum_;}
     size_t& loopNum() { return loopNum_;}
+    // IKを終了する収束判定
+    double convergeThre() const { return convergeThre_;}
+    double& convergeThre() { return convergeThre_;}
   protected:
     // メンバ変数はrobot_しか使わない
     bool calcSCFR(std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                   const std::shared_ptr<ContactPointCBAC>& breakContactPoint,
+                  bool really_break,// trueならbreakContactPointが0になるようにする。falseならbreakContactPointが0になることを許容するだけ
                   Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,//返り値
                   cnoid::VectorXd& SCFR_l,//返り値
                   cnoid::VectorX& SCFR_u,//返り値
@@ -166,6 +175,7 @@ namespace multicontact_controller {
 
     // param
     size_t loopNum_;
+    double convergeThre_;
     bool debug_print_;
     double w_JointLimit_;
     double tolerance_SelfCollision_;

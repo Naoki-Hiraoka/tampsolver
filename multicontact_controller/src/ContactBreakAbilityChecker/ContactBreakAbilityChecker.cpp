@@ -40,6 +40,16 @@ namespace multicontact_controller {
     return;
   }
 
+  // KinematicsConstraint による拘束力の目標値を返す。主に接触解除時用
+  // 各行は無次元化されている. selectMatrixForKinematicsConstraintの次元
+  void ContactPointCBAC::desiredForceConstraintForKinematicsConstraint(Eigen::SparseMatrix<double,Eigen::RowMajor>& A, cnoid::VectorX& b, cnoid::VectorX& wa, Eigen::SparseMatrix<double,Eigen::RowMajor>& C, cnoid::VectorX& dl, cnoid::VectorXd& du, cnoid::VectorX& wc){
+    this->contact()->getBreakContactConstraint(A,b,wa,C,dl,du,wc);
+    b -= A * selectMatrixForKinematicsConstraint() * F_;
+    dl -= C * selectMatrixForKinematicsConstraint() * F_;
+    du -= C * selectMatrixForKinematicsConstraint() * F_;
+    return;
+  }
+
   // 支持脚の場合位置の目標値を返す。 colは[root6dof + numJoint]
   // T_actが必要
   // rad m / iter
@@ -135,7 +145,7 @@ namespace multicontact_controller {
     cnoid::VectorXd SCFR_l;
     cnoid::VectorX SCFR_u;
     std::vector<cnoid::Vector2> SCFR_vertices;
-    if(!this->calcSCFR(contactPoints,breakContactPoint,SCFR_M,SCFR_l,SCFR_u,SCFR_vertices)){
+    if(!this->calcSCFR(contactPoints,breakContactPoint,false,SCFR_M,SCFR_l,SCFR_u,SCFR_vertices)){
       // 今の姿勢は今にも転びそうであるということ
       margin = -100;
       return true;
@@ -144,16 +154,10 @@ namespace multicontact_controller {
     cnoid::VectorXd SCFR_l_break;
     cnoid::VectorX SCFR_u_break;
     std::vector<cnoid::Vector2> SCFR_break_vertices;
-    {
-      std::vector<std::shared_ptr<ContactPointCBAC> > otherContactPoints;
-      for(size_t i=0;i<contactPoints.size();i++){
-        if(contactPoints[i] != breakContactPoint) otherContactPoints.push_back(contactPoints[i]);
-      }
-      if(!this->calcSCFR(otherContactPoints,nullptr,SCFR_M_break,SCFR_l_break,SCFR_u_break,SCFR_break_vertices)){
-        // このlimbは離せないということ
-        margin = -100;
-        return true;
-      }
+    if(!this->calcSCFR(contactPoints,breakContactPoint,true,SCFR_M_break,SCFR_l_break,SCFR_u_break,SCFR_break_vertices)){
+      // このlimbは離せないということ
+      margin = -100;
+      return true;
     }
 
     // for visualize
@@ -161,6 +165,7 @@ namespace multicontact_controller {
     sCFRVertices_ = SCFR_vertices;
     sCFRBreakVertices_ = SCFR_break_vertices;
 
+    margin = -100;
     for(size_t i=0;i<contactPoints.size();i++){
       contactPoints[i]->T_act() = contactPoints[i]->parent()->T() * contactPoints[i]->T_local();
     }
@@ -305,15 +310,24 @@ namespace multicontact_controller {
 
       robot_->calcForwardKinematics();
       robot_->calcCenterOfMass();
+
+      // update margin
+      {
+        cnoid::VectorX current_m = SCFR_M_break * (robot_->centerOfMass() - initialCenterOfMass).head<2>();
+        cnoid::VectorX current_l = current_m - SCFR_l_break;
+        cnoid::VectorX current_u = SCFR_u_break - current_m;
+        double current_margin = std::numeric_limits<double>::max();
+        if(current_l.size() != 0) current_margin = std::min(current_margin, current_l.minCoeff());
+        if(current_u.size() != 0) current_margin = std::min(current_margin, current_u.minCoeff());
+        if(std::abs(margin - current_margin) < convergeThre_){
+          margin = current_margin;
+          return true;
+        }else{
+          margin = current_margin;
+        }
+      }
+
     }
-
-    cnoid::VectorX current_m = SCFR_M * (robot_->centerOfMass() - initialCenterOfMass).head<2>();
-    cnoid::VectorX current_l = current_m - SCFR_l;
-    cnoid::VectorX current_u = SCFR_u - current_m;
-
-    margin = std::numeric_limits<double>::max();
-    if(current_l.size() != 0) margin = std::min(margin, current_l.minCoeff());
-    if(current_u.size() != 0) margin = std::min(margin, current_u.minCoeff());
 
     return true;
   }
@@ -321,6 +335,7 @@ namespace multicontact_controller {
   // メンバ変数はrobot_しか使わない
   bool ContactBreakAbilityChecker::calcSCFR(std::vector<std::shared_ptr<ContactPointCBAC> >& contactPoints,
                                             const std::shared_ptr<ContactPointCBAC>& breakContactPoint,
+                                            bool really_break,// trueならbreakContactPointが0になるようにする。falseならbreakContactPointが0になることを許容するだけ
                                             Eigen::SparseMatrix<double,Eigen::RowMajor>& SCFR_M,//返り値
                                             cnoid::VectorXd& SCFR_l,//返り値
                                             cnoid::VectorX& SCFR_u,//返り値
@@ -433,6 +448,20 @@ namespace multicontact_controller {
               Eigen::VectorXd wa_tmp, wc_tmp;
               // break contactをこころみるeefは、接触が外れてもよいので緩める
               contactPoints[i]->contactForceConstraintForKinematicsConstraint(A_i,b_i,wa_tmp,C_i,dl_i,du_i,wc_tmp, contactPoints[i]==breakContactPoint);
+              As_i.push_back(A_i);
+              bs_i.push_back(b_i);
+              Cs_i.push_back(C_i);
+              dls_i.push_back(dl_i);
+              dus_i.push_back(du_i);
+            }
+            if(really_break && contactPoints[i] == breakContactPoint) {
+              Eigen::SparseMatrix<double,Eigen::RowMajor> A_i;
+              Eigen::VectorXd b_i;
+              Eigen::SparseMatrix<double,Eigen::RowMajor> C_i;
+              Eigen::VectorXd dl_i;
+              Eigen::VectorXd du_i;
+              Eigen::VectorXd wa_tmp, wc_tmp;
+              contactPoints[i]->desiredForceConstraintForKinematicsConstraint(A_i,b_i,wa_tmp,C_i,dl_i,du_i,wc_tmp);
               As_i.push_back(A_i);
               bs_i.push_back(b_i);
               Cs_i.push_back(C_i);

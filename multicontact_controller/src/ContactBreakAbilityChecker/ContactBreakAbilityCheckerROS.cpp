@@ -2,6 +2,7 @@
 
 #include <eigen_conversions/eigen_msg.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <jsk_rviz_plugins/OverlayText.h>
 
 namespace multicontact_controller {
   void EndEffectorCBACROS::onInfoUpdated(){
@@ -55,6 +56,8 @@ namespace multicontact_controller {
       pclCollisionDetector_->setBoxelSize(boxelSize);
     }
 
+    ros::Publisher overlayTextPub = pnh.advertise<jsk_rviz_plugins::OverlayText>("contact_breakability_text", 1);
+
     ros::Subscriber jointStateSub = nh.subscribe("joint_states", 100, &ContactBreakAbilityCheckerROS::jointStateCallback, this); // 一部しか含まないjoint_statesにも対応するため、バッファは1(最新のみ)では不可
 
     ros::Subscriber odomSub = nh.subscribe("odom", 1, &ContactBreakAbilityCheckerROS::odomCallback, this);
@@ -85,12 +88,30 @@ namespace multicontact_controller {
     pnh.param("rate", rate, 1); // 1 hz
     ros::Rate r(rate);
 
-    multicontact_controller_msgs::CollisionArray msg;
+    jsk_rviz_plugins::OverlayText msg;
+    msg.width = 400;
+    msg.height = 20;
+    msg.left = 10;
+    msg.top = 10;
+    msg.text_size = 12;
+    msg.line_width = 2;
+    msg.font = "DejaVu Sans Mono";
+    msg.text = "Stability Margins [m]\n";
+    msg.fg_color.r =25 / 255.0;
+    msg.fg_color.g = 1.0;
+    msg.fg_color.b = 240.0 / 255.0;
+    msg.fg_color.a = 1.0;
+    msg.bg_color.r = 0.0;
+    msg.bg_color.g = 0.0;
+    msg.bg_color.b = 0.0;
+    msg.bg_color.a = 0.2;
 
     unsigned int seq = 0;
     ros::Time stamp = ros::Time::now();
     while (ros::ok()) {
       ros::Time now = ros::Time::now();
+      msg.text = "Stability Margins [m]\n";
+      msg.height = 20;
 
       // spin
       ros::spinOnce();
@@ -101,6 +122,8 @@ namespace multicontact_controller {
 
         pclCollisionDetector_->setLinks(environmentCollisionLinks);
         pclCollisionDetector_->setAllowCollisionBoxFilters(allowCollisionBoxFilters);
+        pclCollisionDetector_->filterDistanceGlobal() = 1.0;
+        pclCollisionDetector_->filterDistanceLocal() = 0.45;
 
         std::vector<std::shared_ptr<ContactPointCBAC> > contactPoints;
         for(std::map<std::string,std::shared_ptr<EndEffectorCBACROS> >::iterator it=endEffectors_.begin();it!=endEffectors_.end();it++){
@@ -125,7 +148,14 @@ namespace multicontact_controller {
                                              true,
                                              selfCollisionDetector_,
                                              pclCollisionDetector_);
-          std::cerr << contactPoints[i]->name() << margin << std::endl;
+
+          if(margin > 0){
+            msg.text += "Without " + contactPoints[i]->name() + " Contact: <span style=\"color: green;\">" + std::to_string(margin) + "</span>\n";
+            msg.height += msg.text_size * 2.0;
+          }else{
+            msg.text += "Without " + contactPoints[i]->name() + " Contact: <span style=\"color: red;\">" + std::to_string(margin) + "</span>\n";
+            msg.height += msg.text_size * 2.0;
+          }
 
           if(this->hasViewer()){
             cnoidbodyutils::copyBodyKinematicsState(robot_,endEffectors_[contactPoints[i]->name()]->drawRobot());
@@ -135,6 +165,8 @@ namespace multicontact_controller {
           robot_->calcForwardKinematics(false,false);
         }
       }
+
+      overlayTextPub.publish(msg);
 
       if(this->hasViewer()){
         this->draw();

@@ -68,6 +68,7 @@
   <depend>roseus</depend>
   <depend>roseus_smach</depend>
   <depend>hrpsys_ros_bridge</depend>
+  <depend>jsk_rviz_plugins</depend>
 
   <depend>choreonoid_cpp</depend>
   <depend>prioritized_qp</depend>
