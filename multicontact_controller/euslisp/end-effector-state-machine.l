@@ -67,7 +67,7 @@
    (setq state-msg (instance std_msgs::String :init))
    (ros::advertise state-topic std_msgs::String 1)
 
-   (setq force-topic (concatenate string eef-name "/force"))
+   (setq force-topic (concatenate string eef-name "/force_filtered"))
    (setq act-force (float-vector 0 0 0))
    (setq act-torque (float-vector 0 0 0))
    (ros::subscribe force-topic geometry_msgs::WrenchStamped #'send self :force-cb)
