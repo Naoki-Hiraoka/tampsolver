@@ -395,6 +395,8 @@ namespace multicontact_controller {
   bool ContactForceEstimator::updateRobotState() {
 
     // update parameters. 今のrobot_orgの状態をrobotに反映
+    robot_->rootLink()->setMass(robot_org_->rootLink()->m());
+
     robot_->rootLink()->T() = robot_org_->rootLink()->T();
     for(size_t i=0;i<robot_org_->numJoints();i++){
       const cnoid::Link* joint_org = robot_org_->joint(i);
